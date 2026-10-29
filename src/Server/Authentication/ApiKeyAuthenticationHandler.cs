@@ -19,22 +19,16 @@ namespace NuGetFeed.Authentication;
 /// package source's credentials from nuget.config with HTTP Basic authentication. Either works:
 /// the key is the header's value, or the Basic password. The Basic user name isn't used.
 /// </summary>
-internal sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+internal sealed class ApiKeyAuthenticationHandler(
+    IOptionsMonitor<AuthenticationSchemeOptions> options,
+    ILoggerFactory logger,
+    UrlEncoder encoder,
+    FeedAccess access) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = "NuGetFeedApiKey";
     public const string Issuer = "NuGetFeed";
 
-    private readonly FeedAccess _access;
-
-    public ApiKeyAuthenticationHandler(
-        IOptionsMonitor<AuthenticationSchemeOptions> options,
-        ILoggerFactory logger,
-        UrlEncoder encoder,
-        FeedAccess access)
-        : base(options, logger, encoder)
-    {
-        _access = access ?? throw new ArgumentNullException(nameof(access));
-    }
+    private readonly FeedAccess _access = access ?? throw new ArgumentNullException(nameof(access));
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -49,11 +43,10 @@ internal sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<Authen
             if (_access.FindApiKey(presentedKey) is { } apiKey)
             {
                 var identity = new ClaimsIdentity(
-                    new[]
-                    {
+                    [
                         new Claim(ClaimTypes.Name, apiKey.Name, ClaimValueTypes.String, Issuer),
                         new Claim(ClaimTypes.Role, apiKey.Role.ToString(), ClaimValueTypes.String, Issuer),
-                    },
+                    ],
                     Scheme.Name);
 
                 var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
@@ -114,7 +107,7 @@ internal sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<Authen
         var separator = credentials.IndexOf(':');
         if (separator < 0) return false;
 
-        password = credentials.Substring(separator + 1);
+        password = credentials[(separator + 1)..];
         return password.Length > 0;
     }
 }

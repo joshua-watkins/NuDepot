@@ -38,28 +38,21 @@ public enum FeedAccessMode
 /// <summary>
 /// Decides what a request may do on the feed, from its API key.
 /// </summary>
-public class FeedAccess
+public class FeedAccess(
+    IOptionsMonitor<NuGetFeedOptions> options,
+    IOptionsMonitor<FeedAuthorizationOptions> authorization,
+    IOptions<AuthenticationOptions> authenticationSchemes,
+    IOptions<AuthorizationOptions> authorizationPolicies)
 {
     private const string LegacyApiKeyName = "ApiKey";
 
-    private readonly IOptionsMonitor<NuGetFeedOptions> _options;
-    private readonly IOptionsMonitor<FeedAuthorizationOptions> _authorization;
-
-    public FeedAccess(
-        IOptionsMonitor<NuGetFeedOptions> options,
-        IOptionsMonitor<FeedAuthorizationOptions> authorization,
-        IOptions<AuthenticationOptions> authenticationSchemes,
-        IOptions<AuthorizationOptions> authorizationPolicies)
-    {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
-        Mode = GetMode(authenticationSchemes.Value, authorizationPolicies.Value);
-    }
+    private readonly IOptionsMonitor<NuGetFeedOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly IOptionsMonitor<FeedAuthorizationOptions> _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
 
     /// <summary>
     /// How the feed checks requests, from what the host added.
     /// </summary>
-    public FeedAccessMode Mode { get; }
+    public FeedAccessMode Mode { get; } = GetMode(authenticationSchemes.Value, authorizationPolicies.Value);
 
     /// <summary>
     /// The role of requests without a valid API key.
@@ -82,7 +75,7 @@ public class FeedAccess
     /// </summary>
     public FeedPermissions GetPermissions(ClaimsPrincipal user)
     {
-        if (user == null) throw new ArgumentNullException(nameof(user));
+        ArgumentNullException.ThrowIfNull(user);
 
         var permissions = Mode == FeedAccessMode.Open ? FeedPermissions.All : AnonymousRole.GetPermissions();
         foreach (var claim in user.FindAll(ClaimTypes.Role))
@@ -129,11 +122,11 @@ public class FeedAccess
         (string Name, FeedRole Role)? match = null;
 
         // Compare against every key in constant time, so the response time doesn't reveal a key.
-        foreach (var apiKey in GetApiKeys(_options.CurrentValue, _authorization.CurrentValue))
+        foreach (var (name, apiKey, role) in GetApiKeys(_options.CurrentValue, _authorization.CurrentValue))
         {
-            if (CryptographicOperations.FixedTimeEquals(presented, Encoding.UTF8.GetBytes(apiKey.Key)))
+            if (CryptographicOperations.FixedTimeEquals(presented, Encoding.UTF8.GetBytes(apiKey)))
             {
-                match ??= (apiKey.Name, apiKey.Role);
+                match ??= (name, role);
             }
         }
 

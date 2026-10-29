@@ -17,24 +17,18 @@ namespace NuGetFeed.Pages;
 /// <summary>
 /// A package's details page.
 /// </summary>
-public class PackageModel
+public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 {
     private static readonly MarkdownPipeline MarkdownPipeline;
 
-    private readonly IPackageDetailsClient _packages;
-    private readonly FeedConnection _feed;
+    private readonly IPackageDetailsClient _packages = packages ?? throw new ArgumentNullException(nameof(packages));
+    private readonly FeedConnection _feed = feed ?? throw new ArgumentNullException(nameof(feed));
 
     static PackageModel()
     {
         MarkdownPipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
             .Build();
-    }
-
-    public PackageModel(IPackageDetailsClient packages, FeedConnection feed)
-    {
-        _packages = packages ?? throw new ArgumentNullException(nameof(packages));
-        _feed = feed ?? throw new ArgumentNullException(nameof(feed));
     }
 
     /// <summary>
@@ -56,7 +50,7 @@ public class PackageModel
     public DateTime LastUpdated { get; private set; }
     public long TotalDownloads { get; private set; }
 
-    public IReadOnlyList<PackageDependent> UsedBy { get; set; } = Array.Empty<PackageDependent>();
+    public IReadOnlyList<PackageDependent> UsedBy { get; set; } = [];
 
     /// <summary>
     /// The package's dependencies, or null if the package wasn't found.
@@ -75,7 +69,7 @@ public class PackageModel
     public string? PackageDownloadUrl { get; private set; }
 
     public PackageDeprecation? Deprecation => Package.Deprecation;
-    public IReadOnlyList<PackageVulnerability> Vulnerabilities => Package.Vulnerabilities ?? Array.Empty<PackageVulnerability>();
+    public IReadOnlyList<PackageVulnerability> Vulnerabilities => Package.Vulnerabilities ?? [];
 
     /// <summary>
     /// Describes a vulnerability severity the way nuget.org does.
@@ -119,21 +113,21 @@ public class PackageModel
 
         if (IsDotnetTemplate)
         {
-            return new[] { new InstallInstructions(".NET CLI", ">", new[] { $"dotnet new --install {id}::{version}" }) };
+            return [new InstallInstructions(".NET CLI", ">", [$"dotnet new --install {id}::{version}"])];
         }
 
         if (IsDotnetTool)
         {
-            return new[] { new InstallInstructions(".NET CLI", ">", new[] { $"dotnet tool install --global {id} --version {version}" }) };
+            return [new InstallInstructions(".NET CLI", ">", [$"dotnet tool install --global {id} --version {version}"])];
         }
 
-        return new[]
-        {
-            new InstallInstructions(".NET CLI", ">", new[] { $"dotnet add package {id} --version {version}" }),
-            new InstallInstructions("PackageReference", "", new[] { $"<PackageReference Include=\"{id}\" Version=\"{version}\" />" }),
-            new InstallInstructions("Paket CLI", ">", new[] { $"paket add {id} --version {version}" }),
-            new InstallInstructions("Package Manager", "PM>", new[] { $"Install-Package {id} -Version {version}" }),
-        };
+        return
+        [
+            new InstallInstructions(".NET CLI", ">", [$"dotnet add package {id} --version {version}"]),
+            new InstallInstructions("PackageReference", "", [$"<PackageReference Include=\"{id}\" Version=\"{version}\" />"]),
+            new InstallInstructions("Paket CLI", ">", [$"paket add {id} --version {version}"]),
+            new InstallInstructions("Package Manager", "PM>", [$"Install-Package {id} -Version {version}"]),
+        ];
     }
 
     public async Task OnGetAsync(string id, string? version, CancellationToken cancellationToken)
@@ -162,7 +156,7 @@ public class PackageModel
         Package = package;
         Version = Package.ParseVersion();
 
-        var packageTypes = Package.PackageTypes ?? Array.Empty<string>();
+        var packageTypes = Package.PackageTypes ?? [];
 
         Found = true;
         IsDotnetTemplate = packageTypes.Any(t => t.Equals("Template", StringComparison.OrdinalIgnoreCase));
@@ -188,11 +182,11 @@ public class PackageModel
 
     private IReadOnlyList<DependencyGroupModel> ToDependencyGroups(NuGetFeedPackageMetadata package)
     {
-        return (package.DependencyGroups ?? Array.Empty<DependencyGroupItem>())
+        return [.. (package.DependencyGroups ?? [])
             .Select(group => new DependencyGroupModel
             {
                 Name = PrettifyTargetFramework(group.TargetFramework),
-                Dependencies = (group.Dependencies ?? new List<DependencyItem>())
+                Dependencies = [.. (group.Dependencies ?? [])
                     .Where(d => d.Id != null)
                     .Select(d => new DependencyModel
                     {
@@ -200,10 +194,8 @@ public class PackageModel
                         VersionSpec = (d.Range != null)
                             ? VersionRange.Parse(d.Range).PrettyPrint()
                             : string.Empty
-                    })
-                    .ToList()
-            })
-            .ToList();
+                    })]
+            })];
     }
 
     private string PrettifyTargetFramework(string? targetFramework)
@@ -252,7 +244,7 @@ public class PackageModel
 
     private IReadOnlyList<VersionModel> ToVersions(IReadOnlyList<NuGetFeedPackageMetadata> packages, NuGetVersion selectedVersion)
     {
-        return packages
+        return [.. packages
             .Select(p => new VersionModel
             {
                 Version = p.ParseVersion(),
@@ -260,8 +252,7 @@ public class PackageModel
                 Selected = p.ParseVersion() == selectedVersion,
                 LastUpdated = p.Published.UtcDateTime,
             })
-            .OrderByDescending(m => m.Version)
-            .ToList();
+            .OrderByDescending(m => m.Version)];
     }
 
     private async Task<HtmlString?> GetReadmeHtmlStringOrNullAsync(
@@ -274,10 +265,8 @@ public class PackageModel
         {
             if (readmeStream == null) return null;
 
-            using (var reader = new StreamReader(readmeStream))
-            {
-                readme = await reader.ReadToEndAsync(cancellationToken);
-            }
+            using var reader = new StreamReader(readmeStream);
+            readme = await reader.ReadToEndAsync(cancellationToken);
         }
 
         var readmeHtml = Markdown.ToHtml(readme, MarkdownPipeline);

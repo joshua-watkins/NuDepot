@@ -97,6 +97,6 @@ public static class NuGetFeedCommands
             command.Add(arg);
         }
 
-        return command.ToArray();
+        return [.. command];
     }
 }

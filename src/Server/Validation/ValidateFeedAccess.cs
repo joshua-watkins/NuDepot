@@ -12,23 +12,16 @@ namespace NuGetFeed.Validation;
 /// Checks that the API key settings match the authentication and authorization the application adds.
 /// Otherwise the feed would be more open than its settings say.
 /// </summary>
-public class ValidateFeedAccess : IValidateOptions<FeedAuthorizationOptions>
+public class ValidateFeedAccess(
+    IOptions<NuGetFeedOptions> options,
+    IOptions<AuthenticationOptions> authentication,
+    IOptions<AuthorizationOptions> authorization) : IValidateOptions<FeedAuthorizationOptions>
 {
     private const string Section = nameof(NuGetFeedOptions.Authorization);
 
-    private readonly IOptions<NuGetFeedOptions> _options;
-    private readonly IOptions<AuthenticationOptions> _authentication;
-    private readonly IOptions<AuthorizationOptions> _authorization;
-
-    public ValidateFeedAccess(
-        IOptions<NuGetFeedOptions> options,
-        IOptions<AuthenticationOptions> authentication,
-        IOptions<AuthorizationOptions> authorization)
-    {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _authentication = authentication ?? throw new ArgumentNullException(nameof(authentication));
-        _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
-    }
+    private readonly IOptions<NuGetFeedOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly IOptions<AuthenticationOptions> _authentication = authentication ?? throw new ArgumentNullException(nameof(authentication));
+    private readonly IOptions<AuthorizationOptions> _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
 
     public ValidateOptionsResult Validate(string? name, FeedAuthorizationOptions options)
     {
