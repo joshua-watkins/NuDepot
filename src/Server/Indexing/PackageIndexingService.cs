@@ -67,7 +67,7 @@ public class PackageIndexingService : IPackageIndexingService
             using (var packageReader = new PackageArchiveReader(packageStream, leaveStreamOpen: true))
             {
                 package = packageReader.GetPackageMetadata();
-                package.Published = _time.UtcNow;
+                package.PublishedAt = _time.UtcNow;
 
                 nuspecStream = await packageReader.GetNuspecAsync(cancellationToken);
                 nuspecStream = await nuspecStream.AsTemporaryFileStreamAsync(cancellationToken);

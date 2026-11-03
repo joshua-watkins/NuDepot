@@ -2,14 +2,28 @@
 @implements IUsesLayout<_Layout, LayoutModel>
 
 <div>
-    <h2>Oops, the feed isn't responding...</h2>
-    <p>The website couldn't read the NuGet feed at <code>@Model.ServiceIndexUrl</code>.</p>
-    <p>
-        Make sure the feed is running and reachable from the website. When the website runs on its own,
-        the <code>Website:ServiceIndexUrl</code> setting chooses the feed.
-    </p>
+    @if (Model.Access == FeedAccessError.SignInRequired)
+    {
+        <h2>Sign in to browse this feed</h2>
+        <p>This feed's packages are only shown to people who are signed in.</p>
+        <p><a class="btn btn-default btn-brand" href="@Model.SignInUrl">Sign in</a></p>
+    }
+    else if (Model.Access == FeedAccessError.Forbidden)
+    {
+        <h2>Your account can't browse this feed</h2>
+        <p>Ask an administrator of this feed for access.</p>
+    }
+    else
+    {
+        <h2>Oops, the feed isn't responding...</h2>
+        <p>The website couldn't read the NuGet feed at <code>@Model.ServiceIndexUrl</code>.</p>
+        <p>
+            Make sure the feed is running and reachable from the website. When the website runs on its own,
+            the <code>Website:ServiceIndexUrl</code> setting chooses the feed.
+        </p>
+    }
 </div>
 
 @functions {
-    public LayoutModel LayoutModel => new("Feed unavailable", Model.PathBase);
+    public LayoutModel LayoutModel => new(Model.Access == FeedAccessError.None ? "Feed unavailable" : "Sign in", Model.PathBase);
 }

@@ -103,7 +103,7 @@ public class V3UpstreamClient : IUpstreamClient
             Language = metadata.Language,
             Listed = metadata.IsListed(),
             MinClientVersion = metadata.MinClientVersion,
-            Published = metadata.Published.UtcDateTime,
+            PublishedAt = metadata.Published.UtcDateTime,
             RequireLicenseAcceptance = metadata.RequireLicenseAcceptance,
             Summary = metadata.Summary,
             Title = metadata.Title,

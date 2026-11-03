@@ -301,7 +301,7 @@ namespace NuGetFeed.Server.Tests.Services
                     Id = id,
                     Version = NuGetVersion.Parse(version),
                     Listed = true,
-                    Published = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    PublishedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     PackageTypes = new List<PackageType> { new PackageType { Name = "Dependency", Version = "0.0" } },
                     TargetFrameworks = new List<TargetFramework> { new TargetFramework { Moniker = "net10.0" } },
                 };

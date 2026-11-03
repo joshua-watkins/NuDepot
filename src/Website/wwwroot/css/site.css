@@ -592,3 +592,60 @@ h4 {
         filter: invert(1);
     }
 }
+
+/* Accounts
+-------------------------------------------------- */
+.btn-brand,
+.btn-brand:hover,
+.btn-brand:focus {
+    color: #fff;
+    background-color: var(--brand);
+    border-color: var(--brand-dark);
+}
+
+.btn-brand:hover,
+.btn-brand:focus {
+    background-color: var(--brand-dark);
+}
+
+.btn-brand .ms-Icon,
+.account-nav .ms-Icon {
+    position: relative;
+    top: 2px;
+}
+
+.navbar-inverse .account-nav > li > a {
+    font-weight: 100;
+    color: #e3f1eb;
+}
+
+.account-page section {
+    margin-bottom: 40px;
+}
+
+.account-page h1 small {
+    margin-left: 10px;
+    font-size: 45%;
+}
+
+.account-page .form-inline .form-group {
+    margin-right: 5px;
+}
+
+.account-table {
+    max-width: 900px;
+}
+
+.new-apikey {
+    margin-top: 20px;
+    max-width: 900px;
+}
+
+.new-apikey .tabbed-info .content .script {
+    padding-top: 8px;
+    word-break: break-all;
+}
+
+.new-apikey .tabbed-info {
+    margin-bottom: 15px;
+}

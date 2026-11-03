@@ -38,10 +38,16 @@ builder.Services.AddNuGetFeed(feed =>
     feed.AddFileStorage();
 });
 
-// The feed is open until API keys are configured. Then each key may do what its role allows.
-if (builder.Configuration.HasNuGetFeedApiKeys())
+// The feed is open until API keys or users are configured. Then each key and user may do what its role allows.
+var users = builder.Configuration.HasNuGetFeedUsers();
+if (users || builder.Configuration.HasNuGetFeedApiKeys())
 {
-    builder.Services.AddAuthentication().AddNuGetFeedApiKey();
+    var authentication = builder.Services.AddAuthentication().AddNuGetFeedApiKey();
+    if (users)
+    {
+        authentication.AddNuGetFeedUsers();
+    }
+
     builder.Services.AddAuthorizationBuilder().AddNuGetFeedPolicies();
 }
 

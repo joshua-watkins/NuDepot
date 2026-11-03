@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using NuGetFeed.Authentication;
 using NuGetFeed.Endpoints;
 
@@ -22,6 +23,30 @@ public class NuGetFeedEndpointBuilder
         MapDeprecationRoutes(endpoints);
         MapVulnerabilityRoutes(endpoints);
         MapRepositorySignatureRoutes(endpoints);
+        MapAccountRoutes(endpoints);
+    }
+
+    /// <summary>
+    /// Maps the accounts of people who sign in with passkeys, if the application adds the feed's users.
+    /// </summary>
+    public void MapAccountRoutes(IEndpointRouteBuilder endpoints)
+    {
+        if (!endpoints.ServiceProvider.GetRequiredService<FeedAccess>().UsersEnabled) return;
+
+        endpoints.MapGet("api/account", AccountEndpoints.GetAsync);
+        endpoints.MapPost("api/account/signup", AccountEndpoints.SignUpAsync);
+        endpoints.MapPost("api/account/signin/options", AccountEndpoints.SignInOptionsAsync);
+        endpoints.MapPost("api/account/signin", AccountEndpoints.SignInAsync);
+        endpoints.MapPost("api/account/signout", AccountEndpoints.SignOutAsync);
+
+        endpoints.MapGet("api/account/passkeys", AccountEndpoints.GetPasskeysAsync);
+        endpoints.MapPost("api/account/passkeys/options", AccountEndpoints.AddPasskeyOptionsAsync);
+        endpoints.MapPost("api/account/passkeys", AccountEndpoints.CreatePasskeyAsync);
+        endpoints.MapDelete("api/account/passkeys/{id:int}", AccountEndpoints.DeletePasskeyAsync);
+
+        endpoints.MapGet("api/account/apikeys", AccountEndpoints.GetApiKeysAsync);
+        endpoints.MapPost("api/account/apikeys", AccountEndpoints.CreateApiKeyAsync);
+        endpoints.MapDelete("api/account/apikeys/{id:int}", AccountEndpoints.DeleteApiKeyAsync);
     }
 
     public void MapCatalogRoutes(IEndpointRouteBuilder endpoints)

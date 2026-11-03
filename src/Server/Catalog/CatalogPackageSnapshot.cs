@@ -59,7 +59,7 @@ public class CatalogPackageSnapshot
             PackageHash = package.PackageHash,
             PackageSize = package.PackageSize,
             ProjectUrl = NullIfEmpty(package.ProjectUrlString),
-            Published = DateTime.SpecifyKind(package.Published, DateTimeKind.Utc),
+            Published = DateTime.SpecifyKind(package.PublishedAt, DateTimeKind.Utc),
             ReleaseNotes = NullIfEmpty(package.ReleaseNotes),
             RequireLicenseAcceptance = package.RequireLicenseAcceptance,
             Summary = NullIfEmpty(package.Summary),

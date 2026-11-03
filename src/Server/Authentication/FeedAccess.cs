@@ -36,7 +36,7 @@ public enum FeedAccessMode
 }
 
 /// <summary>
-/// Decides what a request may do on the feed, from its API key.
+/// Decides what a request may do on the feed, from its API key or signed-in user.
 /// </summary>
 public class FeedAccess(
     IOptionsMonitor<NuGetFeedOptions> options,
@@ -55,19 +55,14 @@ public class FeedAccess(
     public FeedAccessMode Mode { get; } = GetMode(authenticationSchemes.Value, authorizationPolicies.Value);
 
     /// <summary>
-    /// The role of requests without a valid API key.
+    /// Whether the host added the feed's users, who sign in with passkeys.
     /// </summary>
-    public FeedRole AnonymousRole
-    {
-        get
-        {
-            var configured = _authorization.CurrentValue.AnonymousRole;
-            if (configured != null) return configured.Value;
+    public bool UsersEnabled { get; } = HasUsers(authenticationSchemes.Value);
 
-            // The feed is open until it has API keys. Then only reading stays open.
-            return GetApiKeys(_options.CurrentValue, _authorization.CurrentValue).Count == 0 ? FeedRole.Admin : FeedRole.ReadOnly;
-        }
-    }
+    /// <summary>
+    /// The role of requests without a valid API key or a signed-in user. Only used when the feed isn't open.
+    /// </summary>
+    public FeedRole AnonymousRole => _authorization.CurrentValue.AnonymousRole ?? FeedRole.ReadOnly;
 
     /// <summary>
     /// What the user may do, which depends on the <see cref="Mode"/>. An API key adds to what
@@ -140,10 +135,16 @@ public class FeedAccess(
     {
         if (authorization.GetPolicy(FeedPolicies.Read) != null) return FeedAccessMode.Roles;
 
-        return authentication.Schemes.Any(scheme => scheme.Name == ApiKeyAuthenticationHandler.SchemeName)
+        return authentication.SchemeMap.ContainsKey(NuGetFeedAuthenticationSchemes.ApiKey)
             ? FeedAccessMode.ApiKey
             : FeedAccessMode.Open;
     }
+
+    /// <summary>
+    /// Whether the host added the feed's users.
+    /// </summary>
+    internal static bool HasUsers(AuthenticationOptions authentication)
+        => authentication.SchemeMap.ContainsKey(NuGetFeedAuthenticationSchemes.User);
 
     /// <summary>
     /// The configured API keys: <see cref="NuGetFeedOptions.ApiKey"/> and <see cref="FeedAuthorizationOptions.ApiKeys"/>.

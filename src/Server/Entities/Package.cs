@@ -48,7 +48,7 @@ public class Package
     public bool LicenseIsMarkDown { get; set; }
     public bool Listed { get; set; }
     public string? MinClientVersion { get; set; }
-    public DateTime Published { get; set; }
+    public DateTime PublishedAt { get; set; }
     public bool RequireLicenseAcceptance { get; set; }
     public SemVerLevel SemVerLevel { get; set; }
     public string? Summary { get; set; }

@@ -1,5 +1,7 @@
 using System;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using NuGetFeed.PackageDetails;
@@ -45,11 +47,34 @@ public static class WebsiteExtensions
     {
         if (endpoints == null) throw new ArgumentNullException(nameof(endpoints));
 
-        endpoints.MapGet("/", WebsiteEndpoints.IndexAsync);
-        endpoints.MapGet("/packages/{id}/{version?}", WebsiteEndpoints.PackageAsync);
-        endpoints.MapGet("/upload", WebsiteEndpoints.UploadAsync);
+        endpoints.MapGet("/", WebsiteEndpoints.IndexAsync).WithSignedInUser();
+        endpoints.MapGet("/packages/{id}/{version?}", WebsiteEndpoints.PackageAsync).WithSignedInUser();
+        endpoints.MapGet("/upload", WebsiteEndpoints.UploadAsync).WithSignedInUser();
+        endpoints.MapGet("/account/signin", WebsiteEndpoints.SignIn).WithSignedInUser();
+        endpoints.MapGet("/account", WebsiteEndpoints.Account).WithSignedInUser();
         endpoints.MapGet(WebsiteFiles.RequestPath + "/{**path}", WebsiteFiles.GetFile);
 
         return endpoints;
+    }
+
+    /// <summary>
+    /// Shows who's signed in, when the website is hosted with a feed server that has users.
+    /// </summary>
+    private static RouteHandlerBuilder WithSignedInUser(this RouteHandlerBuilder builder)
+    {
+        return builder.AddEndpointFilter(async (context, next) =>
+        {
+            var httpContext = context.HttpContext;
+            if (httpContext.RequestServices.GetRequiredService<FeedConnection>().SignInAvailable)
+            {
+                var result = await httpContext.AuthenticateAsync(NuGetFeedAuthenticationSchemes.User);
+                if (result.Succeeded)
+                {
+                    httpContext.User = result.Principal;
+                }
+            }
+
+            return await next(context);
+        });
     }
 }

@@ -21,6 +21,43 @@ public class FeedAuthorizationOptions
     /// is also an <see cref="FeedRole.Admin"/> key.
     /// </summary>
     public List<ApiKeyOptions> ApiKeys { get; set; } = new();
+
+    /// <summary>
+    /// People who sign in with passkeys. They only apply if the application adds the feed's users.
+    /// </summary>
+    public UserOptions Users { get; set; } = new();
+}
+
+public class UserOptions
+{
+    /// <summary>
+    /// Whether people can sign in with passkeys. The Windows and Linux hosts add the feed's users
+    /// when this is true.
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Whether anyone can create an account. The first account is always an
+    /// <see cref="FeedRole.Admin"/>, so the feed can be set up.
+    /// </summary>
+    public bool AllowSignUp { get; set; } = true;
+
+    /// <summary>
+    /// The role of accounts after the first.
+    /// </summary>
+    public FeedRole DefaultRole { get; set; } = FeedRole.ReadOnly;
+
+    /// <summary>
+    /// The domain passkeys belong to, like "nuget.example.com". If unset, the host name the
+    /// browser used. Passkeys only work for the domain they were created for.
+    /// </summary>
+    public string? Domain { get; set; }
+
+    /// <summary>
+    /// The origins the website is reached at, like "https://nuget.example.com". If unset,
+    /// the origin the browser used.
+    /// </summary>
+    public List<string> Origins { get; set; } = new();
 }
 
 public class ApiKeyOptions

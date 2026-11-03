@@ -12,8 +12,13 @@ namespace NuGetFeed.Serialization;
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
 [JsonSerializable(typeof(IReadOnlyList<InstallInstructions>))]
 [JsonSerializable(typeof(IReadOnlyList<PushInstructions>))]
+[JsonSerializable(typeof(AccountScriptSettings))]
 internal partial class WebsiteJsonContext : JsonSerializerContext
 {
+    /// <inheritdoc cref="ToScriptValue(IReadOnlyList{InstallInstructions})"/>
+    public static HtmlString ToScriptValue(AccountScriptSettings value)
+        => new(JsonSerializer.Serialize(value, Default.AccountScriptSettings));
+
     /// <summary>
     /// Serialize data into a script. The default encoder escapes characters like &lt; and &amp;,
     /// so the JSON can't end the script element early.

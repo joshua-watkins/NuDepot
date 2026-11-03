@@ -19,7 +19,7 @@ public class CatalogEntry
 
     public string CommitId { get; set; } = null!;
 
-    public DateTime CommitTimestamp { get; set; }
+    public DateTime CommittedAt { get; set; }
 
     /// <summary>
     /// <see cref="PackageDetailsType"/> or <see cref="PackageDeleteType"/>.

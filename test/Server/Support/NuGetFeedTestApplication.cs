@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -12,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +32,7 @@ internal sealed class NuGetFeedTestApplication : IDisposable
     private readonly IReadOnlyDictionary<string, string?> _configuration;
     private readonly bool _useAuthentication;
     private readonly bool _useAuthorization;
+    private readonly bool _useUsers;
     private readonly Lazy<WebApplication> _app;
 
     /// <param name="output">Receives the server's logs.</param>
@@ -37,27 +40,47 @@ internal sealed class NuGetFeedTestApplication : IDisposable
     /// <param name="configuration">Configuration that overrides the test defaults.</param>
     /// <param name="useAuthentication">Whether the application adds the feed's API key authentication. Without it, the feed is open.</param>
     /// <param name="useAuthorization">Whether the application adds the feed's authorization policies, for API key roles.</param>
+    /// <param name="useUsers">Whether the application adds the feed's users, who sign in with passkeys.</param>
     public NuGetFeedTestApplication(
         ITestOutputHelper output,
         HttpClient? upstreamClient = null,
         IReadOnlyDictionary<string, string>? configuration = null,
         bool useAuthentication = false,
-        bool useAuthorization = false)
+        bool useAuthorization = false,
+        bool useUsers = false)
     {
         _output = output ?? throw new ArgumentNullException(nameof(output));
         _upstreamClient = upstreamClient;
         _useAuthentication = useAuthentication;
         _useAuthorization = useAuthorization;
+        _useUsers = useUsers;
         _configuration = (configuration ?? new Dictionary<string, string>())
             .ToDictionary(setting => setting.Key, setting => (string?)setting.Value);
         _app = new Lazy<WebApplication>(Start);
     }
+
+    /// <summary>
+    /// The server's clock, which tests can move forward.
+    /// </summary>
+    public TestClock Clock { get; } = new();
 
     public IServiceProvider Services => _app.Value.Services;
 
     public TestServer Server => _app.Value.GetTestServer();
 
     public HttpClient CreateClient() => Server.CreateClient();
+
+    /// <summary>
+    /// Create a client that keeps the server's cookies, like a browser.
+    /// </summary>
+    /// <param name="cookies">Where the client keeps its cookies, so the test can see them.</param>
+    public HttpClient CreateBrowserClient(CookieContainer? cookies = null)
+    {
+        return new HttpClient(new CookieHandler(cookies ?? new CookieContainer()) { InnerHandler = Server.CreateHandler() })
+        {
+            BaseAddress = Server.BaseAddress,
+        };
+    }
 
     /// <summary>
     /// Create a client that reaches the server over HTTPS, which some resources require.
@@ -123,14 +146,25 @@ internal sealed class NuGetFeedTestApplication : IDisposable
             feed.AddFileStorage();
         });
 
-        // Make time deterministic for testing purposes.
+        // Make time deterministic for testing purposes. Tests can move it forward with the clock.
         var time = new Mock<SystemTime>();
         time
             .Setup(t => t.UtcNow)
-            .Returns(new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+            .Returns(() => new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc) + Clock.Advanced);
 
         builder.Services.AddSingleton(time.Object);
-        if (_useAuthentication) builder.Services.AddAuthentication().AddNuGetFeedApiKey();
+        if (_useAuthentication)
+        {
+            var authentication = builder.Services.AddAuthentication().AddNuGetFeedApiKey();
+            if (_useUsers)
+            {
+                authentication.AddNuGetFeedUsers();
+                builder.Services.Configure<CookieAuthenticationOptions>(
+                    NuGetFeedAuthenticationSchemes.User,
+                    options => options.TimeProvider = Clock);
+            }
+        }
+
         if (_useAuthorization) builder.Services.AddAuthorizationBuilder().AddNuGetFeedPolicies();
         if (_upstreamClient != null)
         {

@@ -33,6 +33,16 @@ public class NuGetFeedContext : DbContext
     public const int MaxCatalogEntryTypeLength = 32;
     public const int MaxCommitIdLength = 64;
 
+    public const int MaxUserNameLength = 64;
+    public const int MaxUserRoleLength = 32;
+    public const int MaxUserHandleLength = 64;
+    public const int MaxCeremonyLength = 32;
+    public const int MaxCredentialIdLength = 1023;
+    public const int MaxCredentialNameLength = 128;
+    public const int MaxApiKeyPrefixLength = 16;
+    public const int MaxApiKeyHashLength = 32;
+    public const int MaxSessionTokenHashLength = 32;
+
     /// <summary>
     /// The SQLite error code for when a unique constraint is violated.
     /// </summary>
@@ -48,6 +58,10 @@ public class NuGetFeedContext : DbContext
     public DbSet<TargetFramework> TargetFrameworks { get; set; }
     public DbSet<VulnerabilityAdvisory> VulnerabilityAdvisories { get; set; }
     public DbSet<CatalogEntry> CatalogEntries { get; set; }
+    public DbSet<User> Users { get; set; }
+    public DbSet<UserPasskey> UserPasskeys { get; set; }
+    public DbSet<UserApiKey> UserApiKeys { get; set; }
+    public DbSet<UserSession> UserSessions { get; set; }
 
     /// <summary>
     /// Check whether a <see cref="DbUpdateException"/> is due to a SQL unique constraint violation.
@@ -92,6 +106,10 @@ public class NuGetFeedContext : DbContext
         builder.Entity<TargetFramework>(BuildTargetFrameworkEntity);
         builder.Entity<VulnerabilityAdvisory>(BuildVulnerabilityAdvisoryEntity);
         builder.Entity<CatalogEntry>(BuildCatalogEntryEntity);
+        builder.Entity<User>(BuildUserEntity);
+        builder.Entity<UserPasskey>(BuildUserPasskeyEntity);
+        builder.Entity<UserApiKey>(BuildUserApiKeyEntity);
+        builder.Entity<UserSession>(BuildUserSessionEntity);
 
         if (Database.IsSqlite())
         {
@@ -232,7 +250,7 @@ public class NuGetFeedContext : DbContext
     private void BuildCatalogEntryEntity(EntityTypeBuilder<CatalogEntry> entry)
     {
         entry.HasKey(e => e.Key);
-        entry.HasIndex(e => e.CommitTimestamp);
+        entry.HasIndex(e => e.CommittedAt);
         entry.HasIndex(e => new { e.PackageId, e.PackageVersion });
 
         entry.Property(e => e.CommitId).HasMaxLength(MaxCommitIdLength).IsRequired();
@@ -241,9 +259,77 @@ public class NuGetFeedContext : DbContext
         entry.Property(e => e.PackageVersion).HasMaxLength(MaxPackageVersionLength).IsRequired();
     }
 
-    // Package IDs and versions are compared without case.
+    private void BuildUserEntity(EntityTypeBuilder<User> user)
+    {
+        user.HasKey(u => u.Key);
+        user.HasIndex(u => u.UserName).IsUnique();
+        user.HasIndex(u => u.Handle).IsUnique();
+
+        user.Property(u => u.UserName).HasMaxLength(MaxUserNameLength).IsRequired();
+        user.Property(u => u.Role).HasConversion<string>().HasMaxLength(MaxUserRoleLength).IsRequired();
+        user.Property(u => u.Handle).HasMaxLength(MaxUserHandleLength).IsRequired();
+        user.Property(u => u.Ceremony).HasConversion<string>().HasMaxLength(MaxCeremonyLength);
+        user.Property(u => u.CeremonyPasskeyName).HasMaxLength(MaxCredentialNameLength);
+
+        user.HasMany(u => u.Passkeys)
+            .WithOne(p => p.User)
+            .HasForeignKey(p => p.UserKey)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+
+        user.HasMany(u => u.ApiKeys)
+            .WithOne(k => k.User)
+            .HasForeignKey(k => k.UserKey)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+
+        user.HasMany(u => u.Sessions)
+            .WithOne(s => s.User)
+            .HasForeignKey(s => s.UserKey)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+
+    private void BuildUserSessionEntity(EntityTypeBuilder<UserSession> session)
+    {
+        session.HasKey(s => s.Key);
+
+        session.Property(s => s.TokenHash).HasMaxLength(MaxSessionTokenHashLength).IsRequired();
+        session.Property(s => s.PreviousTokenHash).HasMaxLength(MaxSessionTokenHashLength);
+    }
+
+    private void BuildUserPasskeyEntity(EntityTypeBuilder<UserPasskey> passkey)
+    {
+        passkey.HasKey(p => p.Key);
+        passkey.HasIndex(p => p.CredentialId).IsUnique();
+
+        passkey.Property(p => p.CredentialId).HasMaxLength(MaxCredentialIdLength).IsRequired();
+        passkey.Property(p => p.PublicKey).IsRequired();
+        passkey.Property(p => p.Name).HasMaxLength(MaxCredentialNameLength).IsRequired();
+
+        passkey.Property(p => p.Transports)
+            .HasMaxLength(MaxCredentialNameLength)
+            .HasConversion(StringArrayToJsonConverter.Instance)
+            .Metadata.SetValueComparer(StringArrayComparer.Instance);
+    }
+
+    private void BuildUserApiKeyEntity(EntityTypeBuilder<UserApiKey> apiKey)
+    {
+        apiKey.HasKey(k => k.Key);
+        apiKey.HasIndex(k => k.Hash).IsUnique();
+
+        apiKey.Property(k => k.Name).HasMaxLength(MaxCredentialNameLength).IsRequired();
+        apiKey.Property(k => k.Prefix).HasMaxLength(MaxApiKeyPrefixLength).IsRequired();
+        apiKey.Property(k => k.Hash).HasMaxLength(MaxApiKeyHashLength).IsRequired();
+    }
+
+    // Package IDs and versions, and user names, are compared without case.
     private static void BuildSqliteColumns(ModelBuilder builder)
     {
+        builder.Entity<User>()
+            .Property(u => u.UserName)
+            .HasColumnType("TEXT COLLATE NOCASE");
+
         builder.Entity<Package>()
             .Property(p => p.Id)
             .HasColumnType("TEXT COLLATE NOCASE");

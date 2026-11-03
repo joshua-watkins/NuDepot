@@ -28,6 +28,7 @@ public class ValidateFeedAccess(
         var failures = new List<string>();
         var mode = FeedAccess.GetMode(_authentication.Value, _authorization.Value);
         var hasApiKeys = FeedAccess.GetApiKeys(_options.Value, options).Count > 0;
+        var hasUsers = FeedAccess.HasUsers(_authentication.Value);
 
         switch (mode)
         {
@@ -39,7 +40,8 @@ public class ValidateFeedAccess(
                     "for roles), or remove the settings.");
                 break;
 
-            case FeedAccessMode.ApiKey or FeedAccessMode.Roles when !hasApiKeys:
+            // Users create their own keys.
+            case FeedAccessMode.ApiKey or FeedAccessMode.Roles when !hasApiKeys && !hasUsers:
                 failures.Add(
                     $"The application adds the feed's authentication, but no API keys are configured. Add keys to " +
                     $"'{Section}:{nameof(FeedAuthorizationOptions.ApiKeys)}' or set '{nameof(NuGetFeedOptions.ApiKey)}'.");
@@ -47,11 +49,25 @@ public class ValidateFeedAccess(
         }
 
         if (mode == FeedAccessMode.Roles &&
-            !_authentication.Value.SchemeMap.ContainsKey(ApiKeyAuthenticationHandler.SchemeName))
+            !_authentication.Value.SchemeMap.ContainsKey(NuGetFeedAuthenticationSchemes.ApiKey))
         {
             failures.Add(
                 "The application adds the feed's authorization policies, which need its authentication. " +
                 "Call services.AddAuthentication().AddNuGetFeedApiKey().");
+        }
+
+        if (hasUsers && mode != FeedAccessMode.Roles)
+        {
+            failures.Add(
+                "The application adds the feed's users, who need roles. Call services.AddAuthentication().AddNuGetFeedApiKey() " +
+                "and services.AddAuthorizationBuilder().AddNuGetFeedPolicies().");
+        }
+
+        if (options.Users.Enabled && !hasUsers)
+        {
+            failures.Add(
+                $"'{Section}:{nameof(FeedAuthorizationOptions.Users)}:{nameof(UserOptions.Enabled)}' is true, but the application " +
+                "doesn't add the feed's users. Call services.AddAuthentication().AddNuGetFeedUsers(), or remove the setting.");
         }
 
         for (var i = 0; i < options.ApiKeys.Count; i++)

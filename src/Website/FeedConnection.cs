@@ -2,6 +2,9 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
@@ -25,10 +28,12 @@ public class FeedConnection
 
     public FeedConnection(
         IOptions<NuGetWebsiteOptions> options,
+        IOptions<AuthenticationOptions> authentication,
         IServer? server,
         IHttpContextAccessor? httpContextAccessor)
     {
-        if (options == null) throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(authentication);
 
         _server = server;
         _httpContextAccessor = httpContextAccessor;
@@ -40,7 +45,15 @@ public class FeedConnection
         _isCoHosted = string.IsNullOrEmpty(configuredUrl);
         _serviceIndexUrl = new Lazy<string>(() => _isCoHosted ? GetLocalServiceIndexUrl() : configuredUrl!);
         _clientFactory = new Lazy<NuGetClientFactory>(() => new NuGetClientFactory(CreateHttpClient(options.Value.ApiKey), ServiceIndexUrl));
+
+        SignInAvailable = _isCoHosted && authentication.Value.SchemeMap.ContainsKey(NuGetFeedAuthenticationSchemes.User);
     }
+
+    /// <summary>
+    /// Whether people can sign in: the website is hosted with a feed server that has users.
+    /// Signed-in users read the feed as themselves, so they can browse a feed that's closed to anonymous users.
+    /// </summary>
+    public bool SignInAvailable { get; }
 
     /// <summary>
     /// The service index URL the website uses to call the feed.
@@ -112,12 +125,22 @@ public class FeedConnection
         return builder.Uri.AbsoluteUri;
     }
 
-    private static HttpClient CreateHttpClient(string? apiKey)
+    private HttpClient CreateHttpClient(string? apiKey)
     {
-        var client = new HttpClient(new HttpClientHandler
+        HttpMessageHandler handler = new HttpClientHandler
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-        });
+
+            // The browser's cookies are forwarded instead.
+            UseCookies = false,
+        };
+
+        if (SignInAvailable && _httpContextAccessor != null)
+        {
+            handler = new ForwardCookiesHandler(_httpContextAccessor) { InnerHandler = handler };
+        }
+
+        var client = new HttpClient(handler);
 
         if (!string.IsNullOrEmpty(apiKey))
         {
@@ -125,5 +148,23 @@ public class FeedConnection
         }
 
         return client;
+    }
+
+    /// <summary>
+    /// Sends the browser's cookies, including its sign-in cookie, with the website's requests to the
+    /// feed hosted in the same application, so the feed answers as it would answer the signed-in user.
+    /// </summary>
+    private sealed class ForwardCookiesHandler(IHttpContextAccessor httpContextAccessor) : DelegatingHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var cookies = httpContextAccessor.HttpContext?.Request.Headers.Cookie;
+            if (cookies is { Count: > 0 })
+            {
+                request.Headers.TryAddWithoutValidation("Cookie", cookies.ToString());
+            }
+
+            return base.SendAsync(request, cancellationToken);
+        }
     }
 }

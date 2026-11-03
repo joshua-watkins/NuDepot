@@ -7,9 +7,11 @@ using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuGetFeed.Extensions;
+using NuGetFeed.Users;
 
 namespace NuGetFeed.Authentication;
 
@@ -18,6 +20,7 @@ namespace NuGetFeed.Authentication;
 /// when pushing or deleting (the push command's -k option, or nuget.config's apikeys), and send a
 /// package source's credentials from nuget.config with HTTP Basic authentication. Either works:
 /// the key is the header's value, or the Basic password. The Basic user name isn't used.
+/// The key is a configured key, or one a user created if the application adds the feed's users.
 /// </summary>
 internal sealed class ApiKeyAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -25,38 +28,43 @@ internal sealed class ApiKeyAuthenticationHandler(
     UrlEncoder encoder,
     FeedAccess access) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    public const string SchemeName = "NuGetFeedApiKey";
+    public const string SchemeName = NuGetFeedAuthenticationSchemes.ApiKey;
+
+    /// <summary>
+    /// The issuer of the claims the feed trusts for roles.
+    /// </summary>
     public const string Issuer = "NuGetFeed";
 
     private readonly FeedAccess _access = access ?? throw new ArgumentNullException(nameof(access));
 
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var presentedKeys = GetPresentedKeys(Request);
         if (presentedKeys.Count == 0)
         {
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return AuthenticateResult.NoResult();
         }
 
         foreach (var presentedKey in presentedKeys)
         {
             if (_access.FindApiKey(presentedKey) is { } apiKey)
             {
-                var identity = new ClaimsIdentity(
-                    [
-                        new Claim(ClaimTypes.Name, apiKey.Name, ClaimValueTypes.String, Issuer),
-                        new Claim(ClaimTypes.Role, apiKey.Role.ToString(), ClaimValueTypes.String, Issuer),
-                    ],
-                    Scheme.Name);
+                return Success(FeedClaims.CreateIdentity(apiKey.Name, apiKey.Role, Scheme.Name));
+            }
 
-                var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
-                return Task.FromResult(AuthenticateResult.Success(ticket));
+            if (_access.UsersEnabled &&
+                await Context.RequestServices.GetRequiredService<UserService>().FindByApiKeyAsync(presentedKey, Context.RequestAborted) is { } user)
+            {
+                return Success(FeedClaims.CreateIdentity(user, Scheme.Name));
             }
         }
 
         // The request continues as anonymous, so an unknown key can still do what anyone may.
-        return Task.FromResult(AuthenticateResult.Fail("The API key isn't valid."));
+        return AuthenticateResult.Fail("The API key isn't valid.");
     }
+
+    private AuthenticateResult Success(ClaimsIdentity identity)
+        => AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {

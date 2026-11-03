@@ -56,7 +56,7 @@ namespace NuGetFeed.Server.Tests.Services
                 _context.CatalogEntries.Add(new CatalogEntry
                 {
                     CommitId = Guid.NewGuid().ToString(),
-                    CommitTimestamp = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(i),
+                    CommittedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(i),
                     Type = CatalogEntry.PackageDeleteType,
                     PackageId = "Package",
                     PackageVersion = $"1.0.{i}",

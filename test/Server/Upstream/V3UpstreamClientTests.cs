@@ -162,7 +162,7 @@ namespace NuGetFeed.Server.Tests
                 Assert.Equal("Language", package.Language);
                 Assert.True(package.Listed);
                 Assert.Equal("1.0.0", package.MinClientVersion);
-                Assert.Equal(published.UtcDateTime, package.Published);
+                Assert.Equal(published.UtcDateTime, package.PublishedAt);
                 Assert.True(package.RequireLicenseAcceptance);
                 Assert.Equal(SemVerLevel.SemVer2, package.SemVerLevel);
                 Assert.Equal("Summary", package.Summary);

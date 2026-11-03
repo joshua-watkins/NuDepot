@@ -48,10 +48,12 @@ An application that hosts the server library chooses whether it checks keys, by 
 | Neither | Is open. |
 | `services.AddAuthentication().AddNuGetFeedApiKey()` | Requires a valid API key to do what anonymous requests can't. Any key may do everything. |
 | That, and `services.AddAuthorizationBuilder().AddNuGetFeedPolicies()` | Gives each API key its role. |
+| Those, and `.AddNuGetFeedUsers()` after `AddNuGetFeedApiKey()` | Also lets people sign in with passkeys. See [Users and passkeys](#users-and-passkeys). |
 
 The application calls `app.UseAuthentication()` and `app.UseAuthorization()` after `app.UseRouting()`.
 The application doesn't start if the settings don't match what it adds: keys or an `AnonymousRole`
-it would ignore, authentication without keys, roles without the policies, or policies without roles.
+it would ignore, authentication without keys or users, roles without the policies, policies without
+roles, or users without the policies. The Windows and Linux hosts add what the settings ask for.
 
 ### Using a key
 
@@ -113,7 +115,69 @@ Use HTTPS, since the key travels with every request. For an `http://` source, Nu
 `allowInsecureConnections="true"` on the package source.
 
 If the website is hosted with a feed that anonymous users can't read, give it a `ReadOnly` key in
-`Website:ApiKey`. Everyone who can open the website sees what that key can read.
+`Website:ApiKey`. Everyone who can open the website sees what that key can read. With users, signed-in
+people browse the feed as themselves instead.
+
+## Users and passkeys
+
+People can also have accounts on the feed, which they sign in to on the website with a passkey
+instead of a password. Each user has a role, like an API key, and can create their own API keys
+for NuGet clients and Visual Studio.
+
+```json
+{
+    "Authorization": {
+        "Users": {
+            "Enabled": true,
+            // Whether anyone can create an account. The first account can always be created.
+            "AllowSignUp": true,
+            // The role of new accounts. The first account is always an Admin.
+            "DefaultRole": "ReadOnly"
+        }
+    },
+    ...
+}
+```
+
+The website shows "Sign in" in its navigation bar. The first person to sign up becomes an `Admin`, so
+set up your account before sharing the feed's address, or turn `AllowSignUp` off afterwards. Everyone
+after that gets the `DefaultRole`. Users don't need configured API keys: requests without a key or
+a signed-in user get the `AnonymousRole`, `ReadOnly` unless set.
+
+On their account page, users can:
+
+- Add passkeys, so they can still sign in if they lose a device, and remove them, except their last.
+- Create API keys, which can do what their account can. A key is shown once, with a `nuget.config`
+  example. It starts with `nf_`, and only its hash is stored.
+- Revoke their API keys.
+
+People sign in with their user name and a passkey, and stay signed in for a year after they last
+use the website or feed. Each signed-in browser has a session in the `UserSessions` table, which is
+checked with each request, so changing a user's role in the database, or deleting their account,
+applies straight away. Deleting a session's row signs that browser out.
+
+Each request also replaces the sign-in cookie. If a cookie is used again after it was replaced,
+it was copied, so the server revokes the session: neither the copy nor the browser is signed in
+any more, and the server logs a warning. Requests the browser sent at the same time still share the
+old cookie for a minute.
+
+Each user can have one passkey request in progress at a time, and the browser has 5 minutes to
+answer it. Starting another, like signing in from a second tab, replaces it.
+
+Passkeys belong to the website's domain, and only work over HTTPS or on `localhost`. Behind a reverse
+proxy, set the domain and origins the browser sees, if they differ from what the feed sees:
+
+```json
+"Users": {
+    "Enabled": true,
+    "Domain": "nuget.example.com",
+    "Origins": [ "https://nuget.example.com" ]
+}
+```
+
+Applications that host the feed add users with `services.AddAuthentication().AddNuGetFeedApiKey().AddNuGetFeedUsers()`,
+together with `services.AddAuthorizationBuilder().AddNuGetFeedPolicies()`. The website only offers sign-in
+when it's hosted with the feed.
 
 ## Enable read-through caching
 
@@ -176,10 +240,9 @@ to overwrite the already existing package by setting `AllowPackageOverwrites`:
 
 ## Private feeds
 
-A private feed requires users to authenticate before accessing packages.
-
-!!! warning
-    Private feeds are not supported at this time! See [this pull request](https://github.com/loic-sharma/BaGet/pull/69) for more information.
+A private feed requires users to authenticate before accessing packages. Set the
+`Authorization:AnonymousRole` to `None`, and give people API keys or accounts.
+See [Require an API key](#require-an-api-key) and [Users and passkeys](#users-and-passkeys).
 
 ## Database configuration
 

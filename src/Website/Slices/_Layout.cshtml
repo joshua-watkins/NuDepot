@@ -27,6 +27,19 @@
                             <li role="presentation"><a href="@Model.PathBase/" role="tab" class="@(Model.ActivePage == WebsitePage.Packages ? "active" : null)"><span>Packages</span></a></li>
                             <li role="presentation"><a href="@Model.PathBase/upload" role="tab" class="@(Model.ActivePage == WebsitePage.Upload ? "active" : null)"><span>Upload</span></a></li>
                         </ul>
+                        @if (HttpContext?.RequestServices.GetService(typeof(FeedConnection)) is FeedConnection { SignInAvailable: true })
+                        {
+                            <ul class="nav navbar-nav navbar-right account-nav">
+                                @if (WebsiteEndpoints.IsSignedIn(HttpContext))
+                                {
+                                    <li><a href="@Model.PathBase/account" class="@(Model.ActivePage == WebsitePage.Account ? "active" : null)"><i class="ms-Icon ms-Icon--Contact" aria-hidden="true"></i> <span>@HttpContext.User.Identity!.Name</span></a></li>
+                                }
+                                else if (Model.ActivePage != WebsitePage.Account)
+                                {
+                                    <li><a href="@WebsiteEndpoints.GetSignInUrl(HttpContext.Request)"><span>Sign in</span></a></li>
+                                }
+                            </ul>
+                        }
                     </div>
                 </div>
             </div>

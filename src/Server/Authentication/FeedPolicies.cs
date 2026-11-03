@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace NuGetFeed.Authentication;
 
 /// <summary>
-/// The authorization policies that give API keys their roles. Add them with
+/// The authorization policies that give API keys and users their roles. Add them with
 /// <c>AddAuthorizationBuilder().AddNuGetFeedPolicies()</c>.
 /// </summary>
 public static class FeedPolicies
@@ -49,7 +49,7 @@ public static class FeedPolicies
         })
         {
             builder.AddPolicy(For(permission), policy => policy
-                .AddAuthenticationSchemes(ApiKeyAuthenticationHandler.SchemeName)
+                .AddAuthenticationSchemes(NuGetFeedAuthenticationSchemes.Feed)
                 .AddRequirements(new FeedPermissionRequirement(permission)));
         }
 

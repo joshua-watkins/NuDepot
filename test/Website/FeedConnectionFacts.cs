@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
@@ -15,6 +16,7 @@ public class FeedConnectionFacts
     {
         return new FeedConnection(
             Options.Create(new NuGetWebsiteOptions { ServiceIndexUrl = serviceIndexUrl }),
+            Options.Create(new AuthenticationOptions()),
             server: null,
             httpContextAccessor: null);
     }
@@ -72,7 +74,28 @@ public class FeedConnectionFacts
         Assert.Equal(expected, target.ToPublicUrl(url));
     }
 
-    private static FeedConnection CreateCoHostedFeed(IEnumerable<string> addresses)
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    public void SignInIsAvailableWhenCoHostedWithUsers(bool coHosted, bool users, bool expected)
+    {
+        var authentication = new AuthenticationOptions();
+        if (users) authentication.AddScheme(NuGetFeedAuthenticationSchemes.User, scheme => scheme.HandlerType = typeof(Mock<IAuthenticationHandler>));
+
+        var target = coHosted
+            ? CreateCoHostedFeed(new[] { "http://localhost:5000" }, authentication)
+            : new FeedConnection(
+                Options.Create(new NuGetWebsiteOptions { ServiceIndexUrl = "https://feed.test/v3/index.json" }),
+                Options.Create(authentication),
+                server: null,
+                httpContextAccessor: null);
+
+        // A remote feed has its own users: the website can't sign people in to it.
+        Assert.Equal(expected, target.SignInAvailable);
+    }
+
+    private static FeedConnection CreateCoHostedFeed(IEnumerable<string> addresses, AuthenticationOptions? authentication = null)
     {
         var addressesFeature = new ServerAddressesFeature();
         foreach (var address in addresses)
@@ -93,6 +116,7 @@ public class FeedConnectionFacts
 
         return new FeedConnection(
             Options.Create(new NuGetWebsiteOptions()),
+            Options.Create(authentication ?? new AuthenticationOptions()),
             server.Object,
             new HttpContextAccessor { HttpContext = context });
     }

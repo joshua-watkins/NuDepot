@@ -244,6 +244,27 @@ public class WebsitePageTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("/account")]
+    [InlineData("/account/signin")]
+    public async Task AccountPagesNeedAFeedWithUsers(string url)
+    {
+        using var client = _app.GetTestClient();
+
+        var response = await client.GetAsync(url);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task NoSignInLinkWithoutUsers()
+    {
+        var html = await GetPageAsync("/");
+
+        Assert.DoesNotContain("account/signin", html);
+        Assert.DoesNotContain("account-nav", html);
+    }
+
     private async Task<string> GetPageAsync(string url)
     {
         using var client = _app.GetTestClient();

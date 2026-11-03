@@ -52,7 +52,7 @@ public class RegistrationBuilder
         {
             Type = RegistrationLeafResponse.DefaultType,
             Listed = package.Listed,
-            Published = ToUtc(package.Published),
+            Published = ToUtc(package.PublishedAt),
             RegistrationLeafUrl = _url.GetRegistrationLeafUrl(id, version, semVer2),
             PackageContentUrl = _url.GetPackageDownloadUrl(id, version),
             RegistrationIndexUrl = _url.GetRegistrationIndexUrl(id, semVer2),
@@ -92,7 +92,7 @@ public class RegistrationBuilder
                 ProjectUrl = package.ProjectUrlString,
                 RepositoryUrl = package.RepositoryUrlString,
                 RepositoryType = package.RepositoryType,
-                Published = ToUtc(package.Published),
+                Published = ToUtc(package.PublishedAt),
                 RequireLicenseAcceptance = package.RequireLicenseAcceptance,
                 Summary = package.Summary,
                 Tags = package.Tags,

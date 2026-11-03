@@ -213,20 +213,15 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         }
 
         string frameworkName;
-        if (framework.Framework.Equals(FrameworkConstants.FrameworkIdentifiers.NetCoreApp,
-            StringComparison.OrdinalIgnoreCase))
+        if (framework.Framework.Equals(FrameworkConstants.FrameworkIdentifiers.NetCoreApp, StringComparison.OrdinalIgnoreCase))
         {
-            frameworkName = (framework.Version.Major >= 5)
-                ? ".NET"
-                : ".NET Core";
+            frameworkName = (framework.Version.Major >= 5) ? ".NET" : ".NET Core";
         }
-        else if (framework.Framework.Equals(FrameworkConstants.FrameworkIdentifiers.NetStandard,
-            StringComparison.OrdinalIgnoreCase))
+        else if (framework.Framework.Equals(FrameworkConstants.FrameworkIdentifiers.NetStandard, StringComparison.OrdinalIgnoreCase))
         {
             frameworkName = ".NET Standard";
         }
-        else if (framework.Framework.Equals(FrameworkConstants.FrameworkIdentifiers.Net,
-            StringComparison.OrdinalIgnoreCase))
+        else if (framework.Framework.Equals(FrameworkConstants.FrameworkIdentifiers.Net, StringComparison.OrdinalIgnoreCase))
         {
             frameworkName = ".NET Framework";
         }
@@ -255,10 +250,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
             .OrderByDescending(m => m.Version)];
     }
 
-    private async Task<HtmlString?> GetReadmeHtmlStringOrNullAsync(
-        string packageId,
-        NuGetVersion packageVersion,
-        CancellationToken cancellationToken)
+    private async Task<HtmlString?> GetReadmeHtmlStringOrNullAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken)
     {
         string readme;
         using (var readmeStream = await _packages.GetPackageReadmeStreamOrNullAsync(packageId, packageVersion, cancellationToken))

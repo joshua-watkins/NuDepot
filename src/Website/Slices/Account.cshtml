@@ -1,0 +1,79 @@
+@inherits RazorSlice<AccountModel>
+@implements IUsesLayout<_Layout, LayoutModel>
+
+<div class="col-sm-12 account-page" id="account-page">
+    <h1>
+        <span id="account-name">@HttpContext!.User.Identity!.Name</span>
+        <small id="account-role"></small>
+    </h1>
+    <hr class="breadcrumb-divider" />
+
+    <div class="alert alert-danger" role="alert" data-account-error hidden></div>
+
+    <section>
+        <h2>Passkeys</h2>
+        <p>You sign in with any of these passkeys. Add another so you can still sign in if you lose a device.</p>
+        <table class="table account-table">
+            <thead>
+                <tr><th>Name</th><th>Added</th><th>Last used</th><th></th></tr>
+            </thead>
+            <tbody id="passkeys"></tbody>
+        </table>
+        <form id="add-passkey-form" class="form-inline">
+            <div class="form-group">
+                <label for="passkey-name" class="sr-only">Passkey name</label>
+                <input type="text" id="passkey-name" class="form-control" placeholder="Name, like &quot;Phone&quot;" maxlength="128" />
+            </div>
+            <button type="submit" class="btn btn-default">Add a passkey</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>API keys</h2>
+        <p>
+            NuGet clients and Visual Studio use an API key instead of a passkey. Each key can do what your account can.
+        </p>
+        <table class="table account-table">
+            <thead>
+                <tr><th>Name</th><th>Key</th><th>Created</th><th>Last used</th><th></th></tr>
+            </thead>
+            <tbody id="apikeys"></tbody>
+        </table>
+        <form id="create-apikey-form" class="form-inline">
+            <div class="form-group">
+                <label for="apikey-name" class="sr-only">API key name</label>
+                <input type="text" id="apikey-name" class="form-control" placeholder="Name, like &quot;Build server&quot;" maxlength="128" required />
+            </div>
+            <button type="submit" class="btn btn-default">Create an API key</button>
+        </form>
+
+        <div id="new-apikey" class="new-apikey" hidden>
+            <p><strong>Copy your new API key now.</strong> It won't be shown again.</p>
+            <div class="tabbed-info">
+                <div class="content">
+                    <div class="script"><div id="new-apikey-value"></div></div>
+                    <div class="copy-button">
+                        <button type="button" class="btn btn-default btn-warning" id="copy-apikey" title="Copy">
+                            <i class="ms-Icon ms-Icon--Copy" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <p>To use it in Visual Studio, add it to your <code>nuget.config</code> as the feed's password:</p>
+            <pre id="new-apikey-config"></pre>
+        </div>
+    </section>
+
+    <section>
+        <button type="button" class="btn btn-default" id="signout-button">Sign out</button>
+    </section>
+</div>
+
+<script type="text/javascript">
+    window.nugetfeedAccount = @WebsiteJsonContext.ToScriptValue(new AccountScriptSettings(Model.PathBase, Model.PathBase + "/", Model.ServiceIndexUrl));
+</script>
+<script src="@LayoutModel.Content("js/account.js")" defer></script>
+
+@functions {
+    public LayoutModel LayoutModel => new("Your account", Model.PathBase, WebsitePage.Account);
+}

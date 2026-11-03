@@ -95,7 +95,7 @@ public class CatalogService : ICatalogService
     {
         var commits = await _context.CatalogEntries
             .OrderBy(e => e.Key)
-            .Select(e => new { e.CommitId, e.CommitTimestamp })
+            .Select(e => new { e.CommitId, e.CommittedAt })
             .ToListAsync(cancellationToken);
 
         var pages = commits
@@ -104,7 +104,7 @@ public class CatalogService : ICatalogService
             {
                 CatalogPageUrl = _url.GetCatalogPageUrl(index),
                 CommitId = page[^1].CommitId,
-                CommitTimestamp = ToUtc(page[^1].CommitTimestamp),
+                CommitTimestamp = ToUtc(page[^1].CommittedAt),
                 Count = page.Length,
             })
             .ToList();
@@ -114,7 +114,7 @@ public class CatalogService : ICatalogService
         return new CatalogIndex
         {
             CommitId = latest?.CommitId ?? Guid.Empty.ToString(),
-            CommitTimestamp = latest == null ? DateTimeOffset.MinValue : ToUtc(latest.CommitTimestamp),
+            CommitTimestamp = latest == null ? DateTimeOffset.MinValue : ToUtc(latest.CommittedAt),
             Count = pages.Count,
             Items = pages,
         };
@@ -128,7 +128,7 @@ public class CatalogService : ICatalogService
             .OrderBy(e => e.Key)
             .Skip(page * MaxPageSize)
             .Take(MaxPageSize)
-            .Select(e => new { e.Key, e.CommitId, e.CommitTimestamp, e.Type, e.PackageId, e.PackageVersion })
+            .Select(e => new { e.Key, e.CommitId, e.CommittedAt, e.Type, e.PackageId, e.PackageVersion })
             .ToListAsync(cancellationToken);
 
         if (entries.Count == 0) return null;
@@ -136,7 +136,7 @@ public class CatalogService : ICatalogService
         return new CatalogPage
         {
             CommitId = entries[^1].CommitId,
-            CommitTimestamp = ToUtc(entries[^1].CommitTimestamp),
+            CommitTimestamp = ToUtc(entries[^1].CommittedAt),
             Count = entries.Count,
             CatalogIndexUrl = _url.GetCatalogIndexUrl(),
             Items = entries
@@ -145,7 +145,7 @@ public class CatalogService : ICatalogService
                     CatalogLeafUrl = _url.GetCatalogLeafUrl(e.Key, e.PackageId, e.PackageVersion),
                     Type = "nuget:" + e.Type,
                     CommitId = e.CommitId,
-                    CommitTimestamp = ToUtc(e.CommitTimestamp),
+                    CommitTimestamp = ToUtc(e.CommittedAt),
                     PackageId = e.PackageId,
                     PackageVersion = e.PackageVersion,
                 })
@@ -167,12 +167,12 @@ public class CatalogService : ICatalogService
                 CatalogLeafUrl = leafUrl,
                 Type = PackageDeleteLeafType,
                 CommitId = entry.CommitId,
-                CommitTimestamp = ToUtc(entry.CommitTimestamp),
+                CommitTimestamp = ToUtc(entry.CommittedAt),
                 PackageId = entry.PackageId,
                 PackageVersion = entry.PackageVersion,
 
                 // For deletions, "published" is when the package was deleted.
-                Published = ToUtc(entry.CommitTimestamp),
+                Published = ToUtc(entry.CommittedAt),
             };
         }
 
@@ -185,12 +185,12 @@ public class CatalogService : ICatalogService
             CatalogLeafUrl = leafUrl,
             Type = PackageDetailsLeafType,
             CommitId = entry.CommitId,
-            CommitTimestamp = ToUtc(entry.CommitTimestamp),
+            CommitTimestamp = ToUtc(entry.CommittedAt),
             PackageId = entry.PackageId,
             PackageVersion = entry.PackageVersion,
             Published = snapshot.Published,
             Created = snapshot.Published,
-            LastEdited = ToUtc(entry.CommitTimestamp),
+            LastEdited = ToUtc(entry.CommittedAt),
             Authors = snapshot.Authors,
             DependencyGroups = snapshot.DependencyGroups,
             Deprecation = snapshot.Deprecation,
@@ -246,7 +246,7 @@ public class CatalogService : ICatalogService
         var packages = await _context.Packages
             .Include(p => p.Dependencies)
             .Include(p => p.PackageTypes)
-            .OrderBy(p => p.Published)
+            .OrderBy(p => p.PublishedAt)
             .ToListAsync(cancellationToken);
 
         if (packages.Count == 0) return;
@@ -286,7 +286,7 @@ public class CatalogService : ICatalogService
         {
             var latest = await _context.CatalogEntries
                 .OrderByDescending(e => e.Key)
-                .Select(e => (DateTime?)e.CommitTimestamp)
+                .Select(e => (DateTime?)e.CommittedAt)
                 .FirstOrDefaultAsync(cancellationToken);
 
             var timestamp = _time.UtcNow;
@@ -299,7 +299,7 @@ public class CatalogService : ICatalogService
             foreach (var entry in entries)
             {
                 entry.CommitId = commitId;
-                entry.CommitTimestamp = DateTime.SpecifyKind(timestamp, DateTimeKind.Utc);
+                entry.CommittedAt = DateTime.SpecifyKind(timestamp, DateTimeKind.Utc);
                 _context.CatalogEntries.Add(entry);
             }
 
