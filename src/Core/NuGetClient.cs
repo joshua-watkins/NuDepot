@@ -6,15 +6,14 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed;
+using NuGet.Core.Extensions;
+using NuGet.Core.Models;
+using NuGet.Core.PackageContent;
+using NuGet.Core.PackageMetadata;
+using NuGet.Core.Search;
 using NuGet.Versioning;
-using NuGetFeed.Extensions;
-using NuGetFeed.Models;
-using NuGetFeed.PackageContent;
-using NuGetFeed.PackageMetadata;
-using NuGetFeed.Search;
 
-namespace NuGetFeed;
+namespace NuGet.Core;
 
 /// <summary>
 /// The client to interact with a NuGet server.

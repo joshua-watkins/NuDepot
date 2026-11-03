@@ -1,6 +1,6 @@
 using System;
 
-namespace NuGetFeed.Catalog;
+namespace NuGet.Core.Catalog;
 
 /// <summary>
 /// The options to configure <see cref="CatalogProcessor"/>.

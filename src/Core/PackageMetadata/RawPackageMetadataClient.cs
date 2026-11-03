@@ -2,11 +2,11 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Extensions;
-using NuGetFeed.Models;
-using NuGetFeed.Serialization;
+using NuGet.Core.Extensions;
+using NuGet.Core.Models;
+using NuGet.Core.Serialization;
 
-namespace NuGetFeed.PackageMetadata;
+namespace NuGet.Core.PackageMetadata;
 
 /// <summary>
 /// The client to interact with an upstream source's Package Metadata resource.

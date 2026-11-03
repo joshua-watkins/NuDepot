@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NuGetFeed.Models;
+namespace NuGet.Core.Models;
 
 /// <summary>
 /// An item in the <see cref="CatalogIndex"/> that references a <see cref="CatalogLeaf"/>.

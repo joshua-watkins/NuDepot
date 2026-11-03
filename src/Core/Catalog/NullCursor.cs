@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGetFeed.Catalog;
+namespace NuGet.Core.Catalog;
 
 /// <summary>
 /// A cursor that does not persist any state. Use this with a <see cref="CatalogProcessor"/>

@@ -1,12 +1,12 @@
-using NuGetFeed.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json.Serialization;
+using NuGet.Core.Models;
 using Xunit;
 
-namespace NuGetFeed.Core.Tests.Metadata
+namespace NuGet.Core.Tests.Metadata
 {
     public class ModelTests
     {
@@ -14,7 +14,7 @@ namespace NuGetFeed.Core.Tests.Metadata
         /// NuGetFeed extends the NuGet protocol to add more functionality.
         /// Since System.Text.Json does not support polymorphic serialization,
         /// this was implemented by duplicating the protocol's models from the
-        /// "NuGetFeed.Core" project. These tests ensure that the duplicates
+        /// "NuGet.Core" project. These tests ensure that the duplicates
         /// stay in sync with the original protocol models.
         /// </summary>
         public static IEnumerable<object[]> ExtendedModelsData()
@@ -211,24 +211,24 @@ namespace NuGetFeed.Core.Tests.Metadata
         public class ExtendedModelData
         {
             /// <summary>
-            /// The model's type in the "NuGetFeed.Core" project that was extended.
+            /// The model's type in the "NuGet.Core" project that was extended.
             /// </summary>
             public Type? OriginalType { get; set; }
 
             /// <summary>
-            /// The model's type in the "NuGetFeed.Core" project that extends a
-            /// type from the "NuGetFeed.Core" project.
+            /// The model's type in the "NuGet.Core" project that extends a
+            /// type from the "NuGet.Core" project.
             /// </summary>
             public Type? DerivedType { get; set; }
 
             /// <summary>
-            /// The properties added by the model type in the "NuGetFeed.Core" project.
+            /// The properties added by the model type in the "NuGet.Core" project.
             /// </summary>
             public Dictionary<string, Type> AddedProperties { get; set; } = new Dictionary<string, Type>();
 
             /// <summary>
             /// The properties whose types were modified by the model type in the
-            /// "NuGetFeed.Core" project.
+            /// "NuGet.Core" project.
             /// </summary>
             public Dictionary<string, (Type From, Type To)> ModifiedProperties { get; set; }
                 = new Dictionary<string, (Type From, Type To)>();

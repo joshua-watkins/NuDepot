@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace NuGetFeed.Models;
+namespace NuGet.Core.Models;
 
 /// <summary>
 /// The package source's repository signing capabilities.

@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Models;
+using NuGet.Core.Models;
 
-namespace NuGetFeed.Catalog;
+namespace NuGet.Core.Catalog;
 
 /// <summary>
 /// An interface which allows custom processing of catalog leaves. This interface should be implemented when the

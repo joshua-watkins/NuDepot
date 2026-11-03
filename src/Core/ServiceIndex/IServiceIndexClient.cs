@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Models;
+using NuGet.Core.Models;
 
-namespace NuGetFeed.ServiceIndex;
+namespace NuGet.Core.ServiceIndex;
 
 /// <summary>
 /// The NuGet Service Index client, used to discover other resources.

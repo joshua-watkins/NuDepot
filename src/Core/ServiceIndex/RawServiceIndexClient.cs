@@ -2,11 +2,11 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Extensions;
-using NuGetFeed.Models;
-using NuGetFeed.Serialization;
+using NuGet.Core.Extensions;
+using NuGet.Core.Models;
+using NuGet.Core.Serialization;
 
-namespace NuGetFeed.ServiceIndex;
+namespace NuGet.Core.ServiceIndex;
 
 /// <summary>
 /// The NuGet Service Index client, used to discover other resources.

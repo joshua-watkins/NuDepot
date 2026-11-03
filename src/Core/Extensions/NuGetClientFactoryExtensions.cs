@@ -1,8 +1,7 @@
-using NuGetFeed;
 using Microsoft.Extensions.Logging;
-using NuGetFeed.Catalog;
+using NuGet.Core.Catalog;
 
-namespace NuGetFeed.Extensions;
+namespace NuGet.Core.Extensions;
 
 public static class NuGetClientFactoryExtensions
 {

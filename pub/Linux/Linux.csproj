@@ -4,7 +4,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyName>$(SolutionName)</AssemblyName>
+		<AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
 		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
 		<IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
@@ -14,12 +14,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Server\Server.csproj" />
-		<ProjectReference Include="..\..\src\Website\Website.csproj" />
+		<ProjectReference Include="..\..\src\Feed\Feed.csproj" />
+		<ProjectReference Include="..\..\src\Gallery\Gallery.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="nugetfeed.service">
+		<None Update="nuget.service">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>

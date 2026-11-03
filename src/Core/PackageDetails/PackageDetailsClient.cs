@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Core.Models;
+using NuGet.Core.PackageDetails;
 using NuGet.Versioning;
-using NuGetFeed.Models;
-using NuGetFeed.PackageDetails;
 
-namespace NuGetFeed;
+namespace NuGet.Core;
 
 public partial class NuGetClientFactory
 {

@@ -5,12 +5,12 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Core.Extensions;
+using NuGet.Core.Models;
+using NuGet.Core.Serialization;
 using NuGet.Versioning;
-using NuGetFeed.Extensions;
-using NuGetFeed.Models;
-using NuGetFeed.Serialization;
 
-namespace NuGetFeed.PackageDetails;
+namespace NuGet.Core.PackageDetails;
 
 /// <summary>
 /// The client to interact with a NuGet server's package details resources.

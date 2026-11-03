@@ -1,4 +1,4 @@
-namespace NuGetFeed.Models;
+namespace NuGet.Core.Models;
 
 /// <summary>
 /// A page of package metadata entries.

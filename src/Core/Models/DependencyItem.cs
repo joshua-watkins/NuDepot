@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using NuGetFeed.Converters;
+using NuGet.Core.Converters;
 
-namespace NuGetFeed.Models;
+namespace NuGet.Core.Models;
 
 /// <summary>
 /// Represents a package dependency.

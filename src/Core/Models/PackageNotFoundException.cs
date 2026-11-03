@@ -1,7 +1,7 @@
 using System;
 using NuGet.Versioning;
 
-namespace NuGetFeed.Models;
+namespace NuGet.Core.Models;
 
 /// <summary>
 /// An exception thrown when a package could not be found on the NuGet server.

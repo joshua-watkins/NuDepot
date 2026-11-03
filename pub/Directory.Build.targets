@@ -1,7 +1,7 @@
 <Project>
 
 	<!--
-		The hosts reference the runnable Server and Website projects, which have their own appsettings files.
+		The hosts reference the runnable Feed and Gallery projects, which have their own appsettings files.
 		Build already prefers the host's file when a referenced project has a file at the same path;
 		apply the same rule to publish instead of failing with NETSDK1152.
 	-->

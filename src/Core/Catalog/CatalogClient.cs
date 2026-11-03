@@ -1,10 +1,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Catalog;
-using NuGetFeed.Models;
+using NuGet.Core.Catalog;
+using NuGet.Core.Models;
 
-namespace NuGetFeed;
+namespace NuGet.Core;
 
 public partial class NuGetClientFactory
 {

@@ -5,7 +5,7 @@ using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGetFeed.Extensions;
+namespace NuGet.Core.Extensions;
 
 internal static class HttpClientExtensions
 {

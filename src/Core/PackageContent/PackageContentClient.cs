@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Core.Models;
+using NuGet.Core.PackageContent;
 using NuGet.Versioning;
-using NuGetFeed.Models;
-using NuGetFeed.PackageContent;
 
-namespace NuGetFeed;
+namespace NuGet.Core;
 
 public partial class NuGetClientFactory
 {

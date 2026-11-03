@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Models;
+using NuGet.Core.Models;
 
-namespace NuGetFeed.PackageMetadata;
+namespace NuGet.Core.PackageMetadata;
 
 /// <summary>
 /// The Package Metadata client, used to fetch packages' metadata.

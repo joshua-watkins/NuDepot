@@ -4,11 +4,11 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Extensions;
-using NuGetFeed.Models;
-using NuGetFeed.Serialization;
+using NuGet.Core.Extensions;
+using NuGet.Core.Models;
+using NuGet.Core.Serialization;
 
-namespace NuGetFeed.Search;
+namespace NuGet.Core.Search;
 
 /// <summary>
 /// The client used to search for packages.

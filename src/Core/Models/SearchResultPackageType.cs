@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NuGetFeed.Models;
+namespace NuGet.Core.Models;
 
 /// <summary>
 /// A single package type from a <see cref="SearchResult"/>.

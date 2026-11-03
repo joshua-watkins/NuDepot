@@ -1,4 +1,4 @@
-namespace NuGetFeed;
+namespace NuGet.Core;
 
 /// <summary>
 /// The names of the feed server's authentication schemes, which the website also looks for

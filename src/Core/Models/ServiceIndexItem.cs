@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NuGetFeed.Models;
+namespace NuGet.Core.Models;
 
 /// <summary>
 /// A resource in the <see cref="ServiceIndexResponse"/>.

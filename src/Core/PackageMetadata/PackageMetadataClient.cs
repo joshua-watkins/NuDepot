@@ -1,10 +1,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Models;
-using NuGetFeed.PackageMetadata;
+using NuGet.Core.Models;
+using NuGet.Core.PackageMetadata;
 
-namespace NuGetFeed;
+namespace NuGet.Core;
 
 public partial class NuGetClientFactory
 {

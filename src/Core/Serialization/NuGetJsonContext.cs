@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using NuGetFeed.Models;
+using NuGet.Core.Models;
 
-namespace NuGetFeed.Serialization;
+namespace NuGet.Core.Serialization;
 
 /// <summary>
 /// Source generated JSON serialization for the NuGet protocol's models. Properties that

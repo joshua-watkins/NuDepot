@@ -1,5 +1,6 @@
-using NuGetFeed;
-using NuGetFeed.Extensions;
+using NuGet.Feed;
+using NuGet.Feed.Extensions;
+using NuGet.Gallery.Extensions;
 
 // --port 3333 --proxy, everything else through NuGetFeed.ini
 // maybe "secret" --migrate/upgrade/initialize switch for updating sqlite schema file.

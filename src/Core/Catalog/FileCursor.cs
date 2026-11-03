@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace NuGetFeed.Catalog;
+namespace NuGet.Core.Catalog;
 
 /// <summary>
 /// A cursor implementation which stores the cursor in local file. The cursor value is written to the file as

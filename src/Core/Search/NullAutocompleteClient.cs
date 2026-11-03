@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Models;
+using NuGet.Core.Models;
 
-namespace NuGetFeed.Search;
+namespace NuGet.Core.Search;
 
 public class NullAutocompleteClient : IAutocompleteClient
 {

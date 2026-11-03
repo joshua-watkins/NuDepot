@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
+		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
+		<IsAotCompatible>true</IsAotCompatible>
+		<EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+		<!-- Generates the minimal API endpoints' request handling at compile time instead of with reflection. -->
+		<EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+		<!-- Razor Slices compiles the pages with the Razor compiler's MVC support. The website doesn't use MVC at runtime. -->
+		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+		<!-- The website's files are embedded in the assembly (see WebsiteFiles) rather than static web assets. -->
+		<StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+		<GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+		<!-- The Windows installer (pub/Windows.Setup) publishes the Windows service, which references this project, for win-x64. -->
+		<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Humanizer" Version="3.0.10" />
+		<PackageReference Include="Markdig" Version="1.5.0" />
+		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.14" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.403">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="RazorSlices" Version="0.12.2" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<EnableDefaultRazorSlices>false</EnableDefaultRazorSlices>
+	</PropertyGroup>
+	<ItemGroup>
+		<!-- Only treat .cshtml files in Slices directory as Razor Slices. The layout is a slice too. -->
+		<RazorSlice Include="Slices\**\*.cshtml" Exclude="Slices\**\_ViewImports.cshtml" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Remove="wwwroot\**" />
+		<EmbeddedResource Include="wwwroot\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Core\Core.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The tests create the pages' models directly. -->
+		<InternalsVisibleTo Include="$(AssemblyName).Tests" />
+	</ItemGroup>
+
+</Project>

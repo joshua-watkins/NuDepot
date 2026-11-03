@@ -1,11 +1,11 @@
-using NuGetFeed.Catalog;
-using NuGetFeed.Core.Tests.Support;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using NuGet.Core.Catalog;
+using NuGet.Core.Tests.Support;
 using Xunit;
 
-namespace NuGetFeed.Core.Tests;
+namespace NuGet.Core.Tests;
 
 public class RawCatalogClientTests : IClassFixture<ProtocolFixture>
 {

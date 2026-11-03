@@ -1,18 +1,17 @@
-using NuGetFeed;
-using NuGetFeed.Catalog;
-using NuGetFeed.Extensions;
-using NuGetFeed.Models;
-using NuGetFeed.PackageContent;
-using NuGetFeed.PackageDetails;
-using NuGetFeed.PackageMetadata;
-using NuGetFeed.Search;
-using NuGetFeed.ServiceIndex;
 using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Core.Catalog;
+using NuGet.Core.Extensions;
+using NuGet.Core.Models;
+using NuGet.Core.PackageContent;
+using NuGet.Core.PackageDetails;
+using NuGet.Core.PackageMetadata;
+using NuGet.Core.Search;
+using NuGet.Core.ServiceIndex;
 
-namespace NuGetFeed;
+namespace NuGet.Core;
 
 /// <summary>
 /// The <see cref="NuGetClientFactory"/> creates clients to interact with a NuGet server.

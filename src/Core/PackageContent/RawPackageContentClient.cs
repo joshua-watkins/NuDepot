@@ -4,12 +4,12 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Core.Extensions;
+using NuGet.Core.Models;
+using NuGet.Core.Serialization;
 using NuGet.Versioning;
-using NuGetFeed.Extensions;
-using NuGetFeed.Models;
-using NuGetFeed.Serialization;
 
-namespace NuGetFeed.PackageContent;
+namespace NuGet.Core.PackageContent;
 
 /// <summary>
 /// The client to interact with an upstream source's Package Content resource.

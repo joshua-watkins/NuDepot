@@ -1,0 +1,404 @@
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using NuGet.Feed.Authentication;
+using NuGet.Feed.Configuration;
+using NuGet.Feed.Tests.Support;
+using NuGet.Feed.Validation;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace NuGet.Feed.Tests;
+
+/// <summary>
+/// Tests what API keys, and requests without one, may do on the feed.
+/// </summary>
+public class AuthorizationIntegrationTests : IDisposable
+{
+    private const string AdminKey = "admin-key";
+    private const string ReadWriteKey = "read-write-key";
+    private const string ReadOnlyKey = "read-only-key";
+
+    private readonly ITestOutputHelper _output;
+    private readonly List<IDisposable> _disposables = new();
+
+    public AuthorizationIntegrationTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
+    public void Dispose()
+    {
+        foreach (var disposable in _disposables) disposable.Dispose();
+    }
+
+    public static TheoryData<string?, string, HttpStatusCode> RolePermissions => new()
+    {
+        // Without a key, the feed is read-only once it has API keys.
+        { null, "read", HttpStatusCode.OK },
+        { null, "push", HttpStatusCode.Unauthorized },
+        { null, "unlist", HttpStatusCode.Unauthorized },
+        { null, "relist", HttpStatusCode.Unauthorized },
+        { null, "hard delete", HttpStatusCode.Unauthorized },
+        { null, "deprecate", HttpStatusCode.Unauthorized },
+        { null, "vulnerability", HttpStatusCode.Unauthorized },
+
+        { ReadOnlyKey, "read", HttpStatusCode.OK },
+        { ReadOnlyKey, "push", HttpStatusCode.Forbidden },
+        { ReadOnlyKey, "unlist", HttpStatusCode.Forbidden },
+        { ReadOnlyKey, "relist", HttpStatusCode.Forbidden },
+        { ReadOnlyKey, "hard delete", HttpStatusCode.Forbidden },
+        { ReadOnlyKey, "deprecate", HttpStatusCode.Forbidden },
+        { ReadOnlyKey, "vulnerability", HttpStatusCode.Forbidden },
+
+        { ReadWriteKey, "read", HttpStatusCode.OK },
+        { ReadWriteKey, "push", HttpStatusCode.Created },
+        { ReadWriteKey, "unlist", HttpStatusCode.NoContent },
+        { ReadWriteKey, "relist", HttpStatusCode.OK },
+        { ReadWriteKey, "hard delete", HttpStatusCode.Forbidden },
+        { ReadWriteKey, "deprecate", HttpStatusCode.Forbidden },
+        { ReadWriteKey, "vulnerability", HttpStatusCode.Forbidden },
+
+        { AdminKey, "read", HttpStatusCode.OK },
+        { AdminKey, "push", HttpStatusCode.Created },
+        { AdminKey, "unlist", HttpStatusCode.NoContent },
+        { AdminKey, "relist", HttpStatusCode.OK },
+        { AdminKey, "hard delete", HttpStatusCode.NoContent },
+        { AdminKey, "deprecate", HttpStatusCode.NoContent },
+        { AdminKey, "vulnerability", HttpStatusCode.OK },
+    };
+
+    [Theory]
+    [MemberData(nameof(RolePermissions))]
+    public async Task RolesGrantTheirOperations(string? apiKey, string operation, HttpStatusCode expected)
+    {
+        var configuration = RoleKeys();
+        configuration["PackageDeletionBehavior"] = operation == "hard delete" ? "HardDelete" : "Unlist";
+
+        var app = CreateApp(configuration);
+        await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
+        using var client = app.CreateClient();
+
+        using var request = CreateRequest(operation);
+        if (apiKey != null) request.Headers.Add("X-NuGet-ApiKey", apiKey);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("any-key")]
+    public async Task FeedIsOpenWithoutAuthentication(string? apiKey)
+    {
+        var app = CreateApp(useAuthentication: false, useAuthorization: false);
+        await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
+        using var client = app.CreateClient();
+
+        foreach (var operation in new[] { "read", "push", "deprecate", "vulnerability", "hard delete" })
+        {
+            using var request = CreateRequest(operation);
+            if (apiKey != null) request.Headers.Add("X-NuGet-ApiKey", apiKey);
+            using var response = await client.SendAsync(request);
+
+            Assert.True(response.IsSuccessStatusCode, $"{operation}: {response.StatusCode}");
+        }
+    }
+
+    [Fact]
+    public async Task ApiKeySettingIsAnAdminKey()
+    {
+        var app = CreateApp(new Dictionary<string, string> { { "ApiKey", AdminKey } });
+        using var client = app.CreateClient();
+
+        using var anonymous = await client.SendAsync(CreateRequest("vulnerability"));
+        using var request = CreateRequest("vulnerability");
+        request.Headers.Add("X-NuGet-ApiKey", AdminKey);
+        using var withKey = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, withKey.StatusCode);
+    }
+
+    [Fact]
+    public async Task BasicPasswordIsTheApiKey()
+    {
+        // NuGet sends a package source's credentials from nuget.config this way.
+        var app = CreateApp(RoleKeys());
+        using var client = app.CreateClient();
+
+        using var request = CreateRequest("push");
+        request.Headers.Authorization = Basic("any user name", ReadWriteKey);
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MissingCredentialsAskForBasicCredentials()
+    {
+        var configuration = RoleKeys();
+        configuration["Authorization:AnonymousRole"] = "None";
+        var app = CreateApp(configuration);
+        using var client = app.CreateClient();
+
+        using var anonymous = await client.GetAsync("v3/index.json");
+
+        // NuGet clients, including Visual Studio, answer the challenge with the source's credentials.
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        var challenge = Assert.Single(anonymous.Headers.WwwAuthenticate);
+        Assert.Equal("Basic", challenge.Scheme);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "v3/index.json");
+        request.Headers.Authorization = Basic("user", ReadOnlyKey);
+        using var withCredentials = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, withCredentials.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("X-NuGet-ApiKey")]
+    [InlineData("Authorization")]
+    public async Task UnknownApiKeyIsChallenged(string header)
+    {
+        var app = CreateApp(RoleKeys());
+        using var client = app.CreateClient();
+
+        using var request = CreateRequest("push");
+        if (header == "Authorization") request.Headers.Authorization = Basic("user", "wrong-key");
+        else request.Headers.Add(header, "wrong-key");
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("Basic", Assert.Single(response.Headers.WwwAuthenticate).Scheme);
+    }
+
+    [Fact]
+    public async Task UnknownApiKeyCanStillDoWhatAnyoneMay()
+    {
+        var app = CreateApp(RoleKeys());
+        using var client = app.CreateClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "v3/index.json");
+        request.Headers.Add("X-NuGet-ApiKey", "wrong-key");
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnonymousRoleCanBeRaised()
+    {
+        var configuration = RoleKeys();
+        configuration["Authorization:AnonymousRole"] = "ReadWrite";
+        var app = CreateApp(configuration);
+        using var client = app.CreateClient();
+
+        using var push = await client.SendAsync(CreateRequest("push"));
+        using var vulnerability = await client.SendAsync(CreateRequest("vulnerability"));
+
+        Assert.Equal(HttpStatusCode.Created, push.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, vulnerability.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(ReadWriteKey, HttpStatusCode.Conflict)]
+    [InlineData(AdminKey, HttpStatusCode.Created)]
+    public async Task OnlyAdminsReplacePackages(string apiKey, HttpStatusCode expected)
+    {
+        // The test application allows package overwrites.
+        var app = CreateApp(RoleKeys());
+        await app.AddPackageAsync(TestPackages.Create("New.Package", "1.0.0"));
+        using var client = app.CreateClient();
+
+        using var request = CreateRequest("push");
+        request.Headers.Add("X-NuGet-ApiKey", apiKey);
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReadOnlyModeForbidsChangesWithAnyKey()
+    {
+        var configuration = RoleKeys();
+        configuration["IsReadOnlyMode"] = "true";
+        var app = CreateApp(configuration);
+        using var client = app.CreateClient();
+
+        using var request = CreateRequest("push");
+        request.Headers.Add("X-NuGet-ApiKey", AdminKey);
+        using var push = await client.SendAsync(request);
+        using var read = await client.GetAsync("v3/index.json");
+
+        Assert.Equal(HttpStatusCode.Forbidden, push.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(false, false, FeedAccessMode.Open)]
+    [InlineData(true, false, FeedAccessMode.ApiKey)]
+    [InlineData(true, true, FeedAccessMode.Roles)]
+    public void WhatTheApplicationAddsChoosesTheMode(bool useAuthentication, bool useAuthorization, FeedAccessMode expected)
+    {
+        var configuration = expected switch
+        {
+            FeedAccessMode.Open => null,
+            FeedAccessMode.ApiKey => KeysWithoutRoles(),
+            _ => RoleKeys(),
+        };
+        var app = CreateApp(configuration, useAuthentication, useAuthorization);
+
+        Assert.Equal(expected, app.Services.GetRequiredService<FeedAccess>().Mode);
+    }
+
+    [Theory]
+    [InlineData(null, "read", HttpStatusCode.OK)]
+    [InlineData(null, "push", HttpStatusCode.Unauthorized)]
+    [InlineData(null, "vulnerability", HttpStatusCode.Unauthorized)]
+    [InlineData(ReadOnlyKey, "push", HttpStatusCode.Created)]
+    [InlineData(ReadOnlyKey, "hard delete", HttpStatusCode.NoContent)]
+    [InlineData(ReadWriteKey, "vulnerability", HttpStatusCode.OK)]
+    [InlineData("wrong-key", "push", HttpStatusCode.Unauthorized)]
+    public async Task AuthenticationWithoutAuthorizationOnlyNeedsAValidKey(string? apiKey, string operation, HttpStatusCode expected)
+    {
+        var configuration = KeysWithoutRoles();
+        configuration["PackageDeletionBehavior"] = "HardDelete";
+        var app = CreateApp(configuration, useAuthorization: false);
+        await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
+        using var client = app.CreateClient();
+
+        using var request = CreateRequest(operation);
+        if (apiKey != null) request.Headers.Add("X-NuGet-ApiKey", apiKey);
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    public static TheoryData<bool, bool, Dictionary<string, string>, string> MismatchedSettings => new()
+    {
+        // Keys the application would ignore, leaving the feed open.
+        { false, false, RoleKeys(), "doesn't add the feed's authentication" },
+        { false, false, new() { { "ApiKey", AdminKey } }, "doesn't add the feed's authentication" },
+        { false, false, new() { { "Authorization:AnonymousRole", "None" } }, "doesn't add the feed's authentication" },
+
+        // Authentication with nothing to authenticate.
+        { true, false, new(), "no API keys are configured" },
+        { true, true, new(), "no API keys are configured" },
+
+        // Roles the application would ignore, letting every key do everything.
+        { true, false, RoleKeys(), "'Authorization:ApiKeys:1:Role' is ReadWrite, but the application doesn't add the feed's authorization policies" },
+
+        // Roles the application needs.
+        { true, true, KeysWithoutRoles(), "'Authorization:ApiKeys:0:Role' is required" },
+
+        // Policies that can't authenticate the keys.
+        { false, true, RoleKeys(), "Call services.AddAuthentication().AddNuGetFeedApiKey()" },
+    };
+
+    [Theory]
+    [MemberData(nameof(MismatchedSettings))]
+    public void SettingsMustMatchWhatTheApplicationAdds(
+        bool useAuthentication,
+        bool useAuthorization,
+        Dictionary<string, string> configuration,
+        string expectedFailure)
+    {
+        var app = new NuGetFeedTestApplication(_output, configuration: configuration, useAuthentication: useAuthentication, useAuthorization: useAuthorization);
+
+        var exception = Assert.Throws<OptionsValidationException>(() => app.Services);
+
+        Assert.Contains(exception.Failures, failure => failure.Contains(expectedFailure));
+    }
+
+    [Fact]
+    public void ApiKeysNeedAUniqueKey()
+    {
+        var options = new FeedAuthorizationOptions
+        {
+            ApiKeys =
+            {
+                new ApiKeyOptions { Name = "No role", Key = "key" },
+                new ApiKeyOptions { Name = "No key", Role = FeedRole.Admin },
+                new ApiKeyOptions { Name = "Duplicate", Key = "key", Role = FeedRole.ReadOnly },
+            },
+        };
+
+        var result = new ValidateNuGetFeedOptions().Validate(Options.DefaultName, options);
+
+        Assert.True(result.Failed);
+        Assert.Collection(
+            result.Failures!,
+            failure => Assert.Contains("ApiKeys:1:Key field is required", failure),
+            failure => Assert.Contains("ApiKeys:2:Key field is the same as another API key", failure));
+    }
+
+    private static Dictionary<string, string> KeysWithoutRoles() => new()
+    {
+        { "Authorization:ApiKeys:0:Key", ReadOnlyKey },
+        { "Authorization:ApiKeys:1:Key", ReadWriteKey },
+    };
+
+    private static Dictionary<string, string> RoleKeys() => new()
+    {
+        { "Authorization:ApiKeys:0:Name", "Administrator" },
+        { "Authorization:ApiKeys:0:Key", AdminKey },
+        { "Authorization:ApiKeys:0:Role", "Admin" },
+        { "Authorization:ApiKeys:1:Name", "Build server" },
+        { "Authorization:ApiKeys:1:Key", ReadWriteKey },
+        { "Authorization:ApiKeys:1:Role", "ReadWrite" },
+        { "Authorization:ApiKeys:2:Name", "Developers" },
+        { "Authorization:ApiKeys:2:Key", ReadOnlyKey },
+        { "Authorization:ApiKeys:2:Role", "ReadOnly" },
+    };
+
+    private static HttpRequestMessage CreateRequest(string operation) => operation switch
+    {
+        "read" => new HttpRequestMessage(HttpMethod.Get, "v3/index.json"),
+        "push" => new HttpRequestMessage(HttpMethod.Put, "api/v2/package")
+        {
+            Content = new MultipartFormDataContent
+            {
+                { new StreamContent(TestPackages.Create("New.Package", "1.0.0")), "package", "package.nupkg" },
+            },
+        },
+        "unlist" or "hard delete" => new HttpRequestMessage(HttpMethod.Delete, "api/v2/package/Seed.Package/1.0.0"),
+        "relist" => new HttpRequestMessage(HttpMethod.Post, "api/v2/package/Seed.Package/1.0.0"),
+        "deprecate" => new HttpRequestMessage(HttpMethod.Put, "api/package/Seed.Package/1.0.0/deprecation")
+        {
+            Content = JsonContent.Create(new { reasons = new[] { "Legacy" } }),
+        },
+        "vulnerability" => new HttpRequestMessage(HttpMethod.Put, "api/vulnerabilities")
+        {
+            Content = JsonContent.Create(new
+            {
+                packageId = "Seed.Package",
+                versions = "(, 2.0.0)",
+                url = "https://example.com/advisories/1",
+                severity = 2,
+            }),
+        },
+        _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, null),
+    };
+
+    private static AuthenticationHeaderValue Basic(string userName, string password)
+        => new("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{password}")));
+
+    private NuGetFeedTestApplication CreateApp(
+        IReadOnlyDictionary<string, string>? configuration = null,
+        bool useAuthentication = true,
+        bool useAuthorization = true)
+    {
+        var app = new NuGetFeedTestApplication(_output, configuration: configuration, useAuthentication: useAuthentication, useAuthorization: useAuthorization);
+        _disposables.Add(app);
+        return app;
+    }
+}

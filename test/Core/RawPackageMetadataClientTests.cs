@@ -1,9 +1,9 @@
-using NuGetFeed.Core.Tests.Support;
-using NuGetFeed.PackageMetadata;
 using System.Threading.Tasks;
+using NuGet.Core.PackageMetadata;
+using NuGet.Core.Tests.Support;
 using Xunit;
 
-namespace NuGetFeed.Core.Tests;
+namespace NuGet.Core.Tests;
 
 public class RawPackageMetadataClientTests : IClassFixture<ProtocolFixture>
 {

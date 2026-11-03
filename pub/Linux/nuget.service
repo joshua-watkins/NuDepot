@@ -1,0 +1,25 @@
+[Unit]
+Description=NuGetFeed A lightweight NuGet and symbol server.
+After=network.target
+StartLimitIntervalSec=10
+
+[Service]
+# The application reports start-up and shutdown to systemd (UseSystemd/AddSystemd).
+Type=notify
+WorkingDirectory=/usr/share/nugetfeed/
+ExecStart=/usr/share/nugetfeed/NuGet.Linux
+Environment="NUGETFEED_CONFIG_ROOT=/usr/share/nugetfeed"
+# Uncomment this to listen on all network interfaces instead of localhost:5000.
+#Environment="ASPNETCORE_URLS=http://0.0.0.0:5000"
+
+# Creates /var/lib/nugetfeed, owned by the service user, for the database and packages.
+StateDirectory=nugetfeed
+
+Restart=always
+RestartSec=1
+User=nugetfeed
+Group=nugetfeed
+SyslogIdentifier=nugetfeed
+
+[Install]
+WantedBy=multi-user.target

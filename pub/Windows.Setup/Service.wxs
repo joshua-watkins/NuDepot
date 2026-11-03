@@ -1,0 +1,66 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Fragment>
+    <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
+      <Component>
+        <File Id="NuGetFeedExe" Name="NuGet.Windows.exe" Source="!(bindpath.Windows)NuGet.Windows.exe" KeyPath="yes" />
+
+        <ServiceInstall Name="NuGetFeed"
+                        DisplayName="NuGetFeed"
+                        Description="!(loc.Description)"
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="NT AUTHORITY\LocalService">
+          <!-- Restart the service if it stops unexpectedly. -->
+          <util:ServiceConfig FirstFailureActionType="restart"
+                              SecondFailureActionType="restart"
+                              ThirdFailureActionType="restart"
+                              RestartServiceDelayInSeconds="5"
+                              ResetPeriodInDays="1" />
+        </ServiceInstall>
+
+        <ServiceControl Id="NuGetFeedServiceControl"
+                        Name="NuGetFeed"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+
+        <!--
+          The service logs to the Application event log. LocalService isn't allowed to
+          create the event source, so register it here.
+        -->
+        <util:EventSource Name="NuGetFeed"
+                          Log="Application"
+                          EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
+      </Component>
+
+      <!-- Keep the administrator's settings when upgrading or uninstalling. -->
+      <Component NeverOverwrite="yes" Permanent="yes">
+        <File Id="AppSettings" Name="appsettings.json" Source="!(bindpath.Windows)appsettings.json" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
+      <Files Include="!(bindpath.Windows)**">
+        <Exclude Files="!(bindpath.Windows)NuGet.Windows.exe" />
+        <Exclude Files="!(bindpath.Windows)appsettings.json" />
+        <Exclude Files="!(bindpath.Windows)appsettings.Development.json" />
+        <Exclude Files="!(bindpath.Windows)**\*.pdb" />
+      </Files>
+    </ComponentGroup>
+
+    <ComponentGroup Id="DataComponents" Directory="DATAFOLDER">
+      <!--
+        The database and packages live here. The service runs as LocalService, so give it
+        modify access. Leave the folder behind on uninstall so packages aren't lost.
+      -->
+      <Component Id="DataFolder" Guid="{6C2D0E8B-6A4B-4C55-9C7B-2F6E3A1D9B47}" Permanent="yes">
+        <CreateFolder>
+          <PermissionEx Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1301bf;;;LS)" />
+        </CreateFolder>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

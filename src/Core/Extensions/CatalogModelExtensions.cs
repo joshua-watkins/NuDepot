@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using NuGet.Core.Models;
 using NuGet.Frameworks;
 using NuGet.Versioning;
-using NuGetFeed.Models;
 
-namespace NuGetFeed.Extensions;
+namespace NuGet.Core.Extensions;
 
 /// <summary>
 /// These are documented interpretations of values returned by the catalog API.

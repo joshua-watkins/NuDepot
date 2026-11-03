@@ -1,10 +1,10 @@
 using System;
 using System.Threading.Tasks;
-using NuGetFeed.Core.Tests.Support;
-using NuGetFeed.PackageContent;
+using NuGet.Core.PackageContent;
+using NuGet.Core.Tests.Support;
 using Xunit;
 
-namespace NuGetFeed.Core.Tests;
+namespace NuGet.Core.Tests;
 
 public class RawPackageContentTests : IClassFixture<ProtocolFixture>
 {

@@ -1,5 +1,6 @@
-using NuGetFeed;
-using NuGetFeed.Extensions;
+using NuGet.Feed;
+using NuGet.Feed.Extensions;
+using NuGet.Gallery.Extensions;
 
 // Runs the NuGet feed server and website as a Windows Service.
 // When started from a console instead, it runs as a normal console application.

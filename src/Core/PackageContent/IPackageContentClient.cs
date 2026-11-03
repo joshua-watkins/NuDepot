@@ -1,10 +1,10 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Core.Models;
 using NuGet.Versioning;
-using NuGetFeed.Models;
 
-namespace NuGetFeed.PackageContent;
+namespace NuGet.Core.PackageContent;
 
 /// <summary>
 /// The Package Content resource, used to download NuGet packages and to fetch other metadata.

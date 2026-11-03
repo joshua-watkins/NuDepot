@@ -4,7 +4,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
-		<RootNamespace>$(SolutionName)</RootNamespace>
+		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
 		<IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
 

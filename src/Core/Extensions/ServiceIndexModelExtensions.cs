@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
-using NuGetFeed.Models;
+using NuGet.Core.Models;
 
-namespace NuGetFeed.Extensions;
+namespace NuGet.Core.Extensions;
 
 /// <summary>
 /// These are documented interpretations of values returned by the Service Index resource.

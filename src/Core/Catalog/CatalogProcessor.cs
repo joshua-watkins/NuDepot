@@ -2,10 +2,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using NuGetFeed.Extensions;
-using NuGetFeed.Models;
+using NuGet.Core.Extensions;
+using NuGet.Core.Models;
 
-namespace NuGetFeed.Catalog;
+namespace NuGet.Core.Catalog;
 
 /// <summary>
 /// Processes catalog leafs in chronological order.

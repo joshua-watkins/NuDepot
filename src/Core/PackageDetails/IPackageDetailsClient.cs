@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Core.Models;
 using NuGet.Versioning;
-using NuGetFeed.Models;
 
-namespace NuGetFeed.PackageDetails;
+namespace NuGet.Core.PackageDetails;
 
 /// <summary>
 /// The client used to fetch the information shown on a package's details page.

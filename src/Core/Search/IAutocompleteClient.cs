@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGetFeed.Models;
+using NuGet.Core.Models;
 
-namespace NuGetFeed.Search;
+namespace NuGet.Core.Search;
 
 /// <summary>
 /// The client used to search for packages.

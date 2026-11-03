@@ -1,0 +1,56 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/docs/">
+    <File Path="README.md" />
+    <File Path="docs/configuration.md" />
+    <File Path="docs/index.md" />
+    <File Path="docs/NuGet_green.svg" />
+    <File Path="docs/packageIcon.png" />
+    <File Path="docs/README.md" />
+  </Folder>
+  <Folder Name="/docs/advanced/">
+    <File Path="docs/advanced/debugging.md" />
+    <File Path="docs/advanced/sdk.md" />
+  </Folder>
+  <Folder Name="/docs/import/">
+    <File Path="docs/import/local-feeds.md" />
+    <File Path="docs/import/nugetorg.md" />
+    <File Path="docs/import/nugetserver.md" />
+  </Folder>
+  <Folder Name="/docs/installation/">
+    <File Path="docs/installation/aliyun.md" />
+    <File Path="docs/installation/aws.md" />
+    <File Path="docs/installation/azure.md" />
+    <File Path="docs/installation/docker.md" />
+    <File Path="docs/installation/gcp.md" />
+    <File Path="docs/installation/iis-proxy.md" />
+    <File Path="docs/installation/local.md" />
+  </Folder>
+  <Folder Name="/docs/vs/">
+    <File Path="docs/vs/artifactory.md" />
+    <File Path="docs/vs/azure-artifacts.md" />
+    <File Path="docs/vs/liget.md" />
+    <File Path="docs/vs/local-feeds.md" />
+    <File Path="docs/vs/myget.md" />
+    <File Path="docs/vs/nexus.md" />
+    <File Path="docs/vs/nugetorg.md" />
+    <File Path="docs/vs/nugetserver.md" />
+    <File Path="docs/vs/teamcity.md" />
+  </Folder>
+  <Project Path="src/Core/Core.csproj" />
+  <Project Path="src/Feed/Feed.csproj" />
+  <Project Path="src/Gallery/Gallery.csproj" />
+  <Project Path="test/Core/Core.Tests.csproj" />
+  <Project Path="test/Feed/Feed.Tests.csproj" />
+  <Project Path="test/Gallery/Gallery.Tests.csproj" />
+  <Project Path="pub/Linux/Linux.csproj" />
+  <Project Path="pub/Windows/Windows.csproj" />
+  <Project Path="pub/Windows.Setup/Windows.Setup.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" Id="1f9582b8-5580-45cd-92cf-83fa0e23d35f">
+    <Platform Solution="*|Any CPU" Project="x64" />
+  </Project>
+</Solution>

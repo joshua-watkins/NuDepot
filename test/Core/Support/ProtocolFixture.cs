@@ -1,13 +1,11 @@
-using NuGetFeed;
-using NuGetFeed.Catalog;
-using NuGetFeed.Core.Tests;
-using NuGetFeed.PackageContent;
-using NuGetFeed.PackageMetadata;
-using NuGetFeed.Search;
-using NuGetFeed.ServiceIndex;
 using System.Net.Http;
+using NuGet.Core.Catalog;
+using NuGet.Core.PackageContent;
+using NuGet.Core.PackageMetadata;
+using NuGet.Core.Search;
+using NuGet.Core.ServiceIndex;
 
-namespace NuGetFeed.Core.Tests.Support;
+namespace NuGet.Core.Tests.Support;
 
 public class ProtocolFixture
 {

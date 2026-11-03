@@ -1,10 +1,10 @@
-using NuGetFeed.Core.Tests.Support;
-using NuGetFeed.Extensions;
-using NuGetFeed.ServiceIndex;
 using System.Threading.Tasks;
+using NuGet.Core.Extensions;
+using NuGet.Core.ServiceIndex;
+using NuGet.Core.Tests.Support;
 using Xunit;
 
-namespace NuGetFeed.Core.Tests;
+namespace NuGet.Core.Tests;
 
 public class RawServiceIndexClientTests : IClassFixture<ProtocolFixture>
 {
