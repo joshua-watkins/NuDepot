@@ -4,6 +4,9 @@ using static NuGet.Frameworks.FrameworkConstants;
 
 namespace NuDepot.Feed.Indexing;
 
+/// <summary>
+/// Finds the target frameworks a package's framework is compatible with, so searches can filter by framework.
+/// </summary>
 public class FrameworkCompatibilityService : IFrameworkCompatibilityService
 {
     private const string AnyFramework = "any";
@@ -37,6 +40,7 @@ public class FrameworkCompatibilityService : IFrameworkCompatibilityService
         KnownFrameworks["net471"] = new NuGetFramework(FrameworkIdentifiers.Net, new Version(4, 7, 1, 0));
     }
 
+    /// <inheritdoc />
     public IReadOnlyList<string> FindAllCompatibleFrameworks(string name)
     {
         if (!KnownFrameworks.TryGetValue(name, out NuGetFramework? framework))

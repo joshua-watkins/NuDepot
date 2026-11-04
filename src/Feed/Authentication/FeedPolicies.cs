@@ -8,10 +8,29 @@ namespace NuDepot.Feed.Authentication;
 /// </summary>
 public static class FeedPolicies
 {
+    /// <summary>
+    /// The policy for <see cref="FeedPermissions.Read"/>.
+    /// </summary>
     public const string Read = "NuDepot.Read";
+
+    /// <summary>
+    /// The policy for <see cref="FeedPermissions.Push"/>.
+    /// </summary>
     public const string Push = "NuDepot.Push";
+
+    /// <summary>
+    /// The policy for <see cref="FeedPermissions.Unlist"/>.
+    /// </summary>
     public const string Unlist = "NuDepot.Unlist";
+
+    /// <summary>
+    /// The policy for <see cref="FeedPermissions.Deprecate"/>.
+    /// </summary>
     public const string Deprecate = "NuDepot.Deprecate";
+
+    /// <summary>
+    /// The policy for <see cref="FeedPermissions.ManageVulnerabilities"/>.
+    /// </summary>
     public const string ManageVulnerabilities = "NuDepot.ManageVulnerabilities";
 
     /// <summary>

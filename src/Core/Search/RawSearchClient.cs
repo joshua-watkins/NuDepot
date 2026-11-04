@@ -17,6 +17,7 @@ public class RawSearchClient(HttpClient httpClient, string searchUrl) : ISearchC
     private HttpClient HttpClient { get; } = httpClient;
     private string SearchUrl { get; } = searchUrl;
 
+    /// <inheritdoc />
     public async Task<SearchResponse> SearchAsync(string? query = null, int skip = 0, int take = 20, bool includePrerelease = true, bool includeSemVer2 = true, string? packageType = null, string? framework = null, CancellationToken cancellationToken = default)
     {
         string url = AddSearchQueryString(SearchUrl, query, skip, take, includePrerelease, includeSemVer2, "q", packageType, framework);

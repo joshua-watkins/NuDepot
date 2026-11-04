@@ -1,9 +1,13 @@
 using Microsoft.AspNetCore.Routing;
 using NuDepot.Core.Hosting;
 
-// In the namespace of IApplicationBuilder, so applications see UseNuDepot() without a using.
+#pragma warning disable IDE0130 // Namespace does not match folder structure
 namespace Microsoft.AspNetCore.Builder;
+#pragma warning restore IDE0130 // Namespace does not match folder structure
 
+/// <summary>
+/// Uses NuDepot's parts in an application's request pipeline.
+/// </summary>
 public static class NuDepotApplicationBuilderExtensions
 {
     // Where the application keeps its NuDepot pipeline, so its middleware is only added once.

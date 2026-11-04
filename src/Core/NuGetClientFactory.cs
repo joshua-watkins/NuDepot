@@ -18,8 +18,8 @@ public partial class NuGetClientFactory
     private HttpClient HttpClient { get; }
     private string ServiceIndexUrl { get; }
 
-    private SemaphoreSlim Mutex { get; }
-    private NuGetClients? _clients;
+    private SemaphoreSlim Mutex { get; } = new(1, 1);
+    private NuGetClients? Clients { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NuGetClientFactory"/> class
@@ -29,7 +29,6 @@ public partial class NuGetClientFactory
     {
         HttpClient = null!;
         ServiceIndexUrl = null!;
-        Mutex = new SemaphoreSlim(1, 1);
     }
 
     /// <summary>
@@ -45,9 +44,6 @@ public partial class NuGetClientFactory
     {
         HttpClient = httpClient;
         ServiceIndexUrl = serviceIndexUrl;
-
-        Mutex = new SemaphoreSlim(1, 1);
-        _clients = null;
     }
 
     /// <summary>
@@ -162,13 +158,13 @@ public partial class NuGetClientFactory
 
     private async Task<T> GetAsync<T>(Func<NuGetClients, T> clientFactory, CancellationToken cancellationToken)
     {
-        if (_clients == null)
+        if (Clients == null)
         {
             await Mutex.WaitAsync(cancellationToken);
 
             try
             {
-                if (_clients == null)
+                if (Clients == null)
                 {
                     RawServiceIndexClient serviceIndexClient = new(HttpClient, ServiceIndexUrl);
 
@@ -198,7 +194,7 @@ public partial class NuGetClientFactory
                         serviceIndex.GetReadmeUriTemplate(),
                         serviceIndex.GetPackageDependentsResourceUrl());
 
-                    _clients = new NuGetClients
+                    Clients = new()
                     {
                         ServiceIndex = serviceIndex,
 
@@ -218,7 +214,7 @@ public partial class NuGetClientFactory
         }
 
         // TODO: This should periodically refresh the service index response.
-        return clientFactory(_clients!);
+        return clientFactory(Clients!);
     }
 
     private class NuGetClients

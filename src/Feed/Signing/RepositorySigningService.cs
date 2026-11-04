@@ -15,6 +15,11 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
     private RepositorySigningOptions Options { get; }
     private ILogger<RepositorySigningService> Logger { get; }
 
+    /// <summary>
+    /// Loads the signing certificate, if <see cref="Configuration.RepositorySigningOptions.IsEnabled"/>.
+    /// </summary>
+    /// <param name="options">The feed's options.</param>
+    /// <param name="logger">The logger.</param>
     public RepositorySigningService(IOptions<FeedOptions> options, ILogger<RepositorySigningService> logger)
     {
         Options = options?.Value?.RepositorySigning ?? new RepositorySigningOptions();
@@ -27,10 +32,13 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
         }
     }
 
+    /// <inheritdoc />
     public X509Certificate2? Certificate { get; }
 
+    /// <inheritdoc />
     public string? CertificateFingerprint { get; }
 
+    /// <inheritdoc />
     public async Task<RepositorySigningResult> SignAsync(Stream package, string serviceIndexUrl, CancellationToken cancellationToken)
     {
         if (Certificate == null)
@@ -68,6 +76,7 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
         }
     }
 
+    /// <inheritdoc />
     public void Dispose() => Certificate?.Dispose();
 
     private async Task<Stream> SignAsync(Stream package, Uri serviceIndexUrl, CancellationToken cancellationToken)

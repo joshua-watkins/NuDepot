@@ -5,7 +5,7 @@ namespace NuDepot.Feed.Metadata;
 /// <summary>
 /// The information on all versions of a package.
 /// </summary>
-/// <param name="packageId"></param>
+/// <param name="packageId">The package's ID.</param>
 /// <param name="packages">All versions of the package.</param>
 /// <param name="semVer2">Whether the registration is for the hive that includes SemVer 2.0.0 packages.</param>
 /// <param name="catalogLeafUrls">The latest catalog leaf of each version, keyed by lowercase full normalized version.</param>
@@ -34,8 +34,16 @@ public class PackageRegistration(string packageId, IReadOnlyList<Package> packag
     /// </summary>
     public IReadOnlyDictionary<string, string> CatalogLeafUrls { get; } = catalogLeafUrls ?? NoCatalogLeafUrls;
 
+    /// <summary>
+    /// The package's known vulnerabilities.
+    /// </summary>
     public IReadOnlyList<VulnerabilityAdvisory> Vulnerabilities { get; } = vulnerabilities ?? [];
 
+    /// <summary>
+    /// Gets the URL of a version's latest catalog leaf.
+    /// </summary>
+    /// <param name="package">The package version.</param>
+    /// <returns>The URL, or null if the catalog doesn't have the version.</returns>
     public string? GetCatalogLeafUrlOrNull(Package package)
         => CatalogLeafUrls.TryGetValue(package.Version.ToFullString().ToLowerInvariant(), out string? url) ? url : null;
 }

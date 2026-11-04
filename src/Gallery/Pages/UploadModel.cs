@@ -22,10 +22,21 @@ public class UploadModel(IServiceIndexClient serviceIndex, FeedConnection feed)
     /// </summary>
     public string BaseUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The feed's service index URL, as the browser reaches it.
+    /// </summary>
     public string? ServiceIndexUrl { get; private set; }
 
+    /// <summary>
+    /// The feed's package publish URL, as the browser reaches it.
+    /// </summary>
     public string? PublishUrl { get; private set; }
 
+    /// <summary>
+    /// Reads the feed's URLs from its service index.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when the URLs are set.</returns>
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
         ServiceIndexResponse serviceIndex = await ServiceIndex.GetAsync(cancellationToken);

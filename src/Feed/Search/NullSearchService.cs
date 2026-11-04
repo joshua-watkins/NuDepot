@@ -31,21 +31,25 @@ public class NullSearchService : ISearchService
             Data = []
         });
 
+    /// <inheritdoc />
     public Task<AutocompleteResponse> AutocompleteAsync(AutocompleteRequest request, CancellationToken cancellationToken)
     {
         return EmptyAutocompleteResponseTask;
     }
 
+    /// <inheritdoc />
     public Task<AutocompleteResponse> ListPackageVersionsAsync(VersionsRequest request, CancellationToken cancellationToken)
     {
         return EmptyAutocompleteResponseTask;
     }
 
+    /// <inheritdoc />
     public Task<DependentsResponse> FindDependentsAsync(string packageId, CancellationToken cancellationToken)
     {
         return EmptyDependentsResponseTask;
     }
 
+    /// <inheritdoc />
     public Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
     {
         return EmptySearchResponseTask;

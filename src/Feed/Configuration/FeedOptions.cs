@@ -63,11 +63,23 @@ public class FeedOptions
     /// </summary>
     public RepositorySigningOptions RepositorySigning { get; set; } = new();
 
+    /// <summary>
+    /// The package database.
+    /// </summary>
     public DatabaseOptions Database { get; set; } = new();
 
+    /// <summary>
+    /// Where package and symbol files are stored.
+    /// </summary>
     public StorageOptions Storage { get; set; } = new();
 
+    /// <summary>
+    /// How packages are searched.
+    /// </summary>
     public SearchOptions Search { get; set; } = new();
 
+    /// <summary>
+    /// Read-through caching of packages from an upstream feed.
+    /// </summary>
     public MirrorOptions Mirror { get; set; } = new();
 }

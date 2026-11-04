@@ -1,5 +1,8 @@
 namespace NuDepot.Feed.Configuration;
 
+/// <summary>
+/// Read-through caching: packages that aren't on the feed are indexed from an upstream feed.
+/// </summary>
 public class MirrorOptions
 {
     /// <summary>

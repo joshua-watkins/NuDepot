@@ -14,7 +14,7 @@ public static class CatalogModelExtensions
     /// Gets the leaves that lie within the provided commit timestamp bounds. The result is sorted by commit
     /// timestamp, then package ID, then package version (SemVer order).
     /// </summary>
-    /// <param name="catalogPage"></param>
+    /// <param name="catalogPage">The catalog page.</param>
     /// <param name="minCommitTimestamp">The exclusive lower time bound on <see cref="CatalogLeafItem.CommitTimestamp"/>.</param>
     /// <param name="maxCommitTimestamp">The inclusive upper time bound on <see cref="CatalogLeafItem.CommitTimestamp"/>.</param>
     /// <param name="excludeRedundantLeaves">Only show the latest leaf concerning each package.</param>

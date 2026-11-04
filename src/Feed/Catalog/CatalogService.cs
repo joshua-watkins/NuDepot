@@ -18,6 +18,9 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
     /// </summary>
     public const int MaxPageSize = 550;
 
+    /// <summary>
+    /// The hash algorithm of <see cref="CatalogPackageSnapshot.PackageHash"/>.
+    /// </summary>
     public const string PackageHashAlgorithm = "SHA512";
 
     private static readonly IReadOnlyList<string> PackageDetailsLeafType = [CatalogEntry.PackageDetailsType, "catalog:Permalink"];
@@ -32,6 +35,7 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
     private SystemTime Time { get; } = time;
     private ILogger<CatalogService> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public async Task AddPackageDetailsAsync(IReadOnlyList<Package> packages, CancellationToken cancellationToken)
     {
         if (packages == null || packages.Count == 0)
@@ -56,6 +60,7 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
         await CommitAsync(entries, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task AddPackageDeleteAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         await CommitAsync(
@@ -70,6 +75,7 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<CatalogIndex> GetIndexAsync(CancellationToken cancellationToken)
     {
         var commits = await Context.CatalogEntries
@@ -98,6 +104,7 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
         };
     }
 
+    /// <inheritdoc />
     public async Task<CatalogPage?> GetPageOrNullAsync(int page, CancellationToken cancellationToken)
     {
         if (page < 0)
@@ -132,6 +139,7 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
         };
     }
 
+    /// <inheritdoc />
     public async Task<CatalogLeaf?> GetLeafOrNullAsync(int key, CancellationToken cancellationToken)
     {
         CatalogEntry? entry = await Context.CatalogEntries.SingleOrDefaultAsync(e => e.Key == key, cancellationToken);
@@ -201,6 +209,7 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
         };
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyDictionary<string, string>> FindLatestLeafUrlsAsync(string id, CancellationToken cancellationToken)
     {
         var entries = await Context.CatalogEntries
@@ -219,6 +228,7 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
                 });
     }
 
+    /// <inheritdoc />
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         if (await Context.CatalogEntries.AnyAsync(cancellationToken))

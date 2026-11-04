@@ -5,21 +5,29 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace NuDepot.Core.Catalog;
 
+/// <summary>
+/// The client to interact with a feed's catalog resource.
+/// </summary>
+/// <param name="httpClient">The HTTP client used to send requests.</param>
+/// <param name="catalogUrl">The URL of the feed's catalog index.</param>
 public class RawCatalogClient(HttpClient httpClient, string catalogUrl) : ICatalogClient
 {
     private HttpClient HttpClient { get; } = httpClient;
     private string CatalogUrl { get; } = catalogUrl;
 
+    /// <inheritdoc />
     public async Task<CatalogIndex> GetIndexAsync(CancellationToken cancellationToken = default)
     {
         return await HttpClient.GetFromJsonAsync(CatalogUrl, NuGetJsonContext.Default.CatalogIndex, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<CatalogPage> GetPageAsync(string pageUrl, CancellationToken cancellationToken = default)
     {
         return await HttpClient.GetFromJsonAsync(pageUrl, NuGetJsonContext.Default.CatalogPage, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<PackageDeleteCatalogLeaf> GetPackageDeleteLeafAsync(string leafUrl, CancellationToken cancellationToken = default)
     {
         return await GetAndValidateLeafAsync(
@@ -29,6 +37,7 @@ public class RawCatalogClient(HttpClient httpClient, string catalogUrl) : ICatal
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<PackageDetailsCatalogLeaf> GetPackageDetailsLeafAsync(string leafUrl, CancellationToken cancellationToken = default)
     {
         return await GetAndValidateLeafAsync(

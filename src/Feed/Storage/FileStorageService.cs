@@ -14,6 +14,10 @@ public class FileStorageService : IStorageService
 
     private string StorePath { get; }
 
+    /// <summary>
+    /// Stores content in <see cref="Configuration.StorageOptions.Path"/>.
+    /// </summary>
+    /// <param name="options">The feed's options.</param>
     public FileStorageService(IOptionsSnapshot<FeedOptions> options)
     {
         // Resolve relative path components ('.'/'..') and ensure there is a trailing slash.
@@ -22,6 +26,7 @@ public class FileStorageService : IStorageService
             StorePath += Path.DirectorySeparatorChar;
     }
 
+    /// <inheritdoc />
     public Task<Stream?> GetAsync(string path, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -32,6 +37,7 @@ public class FileStorageService : IStorageService
         return Task.FromResult<Stream?>(content);
     }
 
+    /// <inheritdoc />
     public Task<Uri?> GetDownloadUriAsync(string path, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -41,6 +47,7 @@ public class FileStorageService : IStorageService
         return Task.FromResult<Uri?>(result);
     }
 
+    /// <inheritdoc />
     public async Task<StoragePutResult> PutAsync(string path, Stream content, string contentType, CancellationToken cancellationToken = default)
     {
         if (content == null)
@@ -75,6 +82,7 @@ public class FileStorageService : IStorageService
         }
     }
 
+    /// <inheritdoc />
     public Task DeleteAsync(string path, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

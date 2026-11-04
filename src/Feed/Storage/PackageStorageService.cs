@@ -4,6 +4,11 @@ using NuGet.Versioning;
 
 namespace NuDepot.Feed.Storage;
 
+/// <summary>
+/// Stores packages' files: the package, its nuspec, README, icon and license.
+/// </summary>
+/// <param name="storage">Where files are stored.</param>
+/// <param name="logger">The logger.</param>
 public class PackageStorageService(IStorageService storage, ILogger<PackageStorageService> logger) : IPackageStorageService
 {
     private const string PackagesPathPrefix = "packages";
@@ -19,6 +24,7 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
     private IStorageService Storage { get; } = storage;
     private ILogger<PackageStorageService> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public async Task SavePackageContentAsync(Package package, Stream packageStream, Stream nuspecStream, Stream? readmeStream, Stream? iconStream, Stream? licenseStream, CancellationToken cancellationToken = default)
     {
         package = package ?? throw new ArgumentNullException(nameof(package));
@@ -152,26 +158,31 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
             lowercasedNormalizedVersion);
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetPackageStreamAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         return await GetStreamAsync(id, version, PackagePath, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetNuspecStreamAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         return await GetStreamAsync(id, version, NuspecPath, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetReadmeStreamAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         return await GetStreamAsync(id, version, ReadmePath, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetIconStreamAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         return await GetStreamAsync(id, version, IconPath, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetLicenseStreamAsync(string id, NuGetVersion version, bool licenseIsMarkDown, CancellationToken cancellationToken)
     {
         string lowercasedId = id.ToLowerInvariant();
@@ -182,6 +193,7 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
         return await GetStreamAsync(licensePath, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task DeleteAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         string lowercasedId = id.ToLowerInvariant();

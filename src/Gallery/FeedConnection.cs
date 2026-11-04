@@ -24,6 +24,13 @@ public class FeedConnection
     private Lazy<string> LazyServiceIndexUrl { get; }
     private Lazy<NuGetClientFactory> LazyClientFactory { get; }
 
+    /// <summary>
+    /// Connects to the feed at <see cref="GalleryOptions.ServiceIndexUrl"/>, or to the feed hosted in the same application if it's unset.
+    /// </summary>
+    /// <param name="options">The gallery's options.</param>
+    /// <param name="features">What the application's NuDepot parts offer.</param>
+    /// <param name="server">The application's server, whose addresses reach a feed hosted with it.</param>
+    /// <param name="httpContextAccessor">The current request, whose cookies are forwarded to a feed hosted with it.</param>
     public FeedConnection(IOptions<GalleryOptions> options, NuDepotFeatures features, IServer? server, IHttpContextAccessor? httpContextAccessor)
     {
         Features = features;

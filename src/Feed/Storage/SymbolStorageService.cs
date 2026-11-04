@@ -1,5 +1,9 @@
 namespace NuDepot.Feed.Storage;
 
+/// <summary>
+/// Stores symbol files, by the key the symbol server looks them up by.
+/// </summary>
+/// <param name="storage">Where files are stored.</param>
 public class SymbolStorageService(IStorageService storage) : ISymbolStorageService
 {
     private const string SymbolsPathPrefix = "symbols";
@@ -7,6 +11,7 @@ public class SymbolStorageService(IStorageService storage) : ISymbolStorageServi
 
     private IStorageService Storage { get; } = storage;
 
+    /// <inheritdoc />
     public async Task SavePortablePdbContentAsync(string filename, string key, Stream pdbStream, CancellationToken cancellationToken)
     {
         string path = GetPathForKey(filename, key);
@@ -16,6 +21,7 @@ public class SymbolStorageService(IStorageService storage) : ISymbolStorageServi
             throw new InvalidOperationException($"Could not save PDB {filename} {key} due to conflict");
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetPortablePdbContentStreamOrNullAsync(string filename, string key)
     {
         string path = GetPathForKey(filename, key);

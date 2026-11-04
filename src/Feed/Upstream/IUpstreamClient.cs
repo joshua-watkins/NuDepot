@@ -13,7 +13,7 @@ public interface IUpstreamClient
     /// if the package could not be found.
     /// </summary>
     /// <param name="id">The package ID to lookup</param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>
     /// All versions of a package, including unlisted packages.
     /// Returns an empty list if the package could not be found.
@@ -25,7 +25,7 @@ public interface IUpstreamClient
     /// if the package could not be found.
     /// </summary>
     /// <param name="id">The package ID to lookup</param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>
     /// The metadata for all versions of a package, including unlisted versions.
     /// Returns an empty list if the package could not be found.
@@ -37,7 +37,7 @@ public interface IUpstreamClient
     /// </summary>
     /// <param name="id">The package ID to download.</param>
     /// <param name="version">The package version to download.</param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>
     /// The package stream or null if the package cannot be found.
     /// The stream is guaranteed to be seekable if not not null.

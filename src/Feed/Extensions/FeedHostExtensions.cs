@@ -10,6 +10,9 @@ using NuDepot.Feed.Entities;
 // In the namespace of IHost, so applications see RunMigrationsAsync() without a using.
 namespace Microsoft.Extensions.Hosting;
 
+/// <summary>
+/// Extensions to the host of an application with the NuGet feed.
+/// </summary>
 public static class FeedHostExtensions
 {
     /// <summary>
@@ -51,6 +54,13 @@ public static class FeedHostExtensions
         return builder;
     }
 
+    /// <summary>
+    /// Updates the package database's schema, and adds packages that predate the catalog to it,
+    /// if <see cref="NuDepot.Feed.Configuration.FeedOptions.RunMigrationsAtStartup"/> is true. Call it before running the host.
+    /// </summary>
+    /// <param name="host">The host.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when the database is up to date.</returns>
     public static async Task RunMigrationsAsync(this IHost host, CancellationToken cancellationToken = default)
     {
         // Run migrations if necessary.

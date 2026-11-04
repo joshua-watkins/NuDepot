@@ -45,15 +45,27 @@ public class RepositorySigningCertificate
     [JsonPropertyName("fingerprints")]
     public IReadOnlyDictionary<string, string> Fingerprints { get; set; } = null!;
 
+    /// <summary>
+    /// The certificate's subject distinguished name.
+    /// </summary>
     [JsonPropertyName("subject")]
     public string? Subject { get; set; }
 
+    /// <summary>
+    /// The certificate's issuer distinguished name.
+    /// </summary>
     [JsonPropertyName("issuer")]
     public string? Issuer { get; set; }
 
+    /// <summary>
+    /// When the certificate becomes valid.
+    /// </summary>
     [JsonPropertyName("notBefore")]
     public DateTimeOffset NotBefore { get; set; }
 
+    /// <summary>
+    /// When the certificate expires.
+    /// </summary>
     [JsonPropertyName("notAfter")]
     public DateTimeOffset NotAfter { get; set; }
 }

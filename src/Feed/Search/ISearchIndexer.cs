@@ -2,6 +2,9 @@ using NuDepot.Feed.Entities;
 
 namespace NuDepot.Feed.Search;
 
+/// <summary>
+/// Adds packages to the search index.
+/// </summary>
 public interface ISearchIndexer
 {
     /// <summary>

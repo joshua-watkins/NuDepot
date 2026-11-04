@@ -4,6 +4,12 @@ using NuDepot.Feed.Entities;
 
 namespace NuDepot.Feed.Upstream;
 
+/// <summary>
+/// Imports packages' download counts from nuget.org, for the "import downloads" command.
+/// </summary>
+/// <param name="context">The package database.</param>
+/// <param name="downloadsSource">Where the download counts come from.</param>
+/// <param name="logger">The logger.</param>
 public class DownloadsImporter(NuDepotContext context, IPackageDownloadsSource downloadsSource, ILogger<DownloadsImporter> logger)
 {
     private const int BatchSize = 200;
@@ -12,6 +18,11 @@ public class DownloadsImporter(NuDepotContext context, IPackageDownloadsSource d
     private IPackageDownloadsSource DownloadsSource { get; } = downloadsSource;
     private ILogger<DownloadsImporter> Logger { get; } = logger;
 
+    /// <summary>
+    /// Sets the download counts of the feed's packages.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when every package is updated.</returns>
     public async Task ImportAsync(CancellationToken cancellationToken)
     {
         Dictionary<string, Dictionary<string, long>> packageDownloads = await DownloadsSource.GetPackageDownloadsAsync();

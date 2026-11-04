@@ -16,6 +16,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
     private NuGetClient Client { get; } = client;
     private ILogger<V3UpstreamClient> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public async Task<Stream?> DownloadPackageOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         try
@@ -40,6 +41,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
         }
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<Package>> ListPackagesAsync(string id, CancellationToken cancellationToken)
     {
         try
@@ -55,6 +57,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
         }
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(string id, CancellationToken cancellationToken)
     {
         try

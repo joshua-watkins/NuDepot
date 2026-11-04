@@ -20,7 +20,7 @@ internal sealed class TestAuthenticator(string origin = "http://localhost") : ID
 
     private ECDsa Key { get; } = ECDsa.Create(ECCurve.NamedCurves.nistP256);
     private string Origin { get; } = origin;
-    private uint _signCount;
+    private uint SignCount { get; set; }
 
     public byte[] CredentialId { get; } = RandomNumberGenerator.GetBytes(16);
 
@@ -120,7 +120,7 @@ internal sealed class TestAuthenticator(string origin = "http://localhost") : ID
         stream.WriteByte((byte)flags);
 
         byte[] signCount = new byte[4];
-        BinaryPrimitives.WriteUInt32BigEndian(signCount, ++_signCount);
+        BinaryPrimitives.WriteUInt32BigEndian(signCount, ++SignCount);
         stream.Write(signCount);
     }
 

@@ -10,6 +10,7 @@ namespace NuDepot.Feed.Validation;
 /// </summary>
 public class ValidateFeedOptions : IValidateOptions<FeedOptions>
 {
+    /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, FeedOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);

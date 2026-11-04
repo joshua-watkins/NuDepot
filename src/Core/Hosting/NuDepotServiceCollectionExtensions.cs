@@ -1,9 +1,13 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NuDepot.Core.Hosting;
 
-// In the namespace of IServiceCollection, so applications see AddNuDepot() without a using.
+#pragma warning disable IDE0130 // Namespace does not match folder structure
 namespace Microsoft.Extensions.DependencyInjection;
+#pragma warning restore IDE0130 // Namespace does not match folder structure
 
+/// <summary>
+/// Adds NuDepot's parts to an application's services.
+/// </summary>
 public static class NuDepotServiceCollectionExtensions
 {
     /// <summary>

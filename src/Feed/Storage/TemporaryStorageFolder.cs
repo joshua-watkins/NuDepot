@@ -13,8 +13,12 @@ public sealed class TemporaryStorageFolder : IDisposable
         return path;
     });
 
+    /// <summary>
+    /// The folder's path. It's created the first time it's used.
+    /// </summary>
     public string Path => LazyPath.Value;
 
+    /// <inheritdoc />
     public void Dispose()
     {
         if (!LazyPath.IsValueCreated)

@@ -9,9 +9,15 @@ namespace NuDepot.Core.Models;
 /// </summary>
 public class AlternatePackage
 {
+    /// <summary>
+    /// The URL of the alternate package's registration index.
+    /// </summary>
     [JsonPropertyName("@id")]
     public string? Url { get; set; }
 
+    /// <summary>
+    /// The JSON-LD type, "AlternatePackage".
+    /// </summary>
     [JsonPropertyName("@type")]
     public string? Type { get; set; }
 

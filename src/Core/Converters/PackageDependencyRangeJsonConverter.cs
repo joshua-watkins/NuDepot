@@ -8,8 +8,10 @@ namespace NuDepot.Core.Converters;
 /// </summary>
 public class PackageDependencyRangeJsonConverter : JsonConverter<string?>
 {
+    /// <inheritdoc />
     public override bool HandleNull => true;
 
+    /// <inheritdoc />
     public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
@@ -43,6 +45,7 @@ public class PackageDependencyRangeJsonConverter : JsonConverter<string?>
         return result;
     }
 
+    /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
     {
         if (value == null)

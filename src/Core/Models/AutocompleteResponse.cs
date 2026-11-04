@@ -9,6 +9,9 @@ namespace NuDepot.Core.Models;
 /// </summary>
 public class AutocompleteResponse
 {
+    /// <summary>
+    /// The JSON-LD context.
+    /// </summary>
     [JsonPropertyName("@context")]
     public AutocompleteContext? Context { get; set; }
 

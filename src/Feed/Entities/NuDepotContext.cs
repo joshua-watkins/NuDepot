@@ -11,32 +11,124 @@ namespace NuDepot.Feed.Entities;
 /// </summary>
 public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContext(options)
 {
+    /// <summary>
+    /// The longest string a column holds, unless it has its own limit.
+    /// </summary>
     public const int DefaultMaxStringLength = 4000;
 
+    /// <summary>
+    /// The longest package ID.
+    /// </summary>
     public const int MaxPackageIdLength = 128;
+
+    /// <summary>
+    /// The longest normalized package version.
+    /// </summary>
     public const int MaxPackageVersionLength = 64;
+
+    /// <summary>
+    /// The longest minimum client version.
+    /// </summary>
     public const int MaxPackageMinClientVersionLength = 44;
+
+    /// <summary>
+    /// The longest package language.
+    /// </summary>
     public const int MaxPackageLanguageLength = 20;
+
+    /// <summary>
+    /// The longest package title.
+    /// </summary>
     public const int MaxPackageTitleLength = 256;
+
+    /// <summary>
+    /// The longest package type name.
+    /// </summary>
     public const int MaxPackageTypeNameLength = 512;
+
+    /// <summary>
+    /// The longest package type version.
+    /// </summary>
     public const int MaxPackageTypeVersionLength = 64;
+
+    /// <summary>
+    /// The longest repository type.
+    /// </summary>
     public const int MaxRepositoryTypeLength = 100;
+
+    /// <summary>
+    /// The longest target framework moniker.
+    /// </summary>
     public const int MaxTargetFrameworkLength = 256;
 
+    /// <summary>
+    /// The longest dependency version range.
+    /// </summary>
     public const int MaxPackageDependencyVersionRangeLength = 256;
+
+    /// <summary>
+    /// The longest package hash.
+    /// </summary>
     public const int MaxPackageHashLength = 128;
+
+    /// <summary>
+    /// The longest list of deprecation reasons, as JSON.
+    /// </summary>
     public const int MaxDeprecationReasonsLength = 256;
+
+    /// <summary>
+    /// The longest catalog entry type.
+    /// </summary>
     public const int MaxCatalogEntryTypeLength = 32;
+
+    /// <summary>
+    /// The longest catalog commit ID.
+    /// </summary>
     public const int MaxCommitIdLength = 64;
 
+    /// <summary>
+    /// The longest user name.
+    /// </summary>
     public const int MaxUserNameLength = 64;
+
+    /// <summary>
+    /// The longest user role.
+    /// </summary>
     public const int MaxUserRoleLength = 32;
+
+    /// <summary>
+    /// The longest WebAuthn user handle, in bytes.
+    /// </summary>
     public const int MaxUserHandleLength = 64;
+
+    /// <summary>
+    /// The longest passkey ceremony name.
+    /// </summary>
     public const int MaxCeremonyLength = 32;
+
+    /// <summary>
+    /// The longest WebAuthn credential ID, in bytes.
+    /// </summary>
     public const int MaxCredentialIdLength = 1023;
+
+    /// <summary>
+    /// The longest passkey or API key name.
+    /// </summary>
     public const int MaxCredentialNameLength = 128;
+
+    /// <summary>
+    /// The longest API key prefix.
+    /// </summary>
     public const int MaxApiKeyPrefixLength = 16;
+
+    /// <summary>
+    /// The length of an API key's SHA-256 hash, in bytes.
+    /// </summary>
     public const int MaxApiKeyHashLength = 32;
+
+    /// <summary>
+    /// The length of a session token's SHA-256 hash, in bytes.
+    /// </summary>
     public const int MaxSessionTokenHashLength = 32;
 
     /// <summary>
@@ -44,15 +136,54 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
     /// </summary>
     private const int SqliteUniqueConstraintViolationErrorCode = 19;
 
+    /// <summary>
+    /// The package versions on the feed.
+    /// </summary>
     public DbSet<Package> Packages { get; set; }
+
+    /// <summary>
+    /// The packages' dependencies.
+    /// </summary>
     public DbSet<PackageDependency> PackageDependencies { get; set; }
+
+    /// <summary>
+    /// The packages' types.
+    /// </summary>
     public DbSet<PackageType> PackageTypes { get; set; }
+
+    /// <summary>
+    /// The packages' target frameworks.
+    /// </summary>
     public DbSet<TargetFramework> TargetFrameworks { get; set; }
+
+    /// <summary>
+    /// The known vulnerabilities.
+    /// </summary>
     public DbSet<VulnerabilityAdvisory> VulnerabilityAdvisories { get; set; }
+
+    /// <summary>
+    /// The catalog's entries.
+    /// </summary>
     public DbSet<CatalogEntry> CatalogEntries { get; set; }
+
+    /// <summary>
+    /// The users who sign in with passkeys.
+    /// </summary>
     public DbSet<User> Users { get; set; }
+
+    /// <summary>
+    /// The users' passkeys.
+    /// </summary>
     public DbSet<UserPasskey> UserPasskeys { get; set; }
+
+    /// <summary>
+    /// The users' API keys.
+    /// </summary>
     public DbSet<UserApiKey> UserApiKeys { get; set; }
+
+    /// <summary>
+    /// The users' signed-in browsers.
+    /// </summary>
     public DbSet<UserSession> UserSessions { get; set; }
 
     /// <summary>
@@ -88,6 +219,7 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
         await Database.MigrateAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.Entity<Package>(BuildPackageEntity);

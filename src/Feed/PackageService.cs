@@ -6,6 +6,13 @@ using NuGet.Versioning;
 
 namespace NuDepot.Feed;
 
+/// <summary>
+/// Finds packages on the feed, or on its upstream feed when mirroring.
+/// </summary>
+/// <param name="db">The package database.</param>
+/// <param name="upstream">The upstream feed.</param>
+/// <param name="indexer">Adds packages from the upstream feed.</param>
+/// <param name="logger">The logger.</param>
 public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPackageIndexingService indexer, ILogger<PackageService> logger) : IPackageService
 {
     private IPackageDatabase Db { get; } = db;
@@ -13,6 +20,7 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
     private IPackageIndexingService Indexer { get; } = indexer;
     private ILogger<PackageService> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<NuGetVersion>> FindPackageVersionsAsync(string id, CancellationToken cancellationToken)
     {
         IReadOnlyList<NuGetVersion> upstreamVersions = await Upstream.ListPackageVersionsAsync(id, cancellationToken);
@@ -29,6 +37,7 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
         return [.. upstreamVersions.Concat(localVersions).Distinct()];
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<Package>> FindPackagesAsync(string id, CancellationToken cancellationToken)
     {
         IReadOnlyList<Package> upstreamPackages = await Upstream.ListPackagesAsync(id, cancellationToken);
@@ -51,6 +60,7 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
         return [.. result.Values];
     }
 
+    /// <inheritdoc />
     public async Task<Package?> FindPackageOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         if (!await MirrorAsync(id, version, cancellationToken))
@@ -59,11 +69,13 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
         return await Db.FindOrNullAsync(id, version, includeUnlisted: true, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<bool> ExistsAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         return await MirrorAsync(id, version, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task AddDownloadAsync(string packageId, NuGetVersion version, CancellationToken cancellationToken)
     {
         await Db.AddDownloadAsync(packageId, version, cancellationToken);
@@ -74,7 +86,7 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
     /// </summary>
     /// <param name="id">The package ID to index from an upstream.</param>
     /// <param name="version">The package version to index from an upstream.</param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>True if the package exists locally or was indexed from an upstream source.</returns>
     private async Task<bool> MirrorAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {

@@ -15,6 +15,7 @@ public class FileCursor(string path, ILogger<FileCursor> logger) : ICursor
     private string Path { get; } = path;
     private ILogger<FileCursor> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public async Task<DateTimeOffset?> GetAsync(CancellationToken cancellationToken)
     {
         try
@@ -35,6 +36,7 @@ public class FileCursor(string path, ILogger<FileCursor> logger) : ICursor
         }
     }
 
+    /// <inheritdoc />
     public Task SetAsync(DateTimeOffset value, CancellationToken cancellationToken)
     {
         using (FileStream file = File.Create(Path))

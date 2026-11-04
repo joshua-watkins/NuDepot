@@ -9,6 +9,9 @@ namespace NuDepot.Feed.Entities;
 /// </summary>
 public class User
 {
+    /// <summary>
+    /// The row's key.
+    /// </summary>
     public int Key { get; set; }
 
     /// <summary>
@@ -26,6 +29,9 @@ public class User
     /// </summary>
     public byte[] Handle { get; set; } = null!;
 
+    /// <summary>
+    /// When the account was created, in UTC.
+    /// </summary>
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
@@ -44,12 +50,24 @@ public class User
     /// </summary>
     public string? CeremonyPasskeyName { get; set; }
 
+    /// <summary>
+    /// When the passkey ceremony in progress expires, in UTC.
+    /// </summary>
     public DateTime? CeremonyExpiresAt { get; set; }
 
+    /// <summary>
+    /// The user's passkeys.
+    /// </summary>
     public List<UserPasskey> Passkeys { get; set; } = [];
 
+    /// <summary>
+    /// The user's API keys.
+    /// </summary>
     public List<UserApiKey> ApiKeys { get; set; } = [];
 
+    /// <summary>
+    /// The user's signed-in browsers.
+    /// </summary>
     public List<UserSession> Sessions { get; set; } = [];
 }
 
@@ -59,10 +77,19 @@ public class User
 /// </summary>
 public class UserSession
 {
+    /// <summary>
+    /// The row's key.
+    /// </summary>
     public int Key { get; set; }
 
+    /// <summary>
+    /// The key of the signed-in user.
+    /// </summary>
     public int UserKey { get; set; }
 
+    /// <summary>
+    /// The signed-in user.
+    /// </summary>
     public User User { get; set; } = null!;
 
     /// <summary>
@@ -76,6 +103,9 @@ public class UserSession
     /// </summary>
     public byte[]? PreviousTokenHash { get; set; }
 
+    /// <summary>
+    /// When the user signed in, in UTC.
+    /// </summary>
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
@@ -83,6 +113,9 @@ public class UserSession
     /// </summary>
     public DateTime RotatedAt { get; set; }
 
+    /// <summary>
+    /// When the session expires, in UTC, unless it's used before then.
+    /// </summary>
     public DateTime ExpiresAt { get; set; }
 }
 
@@ -91,10 +124,19 @@ public class UserSession
 /// </summary>
 public class UserPasskey
 {
+    /// <summary>
+    /// The row's key.
+    /// </summary>
     public int Key { get; set; }
 
+    /// <summary>
+    /// The key of the user the passkey belongs to.
+    /// </summary>
     public int UserKey { get; set; }
 
+    /// <summary>
+    /// The user the passkey belongs to.
+    /// </summary>
     public User User { get; set; } = null!;
 
     /// <summary>
@@ -132,8 +174,14 @@ public class UserPasskey
     /// </summary>
     public string Name { get; set; } = null!;
 
+    /// <summary>
+    /// When the passkey was created, in UTC.
+    /// </summary>
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>
+    /// When the passkey was last used to sign in, in UTC.
+    /// </summary>
     public DateTime? LastUsedAt { get; set; }
 }
 
@@ -142,10 +190,19 @@ public class UserPasskey
 /// </summary>
 public class UserApiKey
 {
+    /// <summary>
+    /// The row's key.
+    /// </summary>
     public int Key { get; set; }
 
+    /// <summary>
+    /// The key of the user the API key belongs to.
+    /// </summary>
     public int UserKey { get; set; }
 
+    /// <summary>
+    /// The user the API key belongs to.
+    /// </summary>
     public User User { get; set; } = null!;
 
     /// <summary>
@@ -163,7 +220,13 @@ public class UserApiKey
     /// </summary>
     public byte[] Hash { get; set; } = null!;
 
+    /// <summary>
+    /// When the key was created, in UTC.
+    /// </summary>
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>
+    /// When the key was last used, in UTC.
+    /// </summary>
     public DateTime? LastUsedAt { get; set; }
 }

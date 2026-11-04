@@ -13,6 +13,7 @@ public class PackageDeprecationService(IPackageDatabase packages, NuDepotContext
     private ICatalogService Catalog { get; } = catalog;
     private ILogger<PackageDeprecationService> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public Task<bool> DeprecateAsync(string id, NuGetVersion version, IReadOnlyList<string> reasons, string? message, string? alternatePackageId, string? alternatePackageVersionRange, CancellationToken cancellationToken)
     {
         Logger.LogInformation("Deprecating package {PackageId} {PackageVersion}...", id, version);
@@ -27,6 +28,7 @@ public class PackageDeprecationService(IPackageDatabase packages, NuDepotContext
         cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<bool> UndeprecateAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         Logger.LogInformation("Undeprecating package {PackageId} {PackageVersion}...", id, version);

@@ -35,6 +35,9 @@ using System.Reflection;
 // In the namespace of IServiceCollection, so applications see AddNuDepotFeed() without a using.
 namespace Microsoft.Extensions.DependencyInjection;
 
+/// <summary>
+/// Adds the NuGet feed to an application's services.
+/// </summary>
 public static class FeedServiceCollectionExtensions
 {
     private const string UserCookieName = "NuDepot.User";

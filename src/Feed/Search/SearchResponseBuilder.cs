@@ -4,10 +4,15 @@ using NuDepot.Feed.Metadata;
 
 namespace NuDepot.Feed.Search;
 
+/// <summary>
+/// Builds the search resource's responses.
+/// </summary>
+/// <param name="url">Generates the feed's URLs.</param>
 public class SearchResponseBuilder(IUrlGenerator url) : ISearchResponseBuilder
 {
     private IUrlGenerator Url { get; } = url;
 
+    /// <inheritdoc />
     public SearchResponse BuildSearch(IReadOnlyList<PackageRegistration> packageRegistrations, long totalHits, bool includeSemVer2)
     {
         List<SearchResult> result = [];
@@ -60,6 +65,7 @@ public class SearchResponseBuilder(IUrlGenerator url) : ISearchResponseBuilder
         };
     }
 
+    /// <inheritdoc />
     public AutocompleteResponse BuildAutocomplete(IReadOnlyList<string> data, long totalHits)
     {
         return new AutocompleteResponse
@@ -70,6 +76,7 @@ public class SearchResponseBuilder(IUrlGenerator url) : ISearchResponseBuilder
         };
     }
 
+    /// <inheritdoc />
     public DependentsResponse BuildDependents(IReadOnlyList<PackageDependent> packages)
     {
         return new DependentsResponse

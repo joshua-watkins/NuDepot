@@ -8,12 +8,21 @@ namespace NuDepot.Core.Models;
 /// </summary>
 public class NuDepotPackageMetadata : Models.PackageMetadata
 {
+    /// <summary>
+    /// The total downloads of this version.
+    /// </summary>
     [JsonPropertyName("downloads")]
     public long Downloads { get; set; }
 
+    /// <summary>
+    /// Whether the package has a README.
+    /// </summary>
     [JsonPropertyName("hasReadme")]
     public bool HasReadme { get; set; }
 
+    /// <summary>
+    /// The package's types, like "Dependency" or "DotnetTool".
+    /// </summary>
     [JsonPropertyName("packageTypes")]
     public IReadOnlyList<string>? PackageTypes { get; set; }
 
@@ -23,9 +32,15 @@ public class NuDepotPackageMetadata : Models.PackageMetadata
     [JsonPropertyName("releaseNotes")]
     public string? ReleaseNotes { get; set; }
 
+    /// <summary>
+    /// The URL of the package's source repository.
+    /// </summary>
     [JsonPropertyName("repositoryUrl")]
     public string? RepositoryUrl { get; set; }
 
+    /// <summary>
+    /// The type of the package's source repository, like "git".
+    /// </summary>
     [JsonPropertyName("repositoryType")]
     public string? RepositoryType { get; set; }
 }

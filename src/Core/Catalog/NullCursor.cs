@@ -7,11 +7,13 @@ namespace NuDepot.Core.Catalog;
 /// </summary>
 public class NullCursor : ICursor
 {
+    /// <inheritdoc />
     public Task<DateTimeOffset?> GetAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult<DateTimeOffset?>(null);
     }
 
+    /// <inheritdoc />
     public Task SetAsync(DateTimeOffset value, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;

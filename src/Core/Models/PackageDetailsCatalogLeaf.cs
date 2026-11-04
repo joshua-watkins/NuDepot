@@ -189,6 +189,9 @@ public class PackageDetailsCatalogLeaf : CatalogLeaf
 /// </summary>
 public class CatalogPackageType
 {
+    /// <summary>
+    /// The package type's name, like "Dependency" or "DotnetTool".
+    /// </summary>
     [JsonPropertyName("name")]
     public string Name { get; set; } = null!;
 

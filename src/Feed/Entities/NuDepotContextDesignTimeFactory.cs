@@ -10,6 +10,7 @@ namespace NuDepot.Feed.Entities;
 /// </summary>
 public class NuDepotContextDesignTimeFactory : IDesignTimeDbContextFactory<NuDepotContext>
 {
+    /// <inheritdoc />
     public NuDepotContext CreateDbContext(string[] args)
     {
         DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()

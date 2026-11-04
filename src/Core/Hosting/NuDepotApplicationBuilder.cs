@@ -27,6 +27,9 @@ public sealed class NuDepotApplicationBuilder
     /// </summary>
     public IEndpointRouteBuilder Endpoints { get; }
 
+    /// <summary>
+    /// The application's services.
+    /// </summary>
     public IServiceProvider Services => Application.ApplicationServices;
 
     /// <summary>

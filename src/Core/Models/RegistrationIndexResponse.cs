@@ -9,6 +9,9 @@ namespace NuDepot.Core.Models;
 /// </summary>
 public class RegistrationIndexResponse
 {
+    /// <summary>
+    /// The JSON-LD types of a registration index.
+    /// </summary>
     public static readonly IReadOnlyList<string> DefaultType =
     [
         "catalog:CatalogRoot",

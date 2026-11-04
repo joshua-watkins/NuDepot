@@ -110,7 +110,7 @@ public interface IUrlGenerator
     /// <param name="id">The package's ID</param>
     /// <param name="version">The package's version</param>
     /// <param name="licenseIsMarkDown">Indicates if the license format is MarkDown (true) or Text (false).</param>
-    /// <returns></returns>
+    /// <returns>The license's URL.</returns>
     string GetPackageLicenseDownloadUrl(string id, NuGetVersion version, bool licenseIsMarkDown);
 
     /// <summary>

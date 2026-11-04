@@ -8,6 +8,7 @@ namespace NuDepot.Core.Converters;
 /// </summary>
 public class StringOrStringArrayJsonConverter : JsonConverter<IReadOnlyList<string>>
 {
+    /// <inheritdoc />
     public override IReadOnlyList<string> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         // Try to read a single string first.
@@ -33,6 +34,7 @@ public class StringOrStringArrayJsonConverter : JsonConverter<IReadOnlyList<stri
         throw new JsonException();
     }
 
+    /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, IReadOnlyList<string> values, JsonSerializerOptions options)
     {
         writer.WriteStartArray();

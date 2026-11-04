@@ -14,6 +14,7 @@ public class DefaultPackageMetadataService(IPackageService packages, ICatalogSer
     private IVulnerabilityService Vulnerabilities { get; } = vulnerabilities;
     private RegistrationBuilder Builder { get; } = builder;
 
+    /// <inheritdoc />
     public async Task<NuDepotRegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(string packageId, bool semVer2 = false, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<Package> packages = await Packages.FindPackagesAsync(packageId, cancellationToken);
@@ -37,6 +38,7 @@ public class DefaultPackageMetadataService(IPackageService packages, ICatalogSer
                 vulnerabilities));
     }
 
+    /// <inheritdoc />
     public async Task<RegistrationLeafResponse?> GetRegistrationLeafOrNullAsync(string id, NuGetVersion version, bool semVer2 = false, CancellationToken cancellationToken = default)
     {
         Package? package = await Packages.FindPackageOrNullAsync(id, version, cancellationToken);

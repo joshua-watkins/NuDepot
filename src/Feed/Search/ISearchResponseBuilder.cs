@@ -3,6 +3,9 @@ using NuDepot.Feed.Metadata;
 
 namespace NuDepot.Feed.Search;
 
+/// <summary>
+/// Builds the search resource's responses.
+/// </summary>
 public interface ISearchResponseBuilder
 {
     /// <param name="results">The page of matching packages.</param>
@@ -14,5 +17,10 @@ public interface ISearchResponseBuilder
     /// <param name="totalHits">The number of results across all pages.</param>
     AutocompleteResponse BuildAutocomplete(IReadOnlyList<string> data, long totalHits);
 
+    /// <summary>
+    /// Builds the response that lists a package's dependents.
+    /// </summary>
+    /// <param name="results">The packages that depend on the package.</param>
+    /// <returns>The response.</returns>
     DependentsResponse BuildDependents(IReadOnlyList<PackageDependent> results);
 }

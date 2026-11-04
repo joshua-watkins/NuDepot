@@ -195,6 +195,12 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
 
     // Passkeys
 
+    /// <summary>
+    /// Gets a user's passkeys, oldest first.
+    /// </summary>
+    /// <param name="userKey">The user's key.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>The passkeys.</returns>
     public async Task<List<UserPasskey>> GetPasskeysAsync(int userKey, CancellationToken cancellationToken)
     {
         return await Context.UserPasskeys
@@ -203,6 +209,12 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Whether any user has a passkey with the credential ID.
+    /// </summary>
+    /// <param name="credentialId">The WebAuthn credential ID.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>True if the credential is already registered.</returns>
     public async Task<bool> PasskeyExistsAsync(byte[] credentialId, CancellationToken cancellationToken)
         => await Context.UserPasskeys.AnyAsync(p => p.CredentialId == credentialId, cancellationToken);
 
@@ -216,6 +228,13 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .SingleOrDefaultAsync(p => p.CredentialId == credentialId, cancellationToken);
     }
 
+    /// <summary>
+    /// Adds a passkey to a user's account.
+    /// </summary>
+    /// <param name="userKey">The user's key.</param>
+    /// <param name="passkey">The new passkey.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when the passkey is saved.</returns>
     public async Task AddPasskeyAsync(int userKey, UserPasskey passkey, CancellationToken cancellationToken)
     {
         passkey.UserKey = userKey;
@@ -257,6 +276,12 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
 
     // API keys
 
+    /// <summary>
+    /// Gets a user's API keys, oldest first.
+    /// </summary>
+    /// <param name="userKey">The user's key.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>The API keys, without their secrets.</returns>
     public async Task<List<UserApiKey>> GetApiKeysAsync(int userKey, CancellationToken cancellationToken)
     {
         return await Context.UserApiKeys
@@ -286,6 +311,13 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         return (apiKey, key);
     }
 
+    /// <summary>
+    /// Revokes one of a user's API keys.
+    /// </summary>
+    /// <param name="userKey">The user's key.</param>
+    /// <param name="apiKeyKey">The API key's key.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>False if the user doesn't have the key.</returns>
     public async Task<bool> DeleteApiKeyAsync(int userKey, int apiKeyKey, CancellationToken cancellationToken)
     {
         int deleted = await Context.UserApiKeys
@@ -398,6 +430,12 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         return SessionValidation.SignedOut;
     }
 
+    /// <summary>
+    /// Signs a browser out, by deleting its session.
+    /// </summary>
+    /// <param name="sessionKey">The session's key.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when the session is deleted.</returns>
     public async Task DeleteSessionAsync(int sessionKey, CancellationToken cancellationToken)
         => await Context.UserSessions
         .Where(s => s.Key == sessionKey)
@@ -417,12 +455,25 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
 /// </summary>
 public record SessionValidation(User? User, string? NewToken)
 {
+    /// <summary>
+    /// The result for a request without a valid session.
+    /// </summary>
     public static readonly SessionValidation SignedOut = new(null, null);
 }
 
+/// <summary>
+/// The outcome of deleting a passkey.
+/// </summary>
 public enum PasskeyDeletionResult
 {
+    /// <summary>
+    /// The passkey was deleted.
+    /// </summary>
     Deleted,
+
+    /// <summary>
+    /// The user doesn't have the passkey.
+    /// </summary>
     NotFound,
 
     /// <summary>

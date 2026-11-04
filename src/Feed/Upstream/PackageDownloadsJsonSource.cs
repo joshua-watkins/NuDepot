@@ -6,13 +6,22 @@ using System.Text.Json;
 namespace NuDepot.Feed.Upstream;
 
 // See https://github.com/NuGet/NuGet.Services.Metadata/blob/master/src/NuGet.Indexing/Downloads.cs
+/// <summary>
+/// Reads nuget.org's download counts file.
+/// </summary>
+/// <param name="httpClient">The HTTP client used to download the file.</param>
+/// <param name="logger">The logger.</param>
 public class PackageDownloadsJsonSource(HttpClient httpClient, ILogger<PackageDownloadsJsonSource> logger) : IPackageDownloadsSource
 {
+    /// <summary>
+    /// The URL of nuget.org's download counts file.
+    /// </summary>
     public const string PackageDownloadsV1Url = "https://nugetprod0.blob.core.windows.net/ng-search-data/downloads.v1.json";
 
     private HttpClient HttpClient { get; } = httpClient;
     private ILogger<PackageDownloadsJsonSource> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public async Task<Dictionary<string, Dictionary<string, long>>> GetPackageDownloadsAsync()
     {
         Logger.LogInformation("Fetching package downloads...");

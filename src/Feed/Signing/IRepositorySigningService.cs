@@ -31,5 +31,8 @@ public interface IRepositorySigningService
 /// <param name="IsRepositorySigned">Whether the package now carries this server's repository signature.</param>
 public sealed record RepositorySigningResult(Stream? SignedPackage, bool IsRepositorySigned)
 {
+    /// <summary>
+    /// The result for a package that wasn't signed.
+    /// </summary>
     public static readonly RepositorySigningResult Unsigned = new(null, false);
 }

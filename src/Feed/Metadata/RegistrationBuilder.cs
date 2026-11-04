@@ -4,10 +4,19 @@ using NuGet.Versioning;
 
 namespace NuDepot.Feed.Metadata;
 
+/// <summary>
+/// Builds the package metadata (registration) resource's responses.
+/// </summary>
+/// <param name="url">Generates the feed's URLs.</param>
 public class RegistrationBuilder(IUrlGenerator url)
 {
     private IUrlGenerator Url { get; } = url;
 
+    /// <summary>
+    /// Builds a package's registration index, with every version inlined in one page.
+    /// </summary>
+    /// <param name="registration">The package's versions.</param>
+    /// <returns>The registration index.</returns>
     public virtual NuDepotRegistrationIndexResponse BuildIndex(PackageRegistration registration)
     {
         List<Package> sortedPackages = [.. registration.Packages.OrderBy(p => p.Version)];
@@ -36,6 +45,13 @@ public class RegistrationBuilder(IUrlGenerator url)
         };
     }
 
+    /// <summary>
+    /// Builds a package version's registration leaf.
+    /// </summary>
+    /// <param name="package">The package version.</param>
+    /// <param name="semVer2">Whether the leaf is in the hive that includes SemVer 2.0.0 packages.</param>
+    /// <param name="catalogLeafUrl">The URL of the version's latest catalog leaf, if the catalog has it.</param>
+    /// <returns>The registration leaf.</returns>
     public virtual RegistrationLeafResponse BuildLeaf(Package package, bool semVer2 = false, string? catalogLeafUrl = null)
     {
         string id = package.Id;

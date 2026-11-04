@@ -8,6 +8,14 @@ using NuGet.Versioning;
 
 namespace NuDepot.Feed.Indexing;
 
+/// <summary>
+/// Deletes packages, by unlisting them or removing them, and records the change in the catalog.
+/// </summary>
+/// <param name="packages">The package database.</param>
+/// <param name="storage">Where packages are stored.</param>
+/// <param name="catalog">The catalog that records the change.</param>
+/// <param name="options">The feed's options.</param>
+/// <param name="logger">The logger.</param>
 public class PackageDeletionService(IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IOptionsSnapshot<FeedOptions> options, ILogger<PackageDeletionService> logger) : IPackageDeletionService
 {
     private IPackageDatabase Packages { get; } = packages;
@@ -16,6 +24,7 @@ public class PackageDeletionService(IPackageDatabase packages, IPackageStorageSe
     private FeedOptions Options { get; } = options.Value;
     private ILogger<PackageDeletionService> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public async Task<bool> TryDeletePackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         switch (Options.PackageDeletionBehavior)
@@ -49,6 +58,7 @@ public class PackageDeletionService(IPackageDatabase packages, IPackageStorageSe
         return true;
     }
 
+    /// <inheritdoc />
     public async Task<bool> TryRelistPackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         Logger.LogInformation("Relisting package {PackageId} {PackageVersion}...", id, version);

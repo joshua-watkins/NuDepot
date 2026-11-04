@@ -2,6 +2,9 @@ using System.Security.Cryptography;
 
 namespace NuDepot.Feed.Extensions;
 
+/// <summary>
+/// Extensions to <see cref="Stream"/>.
+/// </summary>
 public static class StreamExtensions
 {
     // See: https://github.com/dotnet/corefx/blob/master/src/Common/src/CoreLib/System/IO/Stream.cs#L35
@@ -12,7 +15,7 @@ public static class StreamExtensions
     /// deleted when the resulting stream is disposed.
     /// </summary>
     /// <param name="original">The stream to be copied, at its current position.</param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The copied stream, with its position reset to the beginning.</returns>
     public static async Task<FileStream> AsTemporaryFileStreamAsync(this Stream original, CancellationToken cancellationToken = default)
     {
@@ -59,6 +62,12 @@ public static class StreamExtensions
         return (Convert.ToBase64String(sha512.Hash!), size);
     }
 
+    /// <summary>
+    /// Whether two streams have the same content, compared by their SHA-256 hashes.
+    /// </summary>
+    /// <param name="content">One stream, read to its end.</param>
+    /// <param name="target">The other stream, read to its end.</param>
+    /// <returns>True if the content is the same.</returns>
     public static bool Matches(this Stream content, Stream target)
     {
         using (SHA256 sha256 = SHA256.Create())

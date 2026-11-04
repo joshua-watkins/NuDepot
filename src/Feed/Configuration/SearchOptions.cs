@@ -5,9 +5,15 @@ namespace NuDepot.Feed.Configuration;
 /// </summary>
 public class SearchOptions
 {
+    /// <summary>
+    /// What searches query. Defaults to <see cref="SearchType.Database"/>.
+    /// </summary>
     public SearchType Type { get; set; } = SearchType.Database;
 }
 
+/// <summary>
+/// What the feed's searches query.
+/// </summary>
 public enum SearchType
 {
     /// <summary>

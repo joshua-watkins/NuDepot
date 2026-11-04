@@ -2,8 +2,13 @@ root = true
 
 [*]
 charset = utf-8
+end_of_line = crlf
 insert_final_newline = true
 trim_trailing_whitespace = true
+
+# Files that Linux reads keep LF, like .gitattributes says.
+[*.{sh,service}]
+end_of_line = lf
 
 [*.{csproj,wixproj,props,targets}]
 indent_style = tab
@@ -90,3 +95,4 @@ dotnet_naming_style.pascal_case.capitalization = pascal_case
 [**/Migrations/*.cs]
 generated_code = true
 dotnet_diagnostic.IDE0005.severity = none
+dotnet_diagnostic.CS1591.severity = none

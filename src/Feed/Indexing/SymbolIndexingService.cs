@@ -10,6 +10,12 @@ namespace NuDepot.Feed.Indexing;
 
 // Based off: https://github.com/NuGet/NuGetGallery/blob/master/src/NuGetGallery/Services/SymbolPackageUploadService.cs
 // Based off: https://github.com/NuGet/NuGet.Jobs/blob/master/src/Validation.Symbols/SymbolsValidatorService.cs#L44
+/// <summary>
+/// Adds pushed symbol packages to the feed, for packages it has.
+/// </summary>
+/// <param name="packages">The package database.</param>
+/// <param name="storage">Where symbols are stored.</param>
+/// <param name="logger">The logger.</param>
 public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageService storage, ILogger<SymbolIndexingService> logger) : ISymbolIndexingService
 {
     private static readonly HashSet<string> ValidSymbolPackageContentExtensions =
@@ -26,6 +32,7 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
     private ISymbolStorageService Storage { get; } = storage;
     private ILogger<SymbolIndexingService> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public async Task<SymbolIndexingResult> IndexAsync(Stream stream, CancellationToken cancellationToken)
     {
         try

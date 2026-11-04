@@ -37,5 +37,8 @@ public class RepositorySigningOptions
     /// </summary>
     public string? TimestampServerUrl { get; set; }
 
+    /// <summary>
+    /// Whether a certificate is set, so pushed packages are signed.
+    /// </summary>
     public bool IsEnabled => !string.IsNullOrEmpty(CertificatePath) || !string.IsNullOrEmpty(CertificateThumbprint);
 }

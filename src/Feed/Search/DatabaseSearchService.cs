@@ -24,6 +24,7 @@ public class DatabaseSearchService(NuDepotContext context, IFrameworkCompatibili
     private IVulnerabilityService Vulnerabilities { get; } = vulnerabilities;
     private ISearchResponseBuilder SearchBuilder { get; } = searchBuilder;
 
+    /// <inheritdoc />
     public async Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
     {
         IReadOnlyList<string>? frameworks = GetCompatibleFrameworksOrNull(request.Framework);
@@ -96,6 +97,7 @@ public class DatabaseSearchService(NuDepotContext context, IFrameworkCompatibili
         return SearchBuilder.BuildSearch(registrations, ranked.Count, request.IncludeSemVer2);
     }
 
+    /// <inheritdoc />
     public async Task<AutocompleteResponse> AutocompleteAsync(AutocompleteRequest request, CancellationToken cancellationToken)
     {
         IQueryable<Package> search = Context.Packages;
@@ -132,6 +134,7 @@ public class DatabaseSearchService(NuDepotContext context, IFrameworkCompatibili
             packageIds.Count);
     }
 
+    /// <inheritdoc />
     public async Task<AutocompleteResponse> ListPackageVersionsAsync(VersionsRequest request, CancellationToken cancellationToken)
     {
         string packageId = request.PackageId.ToLower();
@@ -155,6 +158,7 @@ public class DatabaseSearchService(NuDepotContext context, IFrameworkCompatibili
         return SearchBuilder.BuildAutocomplete(sorted, sorted.Count);
     }
 
+    /// <inheritdoc />
     public async Task<DependentsResponse> FindDependentsAsync(string packageId, CancellationToken cancellationToken)
     {
         // A dependent is a package with a listed version that depends on the package. Its downloads

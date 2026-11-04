@@ -9,6 +9,9 @@ using NuDepot.Gallery;
 // In the namespace of IApplicationBuilder, so applications see UseNuDepotGallery() without a using.
 namespace Microsoft.AspNetCore.Builder;
 
+/// <summary>
+/// Uses the gallery website in an application's request pipeline.
+/// </summary>
 public static class GalleryApplicationBuilderExtensions
 {
     /// <summary>

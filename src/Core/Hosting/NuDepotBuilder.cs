@@ -14,5 +14,8 @@ public sealed class NuDepotBuilder
         Services = services;
     }
 
+    /// <summary>
+    /// The application's services, which NuDepot's parts are added to.
+    /// </summary>
     public IServiceCollection Services { get; }
 }

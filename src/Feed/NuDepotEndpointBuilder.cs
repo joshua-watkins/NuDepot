@@ -11,6 +11,10 @@ namespace NuDepot.Feed;
 /// </summary>
 public class NuDepotEndpointBuilder
 {
+    /// <summary>
+    /// Maps every NuGet V3 endpoint. <c>UseFeed()</c> calls it.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         MapServiceIndexRoutes(endpoints);
@@ -46,6 +50,10 @@ public class NuDepotEndpointBuilder
         endpoints.MapDelete("api/account/apikeys/{id:int}", AccountEndpoints.DeleteApiKeyAsync);
     }
 
+    /// <summary>
+    /// Maps the catalog resource.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapCatalogRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
@@ -64,6 +72,10 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Read);
     }
 
+    /// <summary>
+    /// Maps the endpoints that deprecate and undeprecate packages.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapDeprecationRoutes(IEndpointRouteBuilder endpoints)
     {
         // Not part of the NuGet protocol: lets administrators deprecate packages.
@@ -77,6 +89,10 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Deprecate);
     }
 
+    /// <summary>
+    /// Maps the vulnerability resource, and the endpoints that manage known vulnerabilities.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapVulnerabilityRoutes(IEndpointRouteBuilder endpoints)
     {
         // Not part of the NuGet protocol: lets administrators manage known vulnerabilities.
@@ -100,6 +116,10 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Read);
     }
 
+    /// <summary>
+    /// Maps the repository signatures resource.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapRepositorySignatureRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
@@ -113,6 +133,10 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Read);
     }
 
+    /// <summary>
+    /// Maps the service index.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapServiceIndexRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
@@ -121,6 +145,10 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Read);
     }
 
+    /// <summary>
+    /// Maps the package publish resource, and tells NuGet V2 clients the V2 feed isn't supported.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapPackagePublishRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
@@ -145,6 +173,10 @@ public class NuDepotEndpointBuilder
             .WithName(Routes.V2FeedRouteName);
     }
 
+    /// <summary>
+    /// Maps the symbol package publish resource, and the symbol server.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapSymbolRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
@@ -163,6 +195,10 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Read);
     }
 
+    /// <summary>
+    /// Maps the search, autocomplete and package dependents resources.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapSearchRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
@@ -182,6 +218,10 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Read);
     }
 
+    /// <summary>
+    /// Maps the package metadata (registration) resource.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapPackageMetadataRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
@@ -206,6 +246,10 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Read);
     }
 
+    /// <summary>
+    /// Maps the package content resource.
+    /// </summary>
+    /// <param name="endpoints">The application's endpoints.</param>
     public void MapPackageContentRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints

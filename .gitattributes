@@ -1,0 +1,18 @@
+# Text files are stored with LF and checked out with CRLF, whatever core.autocrlf is set to.
+* text=auto eol=crlf
+
+# Files that Linux reads keep LF: systemd doesn't accept CRLF in unit files.
+*.sh text eol=lf
+*.service text eol=lf
+
+# Binary files.
+*.png binary
+*.ico binary
+*.eot binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.nupkg binary
+*.snupkg binary
+*.dll binary
+*.pdb binary

@@ -5,19 +5,32 @@ using NuGetPackageType = NuGet.Packaging.Core.PackageType;
 
 namespace NuDepot.Feed.Extensions;
 
+/// <summary>
+/// Reads what the feed needs from a package.
+/// </summary>
 public static class PackageArchiveReaderExtensions
 {
+    /// <summary>
+    /// Whether the package has a README file.
+    /// </summary>
+    /// <param name="package">The package.</param>
+    /// <returns>True if it has one.</returns>
     public static bool HasReadme(this PackageArchiveReader package)
         => !string.IsNullOrEmpty(package.NuspecReader.GetReadme());
 
+    /// <summary>
+    /// Whether the package has an icon file.
+    /// </summary>
+    /// <param name="package">The package.</param>
+    /// <returns>True if it has one.</returns>
     public static bool HasEmbeddedIcon(this PackageArchiveReader package)
         => !string.IsNullOrEmpty(package.NuspecReader.GetIcon());
 
     /// <summary>
     /// Indicates if the package has an embedded license file.
     /// </summary>
-    /// <param name="package"></param>
-    /// <returns></returns>
+    /// <param name="package">The package.</param>
+    /// <returns>True if it has one.</returns>
     public static bool HasEmbeddedLicense(this PackageArchiveReader package)
     {
         try
@@ -33,8 +46,8 @@ public static class PackageArchiveReaderExtensions
     /// <summary>
     /// Returns true if the package's license file format is MarkDown otherwise returns false
     /// </summary>
-    /// <param name="package"></param>
-    /// <returns></returns>
+    /// <param name="package">The package.</param>
+    /// <returns>True if the license file is Markdown.</returns>
     public static bool GetLicenseIsMarkDown(this PackageArchiveReader package)
     {
         try
@@ -49,6 +62,12 @@ public static class PackageArchiveReaderExtensions
         return false;
     }
 
+    /// <summary>
+    /// Reads the package's README file.
+    /// </summary>
+    /// <param name="package">The package, which has a README.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>The README, which the caller disposes.</returns>
     public async static Task<Stream> GetReadmeAsync(this PackageArchiveReader package, CancellationToken cancellationToken)
     {
         string? readmePath = package.NuspecReader.GetReadme();
@@ -58,6 +77,12 @@ public static class PackageArchiveReaderExtensions
         return await package.GetStreamAsync(readmePath, cancellationToken);
     }
 
+    /// <summary>
+    /// Reads the package's icon file.
+    /// </summary>
+    /// <param name="package">The package, which has an icon file.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>The icon, which the caller disposes.</returns>
     public async static Task<Stream> GetIconAsync(this PackageArchiveReader package, CancellationToken cancellationToken)
     {
         string iconPath = package.NuspecReader.GetIcon()
@@ -66,6 +91,12 @@ public static class PackageArchiveReaderExtensions
         return await package.GetStreamAsync(PathUtility.StripLeadingDirectorySeparators(iconPath), cancellationToken);
     }
 
+    /// <summary>
+    /// Reads the package's license file.
+    /// </summary>
+    /// <param name="package">The package.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>The license, which the caller disposes, or null if the package doesn't have a license file.</returns>
     public async static Task<Stream?> GetLicenseAsync(this PackageArchiveReader package, CancellationToken cancellationToken)
     {
         LicenseMetadata? licenseMetadata = package.NuspecReader.GetLicenseMetadata();
@@ -75,6 +106,11 @@ public static class PackageArchiveReaderExtensions
         return null;
     }
 
+    /// <summary>
+    /// Reads the package's metadata from its nuspec.
+    /// </summary>
+    /// <param name="packageReader">The package.</param>
+    /// <returns>A new package entity, without its storage details.</returns>
     public static Package GetPackageMetadata(this PackageArchiveReader packageReader)
     {
         NuspecReader nuspec = packageReader.NuspecReader;

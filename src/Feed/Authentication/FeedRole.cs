@@ -27,8 +27,16 @@ public enum FeedRole
     Admin,
 }
 
+/// <summary>
+/// Extensions to <see cref="FeedRole"/>.
+/// </summary>
 public static class FeedRoleExtensions
 {
+    /// <summary>
+    /// Gets what a role may do.
+    /// </summary>
+    /// <param name="role">The role.</param>
+    /// <returns>The role's permissions.</returns>
     public static FeedPermissions GetPermissions(this FeedRole role) => role switch
     {
         FeedRole.None => FeedPermissions.None,

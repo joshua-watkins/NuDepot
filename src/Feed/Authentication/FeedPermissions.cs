@@ -6,6 +6,9 @@ namespace NuDepot.Feed.Authentication;
 [Flags]
 public enum FeedPermissions
 {
+    /// <summary>
+    /// No permissions.
+    /// </summary>
     None = 0,
 
     /// <summary>
@@ -42,5 +45,8 @@ public enum FeedPermissions
     /// </summary>
     ManageVulnerabilities = 1 << 5,
 
+    /// <summary>
+    /// Every permission.
+    /// </summary>
     All = Read | Push | Unlist | Deprecate | HardDelete | ManageVulnerabilities,
 }

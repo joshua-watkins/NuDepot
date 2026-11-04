@@ -7,7 +7,14 @@ namespace NuDepot.Feed.Entities;
 /// </summary>
 public class CatalogEntry
 {
+    /// <summary>
+    /// The type of an entry that snapshots a package version.
+    /// </summary>
     public const string PackageDetailsType = "PackageDetails";
+
+    /// <summary>
+    /// The type of an entry that records a package version's deletion.
+    /// </summary>
     public const string PackageDeleteType = "PackageDelete";
 
     /// <summary>
@@ -15,8 +22,14 @@ public class CatalogEntry
     /// </summary>
     public int Key { get; set; }
 
+    /// <summary>
+    /// The ID of the commit the entry was added in. Entries added together share it.
+    /// </summary>
     public string CommitId { get; set; } = null!;
 
+    /// <summary>
+    /// When the entry was committed, in UTC.
+    /// </summary>
     public DateTime CommittedAt { get; set; }
 
     /// <summary>
@@ -24,6 +37,9 @@ public class CatalogEntry
     /// </summary>
     public string Type { get; set; } = null!;
 
+    /// <summary>
+    /// The package's ID.
+    /// </summary>
     public string PackageId { get; set; } = null!;
 
     /// <summary>

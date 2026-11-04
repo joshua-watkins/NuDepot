@@ -9,6 +9,9 @@ namespace NuDepot.Core.Models;
 /// </summary>
 public class SearchResponse
 {
+    /// <summary>
+    /// The JSON-LD context.
+    /// </summary>
     [JsonPropertyName("@context")]
     public SearchContext? Context { get; set; }
 

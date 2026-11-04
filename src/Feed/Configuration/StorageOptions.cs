@@ -5,6 +5,9 @@ namespace NuDepot.Feed.Configuration;
 /// </summary>
 public class StorageOptions
 {
+    /// <summary>
+    /// Where files are stored. Defaults to <see cref="StorageType.FileSystem"/>.
+    /// </summary>
     public StorageType Type { get; set; } = StorageType.FileSystem;
 
     /// <summary>
@@ -21,6 +24,9 @@ public class StorageOptions
     public bool Temporary { get; set; }
 }
 
+/// <summary>
+/// Where the feed stores package and symbol files.
+/// </summary>
 public enum StorageType
 {
     /// <summary>

@@ -16,9 +16,19 @@ public static class PackageModelExtensions
     /// </summary>
     public static readonly IReadOnlyList<string> DeprecationReasons = ["Legacy", "CriticalBugs", "Other"];
 
+    /// <summary>
+    /// Whether the package version, or one of its dependencies, needs SemVer 2.0.0.
+    /// </summary>
+    /// <param name="package">The package version.</param>
+    /// <returns>True if older clients can't see it.</returns>
     public static bool IsSemVer2(this Package package)
         => package.SemVerLevel == SemVerLevel.SemVer2 || package.Version.IsSemVer2;
 
+    /// <summary>
+    /// Groups the package's dependencies by target framework, as the protocol describes them.
+    /// </summary>
+    /// <param name="package">The package version, with its dependencies loaded.</param>
+    /// <returns>The dependency groups. A framework without dependencies is a group without any.</returns>
     public static IReadOnlyList<DependencyGroupItem> ToDependencyGroups(this Package package)
     {
         return [.. (package.Dependencies ?? [])
@@ -40,6 +50,11 @@ public static class PackageModelExtensions
             })];
     }
 
+    /// <summary>
+    /// Describes the package's deprecation, as the protocol does.
+    /// </summary>
+    /// <param name="package">The package version.</param>
+    /// <returns>The deprecation, or null if the version isn't deprecated.</returns>
     public static PackageDeprecation? ToDeprecationOrNull(this Package package)
     {
         if (!package.IsDeprecated)
@@ -77,6 +92,13 @@ public static class PackageModelExtensions
         return result.Count > 0 ? result : null;
     }
 
+    /// <summary>
+    /// Whether an advisory affects a package version.
+    /// </summary>
+    /// <param name="advisory">The advisory.</param>
+    /// <param name="packageId">The package's ID.</param>
+    /// <param name="version">The package's version.</param>
+    /// <returns>True if the version is in the advisory's range.</returns>
     public static bool Affects(this VulnerabilityAdvisory advisory, string packageId, NuGetVersion version)
     {
         if (!string.Equals(advisory.PackageId, packageId, StringComparison.OrdinalIgnoreCase))

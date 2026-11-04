@@ -12,8 +12,14 @@ public class IndexModel(ISearchClient search, FeedConnection feed)
     private ISearchClient Search { get; } = search;
     private FeedConnection Feed { get; } = feed;
 
+    /// <summary>
+    /// The most packages on a page of results.
+    /// </summary>
     public const int ResultsPerPage = 20;
 
+    /// <summary>
+    /// The package types to filter by, keyed by the value the feed understands.
+    /// </summary>
     public static IReadOnlyDictionary<string, string> PackageTypes { get; } = new Dictionary<string, string>()
     {
         { "any", "Any" },
@@ -22,6 +28,9 @@ public class IndexModel(ISearchClient search, FeedConnection feed)
         { "dotnettemplate", ".NET template" },
     };
 
+    /// <summary>
+    /// The target frameworks to filter by, keyed by the value the feed understands. "divider" and "header" keys separate the groups.
+    /// </summary>
     public static IReadOnlyDictionary<string, string> TargetFrameworks { get; } = new Dictionary<string, string>()
     {
         { "any", "Any" },
@@ -89,10 +98,19 @@ public class IndexModel(ISearchClient search, FeedConnection feed)
     /// </summary>
     public int PageIndex { get; set; } = 1;
 
+    /// <summary>
+    /// The "packageType" query parameter, or "any".
+    /// </summary>
     public string PackageType { get; set; } = "any";
 
+    /// <summary>
+    /// The "framework" query parameter, or "any".
+    /// </summary>
     public string Framework { get; set; } = "any";
 
+    /// <summary>
+    /// The "prerelease" query parameter: whether to include prerelease versions.
+    /// </summary>
     public bool Prerelease { get; set; } = true;
 
     /// <summary>
@@ -100,8 +118,16 @@ public class IndexModel(ISearchClient search, FeedConnection feed)
     /// </summary>
     public string PathBase { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The page of matching packages.
+    /// </summary>
     public IReadOnlyList<SearchResult> Packages { get; private set; } = [];
 
+    /// <summary>
+    /// Searches the feed for the page of packages.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when <see cref="Packages"/> is set.</returns>
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
         string? packageType = PackageType == "any" ? null : PackageType;

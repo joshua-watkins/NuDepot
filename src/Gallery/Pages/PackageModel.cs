@@ -30,8 +30,14 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     /// </summary>
     public string PathBase { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether the package version exists and is listed.
+    /// </summary>
     public bool Found { get; private set; }
 
+    /// <summary>
+    /// The package version's metadata.
+    /// </summary>
     public NuDepotPackageMetadata Package { get; private set; } = new();
 
     /// <summary>
@@ -39,11 +45,29 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     /// </summary>
     public NuGetVersion Version { get; private set; } = new(0, 0, 0);
 
+    /// <summary>
+    /// Whether the package is a .NET template, installed with "dotnet new".
+    /// </summary>
     public bool IsDotnetTemplate { get; private set; }
+
+    /// <summary>
+    /// Whether the package is a .NET tool, installed with "dotnet tool".
+    /// </summary>
     public bool IsDotnetTool { get; private set; }
+
+    /// <summary>
+    /// When the package last had a version published.
+    /// </summary>
     public DateTime LastUpdated { get; private set; }
+
+    /// <summary>
+    /// The downloads of every version of the package.
+    /// </summary>
     public long TotalDownloads { get; private set; }
 
+    /// <summary>
+    /// The packages on the feed that depend on this one, most downloaded first.
+    /// </summary>
     public IReadOnlyList<PackageDependent> UsedBy { get; set; } = [];
 
     /// <summary>
@@ -56,13 +80,34 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     /// </summary>
     public IReadOnlyList<VersionModel>? Versions { get; private set; }
 
+    /// <summary>
+    /// The README, rendered from Markdown, or null if the package doesn't have one.
+    /// </summary>
     public HtmlString? Readme { get; private set; }
 
+    /// <summary>
+    /// The URL of the package's icon, or null for the default icon.
+    /// </summary>
     public string? IconUrl { get; private set; }
+
+    /// <summary>
+    /// The URL of the package's license, if it has one.
+    /// </summary>
     public string? LicenseUrl { get; private set; }
+
+    /// <summary>
+    /// The URL to download the package.
+    /// </summary>
     public string? PackageDownloadUrl { get; private set; }
 
+    /// <summary>
+    /// The version's deprecation, if it's deprecated.
+    /// </summary>
     public PackageDeprecation? Deprecation => Package.Deprecation;
+
+    /// <summary>
+    /// The known vulnerabilities that affect the version.
+    /// </summary>
     public IReadOnlyList<PackageVulnerability> Vulnerabilities => Package.Vulnerabilities ?? [];
 
     /// <summary>
@@ -121,6 +166,13 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         ];
     }
 
+    /// <summary>
+    /// Reads the package version's details from the feed.
+    /// </summary>
+    /// <param name="id">The package's ID.</param>
+    /// <param name="version">The version to show, or null for the latest listed version.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when the page's properties are set.</returns>
     public async Task OnGetAsync(string id, string? version, CancellationToken cancellationToken)
     {
         IReadOnlyList<NuDepotPackageMetadata> packages = await Packages.GetPackageMetadataAsync(id, cancellationToken);
@@ -248,23 +300,61 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         return new HtmlString(readmeHtml);
     }
 
+    /// <summary>
+    /// The package's dependencies for one target framework.
+    /// </summary>
     public class DependencyGroupModel
     {
+        /// <summary>
+        /// The target framework's name, like ".NET 10.0".
+        /// </summary>
         public required string Name { get; init; }
+
+        /// <summary>
+        /// The dependencies.
+        /// </summary>
         public required IReadOnlyList<DependencyModel> Dependencies { get; init; }
     }
 
+    /// <summary>
+    /// A dependency on another package.
+    /// </summary>
     public class DependencyModel
     {
+        /// <summary>
+        /// The dependency's package ID.
+        /// </summary>
         public required string PackageId { get; init; }
+
+        /// <summary>
+        /// The versions the package depends on, like "(>= 1.0.0)".
+        /// </summary>
         public required string VersionSpec { get; init; }
     }
 
+    /// <summary>
+    /// One of the package's listed versions.
+    /// </summary>
     public class VersionModel
     {
+        /// <summary>
+        /// The version.
+        /// </summary>
         public required NuGetVersion Version { get; init; }
+
+        /// <summary>
+        /// The version's downloads.
+        /// </summary>
         public long Downloads { get; init; }
+
+        /// <summary>
+        /// Whether this is the version the page shows.
+        /// </summary>
         public bool Selected { get; init; }
+
+        /// <summary>
+        /// When the version was published.
+        /// </summary>
         public DateTime LastUpdated { get; init; }
     }
 }

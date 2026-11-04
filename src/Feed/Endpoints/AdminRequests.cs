@@ -10,8 +10,14 @@ public class DeprecationRequest
     /// </summary>
     public string[]? Reasons { get; set; }
 
+    /// <summary>
+    /// An optional message for users.
+    /// </summary>
     public string? Message { get; set; }
 
+    /// <summary>
+    /// An optional package to use instead.
+    /// </summary>
     public string? AlternatePackageId { get; set; }
 
     /// <summary>
@@ -25,6 +31,9 @@ public class DeprecationRequest
 /// </summary>
 public class AdvisoryRequest
 {
+    /// <summary>
+    /// The ID of the vulnerable package.
+    /// </summary>
     public string? PackageId { get; set; }
 
     /// <summary>

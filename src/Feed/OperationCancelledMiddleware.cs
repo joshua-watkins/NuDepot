@@ -13,6 +13,11 @@ public class OperationCancelledMiddleware(RequestDelegate next, ILogger<Operatio
     private RequestDelegate Next { get; } = next;
     private ILogger Logger { get; } = logger;
 
+    /// <summary>
+    /// Runs the rest of the pipeline. A request whose operation was cancelled gets a 409 Conflict response instead of an error.
+    /// </summary>
+    /// <param name="context">The request.</param>
+    /// <returns>A task that completes when the response is sent.</returns>
     public async Task Invoke(HttpContext context)
     {
         try

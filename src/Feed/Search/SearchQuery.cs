@@ -43,8 +43,16 @@ public class SearchQuery
     /// </summary>
     public IReadOnlyList<SearchFilter> Filters { get; }
 
+    /// <summary>
+    /// Whether the query has no terms or filters, so it matches every package.
+    /// </summary>
     public bool IsEmpty => Terms.Count == 0 && Filters.Count == 0;
 
+    /// <summary>
+    /// Parses a search query. Unknown fields are free text.
+    /// </summary>
+    /// <param name="query">The query, like <c>json tags:serialization</c>.</param>
+    /// <returns>The parsed query.</returns>
     public static SearchQuery Parse(string query)
     {
         List<string> terms = [];

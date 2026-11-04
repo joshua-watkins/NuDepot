@@ -9,6 +9,9 @@ using NuDepot.Gallery.Pages;
 // In the namespace of IServiceCollection, so applications see AddNuDepotGallery() without a using.
 namespace Microsoft.Extensions.DependencyInjection;
 
+/// <summary>
+/// Adds the gallery website to an application's services.
+/// </summary>
 public static class GalleryServiceCollectionExtensions
 {
     /// <summary>

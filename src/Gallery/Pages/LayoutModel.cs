@@ -20,9 +20,24 @@ public record LayoutModel(string Title, string PathBase, WebsitePage ActivePage 
 /// </summary>
 public enum WebsitePage
 {
+    /// <summary>
+    /// No link is highlighted.
+    /// </summary>
     None,
+
+    /// <summary>
+    /// The search page.
+    /// </summary>
     Packages,
+
+    /// <summary>
+    /// The page that explains how to push packages.
+    /// </summary>
     Upload,
+
+    /// <summary>
+    /// The sign-in and account pages.
+    /// </summary>
     Account,
 }
 
@@ -35,6 +50,9 @@ public enum WebsitePage
 /// <param name="SignInUrl">Where the visitor can sign in to read the feed, if they can.</param>
 public record FeedErrorModel(string PathBase, string ServiceIndexUrl, FeedAccessError Access = FeedAccessError.None, string? SignInUrl = null);
 
+/// <summary>
+/// Why the website couldn't read the feed.
+/// </summary>
 public enum FeedAccessError
 {
     /// <summary>

@@ -9,6 +9,9 @@ namespace NuDepot.Core.Models;
 /// </summary>
 public class RegistrationLeafResponse
 {
+    /// <summary>
+    /// The JSON-LD types of a registration leaf.
+    /// </summary>
     public static readonly IReadOnlyList<string> DefaultType =
     [
         "Package",

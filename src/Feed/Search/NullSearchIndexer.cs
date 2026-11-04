@@ -7,6 +7,7 @@ namespace NuDepot.Feed.Search;
 /// </summary>
 public class NullSearchIndexer : ISearchIndexer
 {
+    /// <inheritdoc />
     public Task IndexAsync(Package package, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;

@@ -3,6 +3,9 @@ using NuDepot.Core.Catalog;
 
 namespace NuDepot.Core.Extensions;
 
+/// <summary>
+/// Extensions to <see cref="NuGetClientFactory"/>.
+/// </summary>
 public static class NuGetClientFactoryExtensions
 {
     /// <summary>

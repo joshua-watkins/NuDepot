@@ -31,7 +31,7 @@ public interface IPackageIndexingService
     /// Attempt to index a new package.
     /// </summary>
     /// <param name="stream">The stream containing the package's content.</param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The result of the attempted indexing operation.</returns>
     Task<PackageIndexingResult> IndexAsync(Stream stream, CancellationToken cancellationToken);
 
@@ -43,7 +43,7 @@ public interface IPackageIndexingService
     /// Whether the package may replace an existing package, if the feed allows overwrites.
     /// If false, an existing package is <see cref="PackageIndexingResult.PackageAlreadyExists"/>.
     /// </param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The result of the attempted indexing operation.</returns>
     Task<PackageIndexingResult> IndexAsync(Stream stream, bool allowOverwrite, CancellationToken cancellationToken);
 }

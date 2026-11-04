@@ -9,6 +9,9 @@ using NuDepot.Feed.Extensions;
 // In the namespace of IApplicationBuilder, so applications see UseNuDepotFeed() without a using.
 namespace Microsoft.AspNetCore.Builder;
 
+/// <summary>
+/// Uses the NuGet feed in an application's request pipeline.
+/// </summary>
 public static class FeedApplicationBuilderExtensions
 {
     /// <summary>

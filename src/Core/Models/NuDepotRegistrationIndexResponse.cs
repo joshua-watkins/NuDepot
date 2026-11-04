@@ -15,12 +15,21 @@ namespace NuDepot.Core.Models;
 public class NuDepotRegistrationIndexResponse
 {
     #region Original properties from RegistrationIndexResponse.
+    /// <summary>
+    /// The URL of this registration index.
+    /// </summary>
     [JsonPropertyName("@id")]
     public string RegistrationIndexUrl { get; set; } = null!;
 
+    /// <summary>
+    /// The JSON-LD types of this registration index.
+    /// </summary>
     [JsonPropertyName("@type")]
     public IReadOnlyList<string> Type { get; set; } = null!;
 
+    /// <summary>
+    /// The number of pages in this registration index.
+    /// </summary>
     [JsonPropertyName("count")]
     public int Count { get; set; }
     #endregion

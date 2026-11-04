@@ -5,10 +5,19 @@ namespace NuDepot.Feed.Endpoints;
 /// </summary>
 public class AccountResponse
 {
+    /// <summary>
+    /// Whether someone is signed in.
+    /// </summary>
     public bool SignedIn { get; set; }
 
+    /// <summary>
+    /// The signed-in user's name.
+    /// </summary>
     public string? UserName { get; set; }
 
+    /// <summary>
+    /// The signed-in user's role.
+    /// </summary>
     public string? Role { get; set; }
 
     /// <summary>
@@ -43,17 +52,35 @@ public class PasskeyCreationRequest
 /// </summary>
 public class SignInRequest
 {
+    /// <summary>
+    /// The name of the account to sign in to. If empty, the browser offers any of the site's passkeys.
+    /// </summary>
     public string? UserName { get; set; }
 }
 
+/// <summary>
+/// One of the signed-in user's passkeys.
+/// </summary>
 public class PasskeyResponse
 {
+    /// <summary>
+    /// The passkey's ID.
+    /// </summary>
     public int Id { get; set; }
 
+    /// <summary>
+    /// The name the user gave the passkey.
+    /// </summary>
     public string Name { get; set; } = null!;
 
+    /// <summary>
+    /// When the passkey was created, in UTC.
+    /// </summary>
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>
+    /// When the passkey was last used to sign in, in UTC.
+    /// </summary>
     public DateTime? LastUsedAt { get; set; }
 
     /// <summary>
@@ -67,13 +94,25 @@ public class PasskeyResponse
 /// </summary>
 public class ApiKeyCreationRequest
 {
+    /// <summary>
+    /// A name for the key, like "Build server".
+    /// </summary>
     public string? Name { get; set; }
 }
 
+/// <summary>
+/// One of the signed-in user's API keys.
+/// </summary>
 public class ApiKeyResponse
 {
+    /// <summary>
+    /// The key's ID.
+    /// </summary>
     public int Id { get; set; }
 
+    /// <summary>
+    /// The name the user gave the key.
+    /// </summary>
     public string Name { get; set; } = null!;
 
     /// <summary>
@@ -81,8 +120,14 @@ public class ApiKeyResponse
     /// </summary>
     public string Prefix { get; set; } = null!;
 
+    /// <summary>
+    /// When the key was created, in UTC.
+    /// </summary>
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>
+    /// When the key was last used, in UTC.
+    /// </summary>
     public DateTime? LastUsedAt { get; set; }
 
     /// <summary>

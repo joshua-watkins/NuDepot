@@ -1,5 +1,8 @@
 namespace NuDepot.Feed.Entities;
 
+/// <summary>
+/// The semantic versioning a package version needs.
+/// </summary>
 public enum SemVerLevel
 {
     /// <summary>

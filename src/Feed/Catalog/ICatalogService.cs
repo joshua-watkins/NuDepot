@@ -22,6 +22,10 @@ public interface ICatalogService
     /// </summary>
     Task AddPackageDeleteAsync(string id, NuGetVersion version, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Get the catalog's index, which lists its pages.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
     Task<CatalogIndex> GetIndexAsync(CancellationToken cancellationToken);
 
     /// <returns>The page, or null if it doesn't exist.</returns>

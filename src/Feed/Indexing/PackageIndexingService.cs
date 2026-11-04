@@ -11,6 +11,18 @@ using NuGet.Packaging;
 
 namespace NuDepot.Feed.Indexing;
 
+/// <summary>
+/// Adds pushed packages to the feed: stores them, signs them, and records them in the database, the search index and the catalog.
+/// </summary>
+/// <param name="packages">The package database.</param>
+/// <param name="storage">Where packages are stored.</param>
+/// <param name="search">The search index.</param>
+/// <param name="catalog">The catalog that records the change.</param>
+/// <param name="signing">Signs packages with the feed's repository certificate.</param>
+/// <param name="url">Generates the feed's URLs.</param>
+/// <param name="time">The current time.</param>
+/// <param name="options">The feed's options.</param>
+/// <param name="logger">The logger.</param>
 public class PackageIndexingService(IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, IOptionsSnapshot<FeedOptions> options, ILogger<PackageIndexingService> logger) : IPackageIndexingService
 {
     private IPackageDatabase Packages { get; } = packages;
@@ -23,9 +35,11 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
     private IOptionsSnapshot<FeedOptions> Options { get; } = options;
     private ILogger<PackageIndexingService> Logger { get; } = logger;
 
+    /// <inheritdoc />
     public Task<PackageIndexingResult> IndexAsync(Stream packageStream, CancellationToken cancellationToken)
         => IndexAsync(packageStream, allowOverwrite: true, cancellationToken);
 
+    /// <inheritdoc />
     public async Task<PackageIndexingResult> IndexAsync(Stream packageStream, bool allowOverwrite, CancellationToken cancellationToken)
     {
         // Try to extract all the necessary information from the package.

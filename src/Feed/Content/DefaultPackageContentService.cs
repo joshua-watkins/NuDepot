@@ -13,6 +13,7 @@ public class DefaultPackageContentService(IPackageService packages, IPackageStor
     private IPackageService Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;
 
+    /// <inheritdoc />
     public async Task<PackageVersionsResponse?> GetPackageVersionsOrNullAsync(string id, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<NuGetVersion> versions = await Packages.FindPackageVersionsAsync(id, cancellationToken);
@@ -27,6 +28,7 @@ public class DefaultPackageContentService(IPackageService packages, IPackageStor
         };
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetPackageContentStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
         if (!await Packages.ExistsAsync(id, version, cancellationToken))
@@ -36,6 +38,7 @@ public class DefaultPackageContentService(IPackageService packages, IPackageStor
         return await Storage.GetPackageStreamAsync(id, version, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetPackageManifestStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
         if (!await Packages.ExistsAsync(id, version, cancellationToken))
@@ -44,6 +47,7 @@ public class DefaultPackageContentService(IPackageService packages, IPackageStor
         return await Storage.GetNuspecStreamAsync(id, version, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetPackageReadmeStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
         Package? package = await Packages.FindPackageOrNullAsync(id, version, cancellationToken);
@@ -53,6 +57,7 @@ public class DefaultPackageContentService(IPackageService packages, IPackageStor
         return await Storage.GetReadmeStreamAsync(id, version, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetPackageIconStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
         Package? package = await Packages.FindPackageOrNullAsync(id, version, cancellationToken);
@@ -62,6 +67,7 @@ public class DefaultPackageContentService(IPackageService packages, IPackageStor
         return await Storage.GetIconStreamAsync(id, version, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<Stream?> GetPackageLicenseStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
         Package? package = await Packages.FindPackageOrNullAsync(id, version, cancellationToken);

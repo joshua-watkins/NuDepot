@@ -5,6 +5,12 @@ using NuDepot.Feed.Vulnerabilities;
 
 namespace NuDepot.Feed.ServiceIndex;
 
+/// <summary>
+/// Builds the feed's service index, which lists its resources.
+/// </summary>
+/// <param name="url">Generates the feed's URLs.</param>
+/// <param name="vulnerabilities">Whether the feed has known vulnerabilities to list.</param>
+/// <param name="signing">Whether the feed signs packages.</param>
 public class NuDepotServiceIndex(IUrlGenerator url, IVulnerabilityService vulnerabilities, IRepositorySigningService signing) : IServiceIndexService
 {
     private IUrlGenerator Url { get; } = url;
@@ -25,6 +31,7 @@ public class NuDepotServiceIndex(IUrlGenerator url, IVulnerabilityService vulner
         }
     }
 
+    /// <inheritdoc />
     public async Task<ServiceIndexResponse> GetAsync(CancellationToken cancellationToken = default)
     {
         List<ServiceIndexItem> resources =

@@ -28,6 +28,9 @@ public class FeedAuthorizationOptions
     public UserOptions Users { get; set; } = new();
 }
 
+/// <summary>
+/// People who sign in to the feed with passkeys, and create their own API keys.
+/// </summary>
 public class UserOptions
 {
     /// <summary>
@@ -60,6 +63,9 @@ public class UserOptions
     public List<string> Origins { get; set; } = [];
 }
 
+/// <summary>
+/// An API key that grants access to the feed.
+/// </summary>
 public class ApiKeyOptions
 {
     /// <summary>

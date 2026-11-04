@@ -5,5 +5,8 @@ namespace NuDepot.Feed.Extensions;
 /// </summary>
 public class SystemTime
 {
+    /// <summary>
+    /// The current time, in UTC.
+    /// </summary>
     public virtual DateTime UtcNow => DateTime.UtcNow;
 }
