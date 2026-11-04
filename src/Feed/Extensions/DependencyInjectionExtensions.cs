@@ -7,35 +7,35 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
-using NuGet.Core;
-using NuGet.Feed.Authentication;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Content;
-using NuGet.Feed.Indexing;
-using NuGet.Feed.Metadata;
-using NuGet.Feed.Search;
-using NuGet.Feed.ServiceIndex;
-using NuGet.Feed.Signing;
-using NuGet.Feed.Storage;
-using NuGet.Feed.Upstream;
-using NuGet.Feed.Upstream.Clients;
-using NuGet.Feed.Validation;
-using NuGet.Feed.Vulnerabilities;
+using NuDepot.Core;
+using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Content;
+using NuDepot.Feed.Indexing;
+using NuDepot.Feed.Metadata;
+using NuDepot.Feed.Search;
+using NuDepot.Feed.ServiceIndex;
+using NuDepot.Feed.Signing;
+using NuDepot.Feed.Storage;
+using NuDepot.Feed.Upstream;
+using NuDepot.Feed.Upstream.Clients;
+using NuDepot.Feed.Validation;
+using NuDepot.Feed.Vulnerabilities;
 
-namespace NuGet.Feed.Extensions;
+namespace NuDepot.Feed.Extensions;
 
 public static partial class DependencyInjectionExtensions
 {
-    public static IServiceCollection AddNuGetFeedApplication(
+    public static IServiceCollection AddNuDepotApplication(
         this IServiceCollection services,
-        Action<NuGetFeedApplication> configureAction)
+        Action<NuDepotApplication> configureAction)
     {
-        var app = new NuGetFeedApplication(services);
+        var app = new NuDepotApplication(services);
 
         services.AddConfiguration();
         services.AddFeedAuthorization();
-        services.AddNuGetFeedServices();
+        services.AddNuDepotServices();
         services.AddDefaultProviders();
 
         configureAction(app);
@@ -49,13 +49,13 @@ public static partial class DependencyInjectionExtensions
     {
         // Each options type binds its own configuration section. The configuration binding
         // source generator turns these Bind calls into code, so they don't need reflection.
-        services.AddOptions<NuGetFeedOptions>()
+        services.AddOptions<NuDepotOptions>()
             .Configure<IConfiguration>((options, config) => config.Bind(options));
         services.AddOptions<DatabaseOptions>()
-            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuGetFeedOptions.Database)).Bind(options));
+            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuDepotOptions.Database)).Bind(options));
         services.TryAddSingleton<TemporaryStorageFolder>();
         services.AddOptions<FileSystemStorageOptions>()
-            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuGetFeedOptions.Storage)).Bind(options))
+            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuDepotOptions.Storage)).Bind(options))
             .PostConfigure<TemporaryStorageFolder>((options, temporaryFolder) =>
             {
                 if (options.Temporary)
@@ -70,33 +70,33 @@ public static partial class DependencyInjectionExtensions
                 }
             });
         services.AddOptions<MirrorOptions>()
-            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuGetFeedOptions.Mirror)).Bind(options));
+            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuDepotOptions.Mirror)).Bind(options));
         services.AddOptions<SearchOptions>()
-            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuGetFeedOptions.Search)).Bind(options));
+            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuDepotOptions.Search)).Bind(options));
         services.AddOptions<StorageOptions>()
-            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuGetFeedOptions.Storage)).Bind(options));
+            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuDepotOptions.Storage)).Bind(options));
         // Validated when the application starts too, since a mismatch could leave the feed open.
         services.AddOptions<FeedAuthorizationOptions>()
-            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuGetFeedOptions.Authorization)).Bind(options))
+            .Configure<IConfiguration>((options, config) => config.GetSection(nameof(NuDepotOptions.Authorization)).Bind(options))
             .ValidateOnStart();
 
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DatabaseOptions>, ValidateNuGetFeedOptions>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<MirrorOptions>, ValidateNuGetFeedOptions>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FeedAuthorizationOptions>, ValidateNuGetFeedOptions>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DatabaseOptions>, ValidateNuDepotOptions>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<MirrorOptions>, ValidateNuDepotOptions>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FeedAuthorizationOptions>, ValidateNuDepotOptions>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FeedAuthorizationOptions>, ValidateFeedAccess>());
     }
 
     private static void AddFeedAuthorization(this IServiceCollection services)
     {
         // The feed is open unless the application adds its API key authentication
-        // (AddNuGetFeedApiKey) and policies (AddNuGetFeedPolicies). The base services are added
+        // (AddNuDepotApiKey) and policies (AddNuDepotPolicies). The base services are added
         // so applications can always call UseAuthentication and UseAuthorization.
         services.TryAddSingleton<FeedAccess>();
         services.AddAuthentication();
         services.AddAuthorization();
     }
 
-    private static void AddNuGetFeedServices(this IServiceCollection services)
+    private static void AddNuDepotServices(this IServiceCollection services)
     {
         services.TryAddSingleton<IFrameworkCompatibilityService, FrameworkCompatibilityService>();
         services.TryAddSingleton<IPackageDownloadsSource, PackageDownloadsJsonSource>();
@@ -120,7 +120,7 @@ public static partial class DependencyInjectionExtensions
         services.TryAddTransient<IPackageMetadataService, DefaultPackageMetadataService>();
         services.TryAddTransient<IPackageService, PackageService>();
         services.TryAddTransient<IPackageStorageService, PackageStorageService>();
-        services.TryAddTransient<IServiceIndexService, NuGetFeedServiceIndex>();
+        services.TryAddTransient<IServiceIndexService, NuDepotServiceIndex>();
         services.TryAddTransient<ISymbolIndexingService, SymbolIndexingService>();
         services.TryAddTransient<ISymbolStorageService, SymbolStorageService>();
         services.TryAddTransient<ICatalogService, CatalogService>();
@@ -173,16 +173,16 @@ public static partial class DependencyInjectionExtensions
 
     private static void AddFallbackServices(this IServiceCollection services)
     {
-        // NuGetFeed's services have multiple implementations that live side-by-side.
+        // NuDepot's services have multiple implementations that live side-by-side.
         // The application will choose the implementation using one of two ways:
         //
         // 1. Using the first implementation that was registered in the dependency injection
-        //    container. This is the strategy used by applications that embed NuGetFeed.
+        //    container. This is the strategy used by applications that embed NuDepot.
         // 2. Using "providers". The providers will examine the application's configuration to
         //    determine whether its service implementation is active. Thsi is the strategy used
-        //    by the default NuGetFeed application.
+        //    by the default NuDepot application.
         //
-        // NuGetFeed has database and search services, but the database services are special
+        // NuDepot has database and search services, but the database services are special
         // in that they may also act as search services. If an application registers the
         // database service first and the search service second, the application should
         // use the search service even though it wasn't registered first. Furthermore,
@@ -218,7 +218,7 @@ public static partial class DependencyInjectionExtensions
         var options = provider.GetRequiredService<IOptions<MirrorOptions>>();
         var packageSource = options.Value.PackageSource
             ?? throw new InvalidOperationException(
-                $"The '{nameof(NuGetFeedOptions.Mirror)}:{nameof(MirrorOptions.PackageSource)}' config is required to mirror packages.");
+                $"The '{nameof(NuDepotOptions.Mirror)}:{nameof(MirrorOptions.PackageSource)}' config is required to mirror packages.");
 
         return new NuGetClientFactory(httpClient, packageSource.ToString());
     }

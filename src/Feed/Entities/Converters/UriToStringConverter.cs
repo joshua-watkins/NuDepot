@@ -1,7 +1,7 @@
 using System;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
-namespace NuGet.Feed.Entities.Converters;
+namespace NuDepot.Feed.Entities.Converters;
 
 // Entity Framework doesn't convert nulls, so the conversions only see values.
 public class UriToStringConverter : ValueConverter<Uri?, string?>

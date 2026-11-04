@@ -1,11 +1,11 @@
 using System.Net.Http;
-using NuGet.Core.Catalog;
-using NuGet.Core.PackageContent;
-using NuGet.Core.PackageMetadata;
-using NuGet.Core.Search;
-using NuGet.Core.ServiceIndex;
+using NuDepot.Core.Catalog;
+using NuDepot.Core.PackageContent;
+using NuDepot.Core.PackageMetadata;
+using NuDepot.Core.Search;
+using NuDepot.Core.ServiceIndex;
 
-namespace NuGet.Core.Tests.Support;
+namespace NuDepot.Core.Tests.Support;
 
 public class ProtocolFixture
 {

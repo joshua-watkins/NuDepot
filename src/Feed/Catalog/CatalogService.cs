@@ -7,14 +7,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using NuGet.Core.Models;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Extensions;
-using NuGet.Feed.Serialization;
-using NuGet.Feed.Storage;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Serialization;
+using NuDepot.Feed.Storage;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Catalog;
+namespace NuDepot.Feed.Catalog;
 
 /// <inheritdoc />
 public class CatalogService : ICatalogService
@@ -32,14 +32,14 @@ public class CatalogService : ICatalogService
     // Commits must have strictly increasing timestamps. Serialize them within this process.
     private static readonly SemaphoreSlim CommitLock = new(1, 1);
 
-    private readonly NuGetFeedContext _context;
+    private readonly NuDepotContext _context;
     private readonly IUrlGenerator _url;
     private readonly IPackageStorageService _storage;
     private readonly SystemTime _time;
     private readonly ILogger<CatalogService> _logger;
 
     public CatalogService(
-        NuGetFeedContext context,
+        NuDepotContext context,
         IUrlGenerator url,
         IPackageStorageService storage,
         SystemTime time,

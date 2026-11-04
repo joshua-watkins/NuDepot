@@ -2,7 +2,7 @@ using NuGet.Versioning;
 using System;
 using System.Collections.Generic;
 
-namespace NuGet.Feed.Entities;
+namespace NuDepot.Feed.Entities;
 
 // See NuGetGallery's: https://github.com/NuGet/NuGetGallery/blob/master/src/NuGetGallery.Core/Entities/Package.cs
 // The properties' nullability matches the database schema: Entity Framework reads it to decide which columns are required.
@@ -17,7 +17,7 @@ public class Package
         get
         {
             // Favor the original version string as it contains more information.
-            // Packages uploaded with older versions of NuGetFeed may not have the original version string.
+            // Packages uploaded with older versions of NuDepot may not have the original version string.
             return NuGetVersion.Parse(OriginalVersionString ?? NormalizedVersionString);
         }
 

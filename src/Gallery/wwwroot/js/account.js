@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    var settings = window.nugetfeedAccount || {};
+    var settings = window.nudepotAccount || {};
     var api = (settings.pathBase || '') + '/api/account';
 
     // Binary values
@@ -266,19 +266,19 @@
         page.querySelector('#new-apikey-value').textContent = key;
         page.querySelector('#new-apikey-config').textContent = [
             '<packageSources>',
-            '  <add key="NuGetFeed" value="' + (settings.serviceIndexUrl || '') + '" />',
+            '  <add key="NuDepot" value="' + (settings.serviceIndexUrl || '') + '" />',
             '</packageSources>',
             '<packageSourceCredentials>',
-            '  <NuGetFeed>',
+            '  <NuDepot>',
             '    <add key="Username" value="' + page.querySelector('#account-name').textContent + '" />',
             '    <add key="ClearTextPassword" value="' + key + '" />',
-            '  </NuGetFeed>',
+            '  </NuDepot>',
             '</packageSourceCredentials>',
         ].join('\n');
         page.querySelector('#new-apikey').hidden = false;
 
         var copy = page.querySelector('#copy-apikey');
-        copy.onclick = function () { window.nugetfeed.copyTextToClipboard(key, copy); };
+        copy.onclick = function () { window.nudepot.copyTextToClipboard(key, copy); };
     }
 
     function initAccount(page) {

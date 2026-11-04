@@ -3,23 +3,23 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using NuGet.Feed.Tests.Support;
+using NuDepot.Feed.Tests.Support;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NuGet.Feed.Tests
+namespace NuDepot.Feed.Tests
 {
     public class MirrorIntegrationTests : IDisposable
     {
-        private readonly NuGetFeedTestApplication _upstream;
-        private readonly NuGetFeedTestApplication _downstream;
+        private readonly NuDepotTestApplication _upstream;
+        private readonly NuDepotTestApplication _downstream;
         private readonly HttpClient _downstreamClient;
         private readonly Stream _packageStream;
 
         public MirrorIntegrationTests(ITestOutputHelper output)
         {
-            _upstream = new NuGetFeedTestApplication(output);
-            _downstream = new NuGetFeedTestApplication(output, _upstream.CreateClient());
+            _upstream = new NuDepotTestApplication(output);
+            _downstream = new NuDepotTestApplication(output, _upstream.CreateClient());
 
             _downstreamClient = _downstream.CreateClient();
             _packageStream = TestResources.GetResourceStream(TestResources.Package);

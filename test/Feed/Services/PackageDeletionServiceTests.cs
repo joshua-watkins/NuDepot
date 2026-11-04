@@ -3,14 +3,14 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Indexing;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Indexing;
+using NuDepot.Feed.Storage;
 using NuGet.Versioning;
 using Xunit;
 
-namespace NuGet.Feed.Tests.Services
+namespace NuDepot.Feed.Tests.Services
 {
     public class PackageDeletionServiceTests
     {
@@ -20,16 +20,16 @@ namespace NuGet.Feed.Tests.Services
         private readonly Mock<IPackageDatabase> _packages;
         private readonly Mock<IPackageStorageService> _storage;
 
-        private readonly NuGetFeedOptions _options;
+        private readonly NuDepotOptions _options;
         private readonly PackageDeletionService _target;
 
         public PackageDeletionServiceTests()
         {
             _packages = new Mock<IPackageDatabase>();
             _storage = new Mock<IPackageStorageService>();
-            _options = new NuGetFeedOptions();
+            _options = new NuDepotOptions();
 
-            var optionsSnapshot = new Mock<IOptionsSnapshot<NuGetFeedOptions>>();
+            var optionsSnapshot = new Mock<IOptionsSnapshot<NuDepotOptions>>();
             optionsSnapshot.Setup(o => o.Value).Returns(_options);
 
             _target = new PackageDeletionService(

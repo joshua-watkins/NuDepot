@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using NuGet.Feed.Authentication;
-using NuGet.Feed.Users;
+using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Users;
 
-namespace NuGet.Feed.Entities;
+namespace NuDepot.Feed.Entities;
 
 /// <summary>
 /// A person who signs in to the feed with a passkey. Until their first passkey is created, the

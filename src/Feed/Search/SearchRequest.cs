@@ -1,4 +1,4 @@
-namespace NuGet.Feed.Search;
+namespace NuDepot.Feed.Search;
 
 /// <summary>
 /// The NuGet V3 search request.

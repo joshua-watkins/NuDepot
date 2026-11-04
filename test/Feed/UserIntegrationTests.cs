@@ -10,13 +10,13 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Authentication;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Tests.Support;
+using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Tests.Support;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NuGet.Feed.Tests;
+namespace NuDepot.Feed.Tests;
 
 /// <summary>
 /// Tests users who sign up and sign in with passkeys, and their API keys.
@@ -249,7 +249,7 @@ public class UserIntegrationTests : IDisposable
             var response = await alice.GetAsync("api/account");
 
             Assert.True((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("signedIn").GetBoolean());
-            Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("NuGetFeed.User=", StringComparison.Ordinal));
+            Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("NuDepot.User=", StringComparison.Ordinal));
         }
 
         app.Clock.Advance(TimeSpan.FromDays(366));
@@ -321,7 +321,7 @@ public class UserIntegrationTests : IDisposable
 
         var aliceKey = await CreateApiKeyAsync(alice, "Build server");
         var bobKey = await CreateApiKeyAsync(bob, "Laptop");
-        Assert.StartsWith("nf_", aliceKey);
+        Assert.StartsWith("nd_", aliceKey);
 
         using var client = app.CreateClient();
 
@@ -405,7 +405,7 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public void UsersWithoutTheFeedsUsersStopStartup()
     {
-        var app = new NuGetFeedTestApplication(
+        var app = new NuDepotTestApplication(
             _output,
             configuration: new Dictionary<string, string> { { "Authorization:Users:Enabled", "true" } });
 
@@ -417,16 +417,16 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public void UsersWithoutRolesStopStartup()
     {
-        var app = new NuGetFeedTestApplication(_output, useAuthentication: true, useUsers: true);
+        var app = new NuDepotTestApplication(_output, useAuthentication: true, useUsers: true);
 
         var exception = Assert.Throws<OptionsValidationException>(() => app.Services);
 
         Assert.Contains(exception.Failures, f => f.Contains("users, who need roles"));
     }
 
-    private NuGetFeedTestApplication CreateApp(Dictionary<string, string>? configuration = null)
+    private NuDepotTestApplication CreateApp(Dictionary<string, string>? configuration = null)
     {
-        var app = new NuGetFeedTestApplication(_output, configuration: configuration, useAuthentication: true, useAuthorization: true, useUsers: true);
+        var app = new NuDepotTestApplication(_output, configuration: configuration, useAuthentication: true, useAuthorization: true, useUsers: true);
         _disposables.Add(app);
         return app;
     }
@@ -435,7 +435,7 @@ public class UserIntegrationTests : IDisposable
     /// Sign up the way the website does, returning a client that's signed in as the new user.
     /// </summary>
     private async Task<(HttpClient Browser, TestAuthenticator Authenticator)> SignUpAsync(
-        NuGetFeedTestApplication app,
+        NuDepotTestApplication app,
         string userName,
         CookieContainer? cookies = null)
     {
@@ -460,10 +460,10 @@ public class UserIntegrationTests : IDisposable
         return content;
     }
 
-    private static async Task SetRoleAsync(NuGetFeedTestApplication app, string userName, FeedRole role)
+    private static async Task SetRoleAsync(NuDepotTestApplication app, string userName, FeedRole role)
     {
         using var scope = app.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<NuGetFeedContext>();
+        var context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
 
         var user = await context.Users.SingleAsync(u => u.UserName == userName);
         user.Role = role;

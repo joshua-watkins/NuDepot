@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core.Catalog;
+namespace NuDepot.Core.Catalog;
 
 /// <summary>
 /// The Catalog client, used to discover package events.

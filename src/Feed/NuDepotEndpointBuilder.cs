@@ -1,15 +1,15 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using NuGet.Feed.Authentication;
-using NuGet.Feed.Endpoints;
+using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Endpoints;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 /// <summary>
 /// Maps the feed's endpoints. Each one requires the <see cref="FeedPermissions"/> for what it does.
 /// </summary>
-public class NuGetFeedEndpointBuilder
+public class NuDepotEndpointBuilder
 {
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {

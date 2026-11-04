@@ -1,7 +1,7 @@
-using NuGet.Core.Tests.Support;
+using NuDepot.Core.Tests.Support;
 using Xunit;
 
-namespace NuGet.Core.Tests
+namespace NuDepot.Core.Tests
 {
     public class NuGetClientFactoryTests : IClassFixture<ProtocolFixture>
     {

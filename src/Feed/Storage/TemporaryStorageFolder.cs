@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace NuGet.Feed.Storage;
+namespace NuDepot.Feed.Storage;
 
 /// <summary>
 /// The folder that file storage uses when <see cref="FileSystemStorageOptions.Temporary"/> is set.
@@ -11,7 +11,7 @@ public sealed class TemporaryStorageFolder : IDisposable
 {
     private readonly Lazy<string> _path = new(() =>
     {
-        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "NuGetFeed", Guid.NewGuid().ToString("N"));
+        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "NuDepot", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
     });

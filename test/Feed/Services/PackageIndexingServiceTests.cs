@@ -2,16 +2,16 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Extensions;
-using NuGet.Feed.Indexing;
-using NuGet.Feed.Search;
-using NuGet.Feed.Signing;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Indexing;
+using NuDepot.Feed.Search;
+using NuDepot.Feed.Signing;
+using NuDepot.Feed.Storage;
 using Xunit;
 
-namespace NuGet.Feed.Tests.Services
+namespace NuDepot.Feed.Tests.Services
 {
     public class PackageIndexingServiceTests
     {
@@ -36,7 +36,7 @@ namespace NuGet.Feed.Tests.Services
                 Mock.Of<IRepositorySigningService>(),
                 Mock.Of<IUrlGenerator>(),
                 _time.Object,
-                Mock.Of<IOptionsSnapshot<NuGetFeedOptions>>(),
+                Mock.Of<IOptionsSnapshot<NuDepotOptions>>(),
                 Mock.Of<ILogger<PackageIndexingService>>());
         }
 

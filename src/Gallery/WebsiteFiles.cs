@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Net.Http.Headers;
 
-namespace NuGet.Gallery;
+namespace NuDepot.Gallery;
 
 /// <summary>
 /// The website's files, like its scripts, styles and images. They're embedded in the assembly from
@@ -25,7 +25,7 @@ internal static class WebsiteFiles
     private static readonly EntityTagHeaderValue EntityTag =
         new($"\"{typeof(WebsiteFiles).Assembly.ManifestModule.ModuleVersionId:N}\"");
 
-    // GET /_content/NuGet.Gallery/{path}
+    // GET /_content/NuDepot.Gallery/{path}
     public static IResult GetFile(string path)
     {
         var file = Files.GetFileInfo(path);

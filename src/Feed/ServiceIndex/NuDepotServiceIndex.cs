@@ -2,20 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Feed.Signing;
-using NuGet.Feed.Vulnerabilities;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Signing;
+using NuDepot.Feed.Vulnerabilities;
 
-namespace NuGet.Feed.ServiceIndex;
+namespace NuDepot.Feed.ServiceIndex;
 
-public class NuGetFeedServiceIndex : IServiceIndexService
+public class NuDepotServiceIndex : IServiceIndexService
 {
     private readonly IUrlGenerator _url;
     private readonly IVulnerabilityService _vulnerabilities;
     private readonly IRepositorySigningService _signing;
 
-    public NuGetFeedServiceIndex(
+    public NuDepotServiceIndex(
         IUrlGenerator url,
         IVulnerabilityService vulnerabilities,
         IRepositorySigningService signing)

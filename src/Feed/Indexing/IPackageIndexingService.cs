@@ -2,7 +2,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Indexing;
+namespace NuDepot.Feed.Indexing;
 
 /// <summary>
 /// The result of attempting to index a package.
@@ -11,7 +11,7 @@ namespace NuGet.Feed.Indexing;
 public enum PackageIndexingResult
 {
     /// <summary>
-    /// The package is malformed. This may also happen if NuGetFeed is in a corrupted state.
+    /// The package is malformed. This may also happen if NuDepot is in a corrupted state.
     /// </summary>
     InvalidPackage,
 

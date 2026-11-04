@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core.Serialization;
+namespace NuDepot.Core.Serialization;
 
 /// <summary>
 /// Source generated JSON serialization for the NuGet protocol's models. Properties that
@@ -15,8 +15,8 @@ namespace NuGet.Core.Serialization;
 [JsonSerializable(typeof(PackageDeleteCatalogLeaf))]
 [JsonSerializable(typeof(PackageDetailsCatalogLeaf))]
 [JsonSerializable(typeof(DependentsResponse))]
-[JsonSerializable(typeof(NuGetFeedRegistrationIndexPage))]
-[JsonSerializable(typeof(NuGetFeedRegistrationIndexResponse))]
+[JsonSerializable(typeof(NuDepotRegistrationIndexPage))]
+[JsonSerializable(typeof(NuDepotRegistrationIndexResponse))]
 [JsonSerializable(typeof(PackageVersionsResponse))]
 [JsonSerializable(typeof(RegistrationIndexResponse))]
 [JsonSerializable(typeof(RegistrationLeafResponse))]

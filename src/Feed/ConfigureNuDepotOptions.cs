@@ -6,20 +6,20 @@ using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Configuration;
+using NuDepot.Feed.Configuration;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 /// <summary>
-/// NuGetFeed's options configuration, specific to the default NuGetFeed application.
-/// Don't use this if you are embedding NuGetFeed into your own custom ASP.NET Core application.
+/// NuDepot's options configuration, specific to the default NuDepot application.
+/// Don't use this if you are embedding NuDepot into your own custom ASP.NET Core application.
 /// </summary>
-public class ConfigureNuGetFeedOptions
+public class ConfigureNuDepotOptions
     : IConfigureOptions<CorsOptions>
     , IConfigureOptions<FormOptions>
     , IConfigureOptions<ForwardedHeadersOptions>
     , IConfigureOptions<IISServerOptions>
-    , IValidateOptions<NuGetFeedOptions>
+    , IValidateOptions<NuDepotOptions>
 {
     public const string CorsPolicy = "AllowAll";
 
@@ -81,33 +81,33 @@ public class ConfigureNuGetFeedOptions
         options.MaxRequestBodySize = 262144000;
     }
 
-    public ValidateOptionsResult Validate(string? name, NuGetFeedOptions options)
+    public ValidateOptionsResult Validate(string? name, NuDepotOptions options)
     {
         var failures = new List<string>();
 
-        if (options.Database == null) failures.Add($"The '{nameof(NuGetFeedOptions.Database)}' config is required");
-        if (options.Mirror == null) failures.Add($"The '{nameof(NuGetFeedOptions.Mirror)}' config is required");
-        if (options.Search == null) failures.Add($"The '{nameof(NuGetFeedOptions.Search)}' config is required");
-        if (options.Storage == null) failures.Add($"The '{nameof(NuGetFeedOptions.Storage)}' config is required");
+        if (options.Database == null) failures.Add($"The '{nameof(NuDepotOptions.Database)}' config is required");
+        if (options.Mirror == null) failures.Add($"The '{nameof(NuDepotOptions.Mirror)}' config is required");
+        if (options.Search == null) failures.Add($"The '{nameof(NuDepotOptions.Search)}' config is required");
+        if (options.Storage == null) failures.Add($"The '{nameof(NuDepotOptions.Storage)}' config is required");
 
         if (!ValidDatabaseTypes.Contains(options.Database?.Type ?? string.Empty))
         {
             failures.Add(
-                $"The '{nameof(NuGetFeedOptions.Database)}:{nameof(DatabaseOptions.Type)}' config is invalid. " +
+                $"The '{nameof(NuDepotOptions.Database)}:{nameof(DatabaseOptions.Type)}' config is invalid. " +
                 $"Allowed values: {string.Join(", ", ValidDatabaseTypes)}");
         }
 
         if (!ValidStorageTypes.Contains(options.Storage?.Type ?? string.Empty))
         {
             failures.Add(
-                $"The '{nameof(NuGetFeedOptions.Storage)}:{nameof(StorageOptions.Type)}' config is invalid. " +
+                $"The '{nameof(NuDepotOptions.Storage)}:{nameof(StorageOptions.Type)}' config is invalid. " +
                 $"Allowed values: {string.Join(", ", ValidStorageTypes)}");
         }
 
         if (!ValidSearchTypes.Contains(options.Search?.Type ?? string.Empty))
         {
             failures.Add(
-                $"The '{nameof(NuGetFeedOptions.Search)}:{nameof(SearchOptions.Type)}' config is invalid. " +
+                $"The '{nameof(NuDepotOptions.Search)}:{nameof(SearchOptions.Type)}' config is invalid. " +
                 $"Allowed values: {string.Join(", ", ValidSearchTypes)}");
         }
 

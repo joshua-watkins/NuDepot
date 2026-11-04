@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using NuGet.Core.Converters;
+using NuDepot.Core.Converters;
 
-namespace NuGet.Core.Models;
+namespace NuDepot.Core.Models;
 
 /// <summary>
 /// Represents a package dependency.

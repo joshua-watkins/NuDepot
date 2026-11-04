@@ -1,10 +1,10 @@
-using NuGet.Feed;
-using NuGet.Feed.Extensions;
-using NuGet.Gallery.Extensions;
+using NuDepot.Feed;
+using NuDepot.Feed.Extensions;
+using NuDepot.Gallery.Extensions;
 
 // Runs the NuGet feed server and website as a Windows Service.
 // When started from a console instead, it runs as a normal console application.
-if (NuGetFeedCommands.TryWriteHelp(args))
+if (NuDepotCommands.TryWriteHelp(args))
 {
     return;
 }
@@ -18,11 +18,11 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     ContentRootPath = AppContext.BaseDirectory,
 });
 
-builder.UseNuGetFeedConfigRoot();
+builder.UseNuDepotConfigRoot();
 
 builder.Services.AddWindowsService(options =>
 {
-    options.ServiceName = "NuGetFeed";
+    options.ServiceName = "NuDepot";
 });
 
 builder.WebHost.ConfigureKestrel(options =>
@@ -32,7 +32,7 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = null;
 });
 
-builder.Services.AddNuGetFeed(feed =>
+builder.Services.AddNuDepot(feed =>
 {
     // Use SQLite as the database and store packages on the local file system.
     feed.AddSqliteDatabase();
@@ -40,19 +40,19 @@ builder.Services.AddNuGetFeed(feed =>
 });
 
 // The feed is open until API keys or users are configured. Then each key and user may do what its role allows.
-var users = builder.Configuration.HasNuGetFeedUsers();
-if (users || builder.Configuration.HasNuGetFeedApiKeys())
+var users = builder.Configuration.HasNuDepotUsers();
+if (users || builder.Configuration.HasNuDepotApiKeys())
 {
-    var authentication = builder.Services.AddAuthentication().AddNuGetFeedApiKey();
+    var authentication = builder.Services.AddAuthentication().AddNuDepotApiKey();
     if (users)
     {
-        authentication.AddNuGetFeedUsers();
+        authentication.AddNuDepotUsers();
     }
 
-    builder.Services.AddAuthorizationBuilder().AddNuGetFeedPolicies();
+    builder.Services.AddAuthorizationBuilder().AddNuDepotPolicies();
 }
 
-builder.Services.AddNuGetFeedUI();
+builder.Services.AddNuDepotUI();
 
 var app = builder.Build();
 if (!app.ValidateStartupOptions())
@@ -66,16 +66,16 @@ if (await app.TryRunCommandAsync(args))
     return;
 }
 
-app.UseNuGetFeed();
+app.UseNuDepot();
 app.UseRouting();
 
-app.UseCors(ConfigureNuGetFeedOptions.CorsPolicy);
+app.UseCors(ConfigureNuDepotOptions.CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseOperationCancelledMiddleware();
 
-app.MapNuGetFeed();
-app.MapNuGetFeedUI();
+app.MapNuDepot();
+app.MapNuDepotUI();
 
 await app.RunMigrationsAsync();
 await app.RunAsync();

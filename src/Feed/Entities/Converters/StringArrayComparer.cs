@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
-namespace NuGet.Feed.Entities.Converters;
+namespace NuDepot.Feed.Entities.Converters;
 
 public class StringArrayComparer : ValueComparer<string[]>
 {

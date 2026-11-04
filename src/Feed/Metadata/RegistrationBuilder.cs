@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
-using NuGet.Core.Models;
-using NuGet.Feed.Entities;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Entities;
 
-namespace NuGet.Feed.Metadata;
+namespace NuDepot.Feed.Metadata;
 
 public class RegistrationBuilder
 {
@@ -14,7 +14,7 @@ public class RegistrationBuilder
         _url = url ?? throw new ArgumentNullException(nameof(url));
     }
 
-    public virtual NuGetFeedRegistrationIndexResponse BuildIndex(PackageRegistration registration)
+    public virtual NuDepotRegistrationIndexResponse BuildIndex(PackageRegistration registration)
     {
         var sortedPackages = registration.Packages.OrderBy(p => p.Version).ToList();
         var indexUrl = _url.GetRegistrationIndexUrl(registration.PackageId, registration.SemVer2);
@@ -22,7 +22,7 @@ public class RegistrationBuilder
         // TODO: Paging of registration items.
         // "Un-paged" example: https://api.nuget.org/v3/registration3/newtonsoft.json/index.json
         // Paged example: https://api.nuget.org/v3/registration3/fake/index.json
-        return new NuGetFeedRegistrationIndexResponse
+        return new NuDepotRegistrationIndexResponse
         {
             RegistrationIndexUrl = indexUrl,
             Type = RegistrationIndexResponse.DefaultType,
@@ -30,7 +30,7 @@ public class RegistrationBuilder
             TotalDownloads = registration.Packages.Sum(p => p.Downloads),
             Pages = new[]
             {
-                new NuGetFeedRegistrationIndexPage
+                new NuDepotRegistrationIndexPage
                 {
                     RegistrationPageUrl = indexUrl,
                     Count = registration.Packages.Count,
@@ -59,12 +59,12 @@ public class RegistrationBuilder
         };
     }
 
-    private NuGetFeedRegistrationIndexPageItem ToRegistrationIndexPageItem(Package package, PackageRegistration registration) =>
-        new NuGetFeedRegistrationIndexPageItem
+    private NuDepotRegistrationIndexPageItem ToRegistrationIndexPageItem(Package package, PackageRegistration registration) =>
+        new NuDepotRegistrationIndexPageItem
         {
             RegistrationLeafUrl = _url.GetRegistrationLeafUrl(package.Id, package.Version, registration.SemVer2),
             PackageContentUrl = _url.GetPackageDownloadUrl(package.Id, package.Version),
-            PackageMetadata = new NuGetFeedPackageMetadata
+            PackageMetadata = new NuDepotPackageMetadata
             {
                 CatalogLeafUrl = registration.GetCatalogLeafUrlOrNull(package),
                 PackageId = package.Id,

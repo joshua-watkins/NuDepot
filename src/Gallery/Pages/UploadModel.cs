@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Extensions;
-using NuGet.Core.ServiceIndex;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.ServiceIndex;
 
-namespace NuGet.Gallery.Pages;
+namespace NuDepot.Gallery.Pages;
 
 /// <summary>
 /// The page that explains how to push packages.
@@ -70,9 +70,9 @@ public class UploadModel
                 "PowerShellGet",
                 new[]
                 {
-                    $"Register-PSRepository -Name \"NuGetFeed\" -SourceLocation \"{ServiceIndexUrl}\" "
+                    $"Register-PSRepository -Name \"NuDepot\" -SourceLocation \"{ServiceIndexUrl}\" "
                         + $"-PublishLocation \"{PublishUrl}\" -InstallationPolicy \"Trusted\"",
-                    "Publish-Module -Name PS-Module -Repository NuGetFeed",
+                    "Publish-Module -Name PS-Module -Repository NuDepot",
                 },
                 "https://docs.microsoft.com/en-us/powershell/module/powershellget/publish-module"),
         };

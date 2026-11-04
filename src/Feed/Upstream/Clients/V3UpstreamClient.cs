@@ -6,13 +6,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using NuGet.Versioning;
 using Microsoft.Extensions.Logging;
-using NuGet.Core;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Extensions;
+using NuDepot.Core;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 
-namespace NuGet.Feed.Upstream.Clients;
+namespace NuDepot.Feed.Upstream.Clients;
 
 /// <summary>
 /// The mirroring client for a NuGet server that uses the V3 protocol.
@@ -156,7 +156,7 @@ public class V3UpstreamClient : IUpstreamClient
 
     private IEnumerable<PackageDependency> ToDependencies(DependencyGroupItem group)
     {
-        // NuGetFeed stores a dependency group with no dependencies as a package dependency
+        // NuDepot stores a dependency group with no dependencies as a package dependency
         // with no package id nor package version.
         if (group.Dependencies == null || group.Dependencies.Count == 0)
         {

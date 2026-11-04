@@ -4,16 +4,16 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 public class PackageDatabase : IPackageDatabase
 {
-    private readonly NuGetFeedContext _context;
+    private readonly NuDepotContext _context;
 
-    public PackageDatabase(NuGetFeedContext context)
+    public PackageDatabase(NuDepotContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

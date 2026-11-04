@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Options;
 using Moq;
-using NuGet.Core;
+using NuDepot.Core;
 using Xunit;
 
-namespace NuGet.Gallery.Tests;
+namespace NuDepot.Gallery.Tests;
 
 public class FeedConnectionFacts
 {
@@ -82,7 +82,7 @@ public class FeedConnectionFacts
     public void SignInIsAvailableWhenCoHostedWithUsers(bool coHosted, bool users, bool expected)
     {
         var authentication = new AuthenticationOptions();
-        if (users) authentication.AddScheme(NuGetFeedAuthenticationSchemes.User, scheme => scheme.HandlerType = typeof(Mock<IAuthenticationHandler>));
+        if (users) authentication.AddScheme(NuDepotAuthenticationSchemes.User, scheme => scheme.HandlerType = typeof(Mock<IAuthenticationHandler>));
 
         var target = coHosted
             ? CreateCoHostedFeed(new[] { "http://localhost:5000" }, authentication)

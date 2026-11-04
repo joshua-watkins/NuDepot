@@ -1,12 +1,12 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
     <StandardDirectory Id="ProgramFiles64Folder">
-      <Directory Id="INSTALLFOLDER" Name="NuGetFeed" />
+      <Directory Id="INSTALLFOLDER" Name="NuDepot" />
     </StandardDirectory>
 
     <!-- Matches the database and storage paths in the service's appsettings.json. -->
     <StandardDirectory Id="CommonAppDataFolder">
-      <Directory Id="DATAFOLDER" Name="NuGetFeed" />
+      <Directory Id="DATAFOLDER" Name="NuDepot" />
     </StandardDirectory>
   </Fragment>
 </Wix>

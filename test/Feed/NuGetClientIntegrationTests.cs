@@ -5,21 +5,21 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using NuGet.Configuration;
-using NuGet.Feed.Tests.Support;
+using NuDepot.Feed.Tests.Support;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NuGet.Feed.Tests
+namespace NuDepot.Feed.Tests
 {
     /// <summary>
-    /// Uses the official NuGet client to interact with the NuGetFeed test host.
+    /// Uses the official NuGet client to interact with the NuDepot test host.
     /// </summary>
     public class NuGetClientIntegrationTests : IDisposable
     {
-        private readonly NuGetFeedTestApplication _app;
+        private readonly NuDepotTestApplication _app;
         private readonly HttpClient _client;
 
         private readonly Stream _packageStream;
@@ -31,7 +31,7 @@ namespace NuGet.Feed.Tests
 
         public NuGetClientIntegrationTests(ITestOutputHelper output)
         {
-            _app = new NuGetFeedTestApplication(output);
+            _app = new NuDepotTestApplication(output);
             _client = _app.CreateClient();
             _packageStream = TestResources.GetResourceStream(TestResources.Package);
 

@@ -9,11 +9,11 @@ using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Extensions;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 
-namespace NuGet.Feed.Users;
+namespace NuDepot.Feed.Users;
 
 /// <summary>
 /// Creates passkeys and signs in with them, using WebAuthn. Each ceremony has two steps: the browser
@@ -25,7 +25,7 @@ public class PasskeyService(
     SystemTime time,
     IOptionsMonitor<FeedAuthorizationOptions> options)
 {
-    private const string ServerName = "NuGetFeed";
+    private const string ServerName = "NuDepot";
     private const string ExpiredError = "The passkey request expired. Try again.";
 
     private readonly UserService _users = users ?? throw new ArgumentNullException(nameof(users));

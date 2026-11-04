@@ -6,12 +6,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Extensions;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Extensions;
 using NuGet.Packaging;
 using NuGet.Packaging.Signing;
 
-namespace NuGet.Feed.Signing;
+namespace NuDepot.Feed.Signing;
 
 /// <inheritdoc />
 public sealed class RepositorySigningService : IRepositorySigningService, IDisposable
@@ -19,7 +19,7 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
     private readonly RepositorySigningOptions _options;
     private readonly ILogger<RepositorySigningService> _logger;
 
-    public RepositorySigningService(IOptions<NuGetFeedOptions> options, ILogger<RepositorySigningService> logger)
+    public RepositorySigningService(IOptions<NuDepotOptions> options, ILogger<RepositorySigningService> logger)
     {
         _options = options?.Value?.RepositorySigning ?? new RepositorySigningOptions();
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

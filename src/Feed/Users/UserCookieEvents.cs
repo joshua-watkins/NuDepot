@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using NuGet.Feed.Authentication;
+using NuDepot.Feed.Authentication;
 
-namespace NuGet.Feed.Users;
+namespace NuDepot.Feed.Users;
 
 /// <summary>
 /// Checks the sign-in cookie's session in the database with each request, and answers with status
@@ -17,7 +17,7 @@ namespace NuGet.Feed.Users;
 internal sealed class UserCookieEvents : CookieAuthenticationEvents
 {
     // The cookie's session, as "{key}:{token}".
-    private const string SessionItem = "NuGetFeed.Session";
+    private const string SessionItem = "NuDepot.Session";
 
     public UserCookieEvents()
     {

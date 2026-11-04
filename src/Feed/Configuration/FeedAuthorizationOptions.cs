@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using NuGet.Feed.Authentication;
+using NuDepot.Feed.Authentication;
 
-namespace NuGet.Feed.Configuration;
+namespace NuDepot.Feed.Configuration;
 
 /// <summary>
 /// Who may do what on the feed. Clients present an API key in the X-NuGet-ApiKey header, or as the
@@ -17,7 +17,7 @@ public class FeedAuthorizationOptions
     public FeedRole? AnonymousRole { get; set; }
 
     /// <summary>
-    /// The API keys that grant access to the feed. <see cref="NuGetFeedOptions.ApiKey"/>, if set,
+    /// The API keys that grant access to the feed. <see cref="NuDepotOptions.ApiKey"/>, if set,
     /// is also an <see cref="FeedRole.Admin"/> key.
     /// </summary>
     public List<ApiKeyOptions> ApiKeys { get; set; } = new();

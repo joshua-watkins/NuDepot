@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
-using NuGet.Core.PackageDetails;
+using NuDepot.Core.Models;
+using NuDepot.Core.PackageDetails;
 using NuGet.Versioning;
 
-namespace NuGet.Core;
+namespace NuDepot.Core;
 
 public partial class NuGetClientFactory
 {
@@ -20,7 +20,7 @@ public partial class NuGetClientFactory
             _clientfactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         }
 
-        public async Task<IReadOnlyList<NuGetFeedPackageMetadata>> GetPackageMetadataAsync(
+        public async Task<IReadOnlyList<NuDepotPackageMetadata>> GetPackageMetadataAsync(
             string packageId,
             CancellationToken cancellationToken = default)
         {

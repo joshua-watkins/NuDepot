@@ -1,10 +1,10 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Endpoints;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Endpoints;
 
-namespace NuGet.Feed.Serialization;
+namespace NuDepot.Feed.Serialization;
 
 /// <summary>
 /// Source generated JSON serialization for the types the server reads and writes outside of the NuGet protocol.

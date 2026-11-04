@@ -1,7 +1,7 @@
-namespace NuGet.Feed.Configuration;
+namespace NuDepot.Feed.Configuration;
 
 /// <summary>
-/// How NuGetFeed should interpret package deletion requests.
+/// How NuDepot should interpret package deletion requests.
 /// See: https://docs.microsoft.com/en-us/nuget/api/package-publish-resource#delete-a-package
 /// </summary>
 public enum PackageDeletionBehavior

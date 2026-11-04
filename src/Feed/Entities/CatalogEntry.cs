@@ -1,6 +1,6 @@
 using System;
 
-namespace NuGet.Feed.Entities;
+namespace NuDepot.Feed.Entities;
 
 /// <summary>
 /// An item in the catalog: a snapshot of a package version when it was pushed, unlisted,

@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
-using NuGet.Feed.Entities;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Catalog;
+namespace NuDepot.Feed.Catalog;
 
 /// <summary>
 /// Records every change to the feed's packages and serves the record as the catalog resource.

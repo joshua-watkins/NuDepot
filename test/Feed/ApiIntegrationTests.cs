@@ -3,15 +3,15 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using NuGet.Feed.Tests.Support;
+using NuDepot.Feed.Tests.Support;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NuGet.Feed.Tests;
+namespace NuDepot.Feed.Tests;
 
 public class ApiIntegrationTests : IDisposable
 {
-    private readonly NuGetFeedTestApplication _app;
+    private readonly NuDepotTestApplication _app;
     private readonly HttpClient _client;
 
     private readonly Stream _packageStream;
@@ -19,7 +19,7 @@ public class ApiIntegrationTests : IDisposable
 
     public ApiIntegrationTests(ITestOutputHelper output)
     {
-        _app = new NuGetFeedTestApplication(output);
+        _app = new NuDepotTestApplication(output);
         _client = _app.CreateClient();
 
         _packageStream = TestResources.GetResourceStream(TestResources.Package);

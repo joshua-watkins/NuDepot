@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using NuGet.Core.Models;
-using NuGet.Feed.Entities;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Metadata;
+namespace NuDepot.Feed.Metadata;
 
 /// <summary>
 /// Converts the package entity into the protocol's models. Shared by the package metadata,

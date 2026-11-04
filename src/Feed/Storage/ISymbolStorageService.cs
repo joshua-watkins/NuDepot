@@ -2,7 +2,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Storage;
+namespace NuDepot.Feed.Storage;
 
 /// <summary>
 /// Stores the content of symbols, also known as PDBs.

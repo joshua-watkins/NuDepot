@@ -2,10 +2,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using NuGet.Core.Serialization;
-using NuGet.Feed.Search;
+using NuDepot.Core.Serialization;
+using NuDepot.Feed.Search;
 
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// The Search Query and Search Autocomplete resources.

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace NuGet.Feed.Search;
+namespace NuDepot.Feed.Search;
 
 /// <summary>
 /// A parsed search query: free text terms and field filters, like <c>json tags:serialization author:"Jane Doe"</c>.

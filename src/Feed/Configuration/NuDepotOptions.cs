@@ -1,6 +1,6 @@
-namespace NuGet.Feed.Configuration;
+namespace NuDepot.Feed.Configuration;
 
-public class NuGetFeedOptions
+public class NuDepotOptions
 {
     /// <summary>
     /// An API key that may do everything, like an <see cref="Authentication.FeedRole.Admin"/> key in
@@ -25,7 +25,7 @@ public class NuGetFeedOptions
     public bool RunMigrationsAtStartup { get; set; } = true;
 
     /// <summary>
-    /// How NuGetFeed should interpret package deletion requests.
+    /// How NuDepot should interpret package deletion requests.
     /// </summary>
     public PackageDeletionBehavior PackageDeletionBehavior { get; set; } = PackageDeletionBehavior.Unlist;
 
@@ -41,7 +41,7 @@ public class NuGetFeedOptions
     public bool IsReadOnlyMode { get; set; } = false;
 
     /// <summary>
-    /// The URLs the NuGetFeed server will use.
+    /// The URLs the NuDepot server will use.
     /// As per documentation <a href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/web-host?view=aspnetcore-3.1#server-urls">here (Server URLs)</a>.
     /// </summary>
     public string? Urls { get; set; }

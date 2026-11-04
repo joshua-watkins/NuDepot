@@ -1,10 +1,10 @@
-# NuGet.Feed
+# NuDepot.Feed
 
 The backend that implements the [NuGet service APIs](https://docs.microsoft.com/en-us/nuget/api/overview)
 and persists packages. It's a library: the Windows and Linux hosts in `pub` run it, with the gallery,
-by calling `services.AddNuGetFeed(...)`, `app.UseNuGetFeed()` and `endpoints.MapNuGetFeed()`. To run it
+by calling `services.AddNuDepot(...)`, `app.UseNuDepot()` and `endpoints.MapNuDepot()`. To run it
 during development, start the Windows host (`pub/Windows`). Hosts can also support the server's command
-line commands, like `import downloads`, with `NuGetFeedCommands`.
+line commands, like `import downloads`, with `NuDepotCommands`.
 The important folders are:
 
 * Endpoints - The NuGet V3 API endpoints, as minimal APIs
@@ -13,8 +13,8 @@ The important folders are:
 * Catalog - The append-only record of package changes, served as the catalog resource
 * Vulnerabilities - Known vulnerabilities, served to NuGet Audit
 * Authentication - API keys and their roles. Each endpoint requires a `FeedPermissions`. The feed is
-  open unless the host adds `AddAuthentication().AddNuGetFeedApiKey()` (a valid key is required) and
-  `AddAuthorizationBuilder().AddNuGetFeedPolicies()` (each key has its role); see `FeedAccessMode` and
+  open unless the host adds `AddAuthentication().AddNuDepotApiKey()` (a valid key is required) and
+  `AddAuthorizationBuilder().AddNuDepotPolicies()` (each key has its role); see `FeedAccessMode` and
   [the configuration guide](../../docs/configuration.md#require-an-api-key)
 * Signing - Repository signing of pushed packages
 * Entities - The package database (SQLite by default)

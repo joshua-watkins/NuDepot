@@ -6,13 +6,13 @@ using Fido2NetLib.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using NuGet.Core;
-using NuGet.Feed.Authentication;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Serialization;
-using NuGet.Feed.Users;
+using NuDepot.Core;
+using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Serialization;
+using NuDepot.Feed.Users;
 
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// Accounts for people who sign in with passkeys, used by the website. These aren't part of the
@@ -173,7 +173,7 @@ internal static class AccountEndpoints
     // This only takes the HttpContext, so it's mapped as a RequestDelegate, which can't return a result.
     public static async Task SignOutAsync(HttpContext httpContext)
     {
-        var result = await httpContext.AuthenticateAsync(NuGetFeedAuthenticationSchemes.User);
+        var result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
         var session = result.Properties == null ? null : UserCookieEvents.GetSession(result.Properties);
         if (result.Succeeded && session != null)
         {
@@ -181,7 +181,7 @@ internal static class AccountEndpoints
                 .DeleteSessionAsync(session.Value.Key, httpContext.RequestAborted);
         }
 
-        await httpContext.SignOutAsync(NuGetFeedAuthenticationSchemes.User);
+        await httpContext.SignOutAsync(NuDepotAuthenticationSchemes.User);
         httpContext.Response.StatusCode = StatusCodes.Status204NoContent;
     }
 
@@ -266,7 +266,7 @@ internal static class AccountEndpoints
     /// </summary>
     private static async Task<User?> GetSignedInUserAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
     {
-        var result = await httpContext.AuthenticateAsync(NuGetFeedAuthenticationSchemes.User);
+        var result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
         var userKey = result.Succeeded ? FeedClaims.GetUserKey(result.Principal) : null;
 
         return userKey == null ? null : await users.FindAsync(userKey.Value, cancellationToken);
@@ -274,13 +274,13 @@ internal static class AccountEndpoints
 
     private static async Task SignInAsync(HttpContext httpContext, UserService users, User user, CancellationToken cancellationToken)
     {
-        var principal = new ClaimsPrincipal(FeedClaims.CreateIdentity(user, NuGetFeedAuthenticationSchemes.User));
+        var principal = new ClaimsPrincipal(FeedClaims.CreateIdentity(user, NuDepotAuthenticationSchemes.User));
         var properties = new AuthenticationProperties { IsPersistent = true };
 
         var (session, token) = await users.CreateSessionAsync(user.Key, cancellationToken);
         UserCookieEvents.SetSession(properties, session.Key, token);
 
-        await httpContext.SignInAsync(NuGetFeedAuthenticationSchemes.User, principal, properties);
+        await httpContext.SignInAsync(NuDepotAuthenticationSchemes.User, principal, properties);
     }
 
     private static string? GetName(string? name, string? defaultName)
@@ -288,7 +288,7 @@ internal static class AccountEndpoints
         name = name?.Trim();
         if (string.IsNullOrEmpty(name)) return defaultName;
 
-        return name.Length > NuGetFeedContext.MaxCredentialNameLength ? name[..NuGetFeedContext.MaxCredentialNameLength] : name;
+        return name.Length > NuDepotContext.MaxCredentialNameLength ? name[..NuDepotContext.MaxCredentialNameLength] : name;
     }
 
     private static ApiKeyResponse ToResponse(UserApiKey apiKey, string? key) => new()

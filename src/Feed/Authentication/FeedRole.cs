@@ -1,6 +1,6 @@
 using System;
 
-namespace NuGet.Feed.Authentication;
+namespace NuDepot.Feed.Authentication;
 
 /// <summary>
 /// A set of <see cref="FeedPermissions"/> given to an API key, or to requests without one.

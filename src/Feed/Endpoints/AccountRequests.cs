@@ -1,6 +1,6 @@
 using System;
 
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// Who is signed in, and whether they can sign up.

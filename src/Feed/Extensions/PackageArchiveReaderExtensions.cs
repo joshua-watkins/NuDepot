@@ -1,6 +1,6 @@
 using NuGet.Common;
 using NuGet.Packaging;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Extensions;
+namespace NuDepot.Feed.Extensions;
 
 using NuGetPackageType = NuGet.Packaging.Core.PackageType;
 

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace NuGet.Feed.Indexing;
+namespace NuDepot.Feed.Indexing;
 
 /// <summary>
 /// Used to determine the compatibility matrix between frameworks.

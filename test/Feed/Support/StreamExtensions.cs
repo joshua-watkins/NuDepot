@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace NuGet.Feed.Tests
+namespace NuDepot.Feed.Tests
 {
     public static class StreamExtensions
     {

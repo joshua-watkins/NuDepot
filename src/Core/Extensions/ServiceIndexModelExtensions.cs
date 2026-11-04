@@ -1,15 +1,15 @@
 using System;
 using System.Linq;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core.Extensions;
+namespace NuDepot.Core.Extensions;
 
 /// <summary>
 /// These are documented interpretations of values returned by the Service Index resource.
 /// </summary>
 public static class ServiceIndexModelExtensions
 {
-    // See: https://github.com/NuGet/NuGet.Client/blob/e08358296db5bfa6f7f32d6f4ec8de288f3b0388/src/NuGet.Core/NuGet.Protocol/ServiceTypes.cs
+    // See: https://github.com/NuGet/NuGet.Client/blob/e08358296db5bfa6f7f32d6f4ec8de288f3b0388/src/NuDepot.Core/NuGet.Protocol/ServiceTypes.cs
     private static readonly string Version200 = "/2.0.0";
     private static readonly string Version300beta = "/3.0.0-beta";
     private static readonly string Version300 = "/3.0.0";
@@ -31,7 +31,7 @@ public static class ServiceIndexModelExtensions
     /// The resource type of the package dependents resource.
     /// This is an unofficial resource that isn't part of the NuGet protocol.
     /// </summary>
-    public static readonly string PackageDependentsType = "NuGetFeedDependents/1.0.0";
+    public static readonly string PackageDependentsType = "NuDepotDependents/1.0.0";
 
     private static readonly string[] Catalog = { "Catalog" + Version300 };
     private static readonly string[] SearchQueryService = { "SearchQueryService" + Version340, "SearchQueryService" + Version300beta, "SearchQueryService" };

@@ -1,7 +1,7 @@
-using NuGet.Core;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Feed.Tests.Support;
+using NuDepot.Core;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Tests.Support;
 using NuGet.Versioning;
 using System;
 using System.IO;
@@ -10,23 +10,23 @@ using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NuGet.Feed.Tests;
+namespace NuDepot.Feed.Tests;
 
 /// <summary>
-/// Uses NuGetFeed's client SDK to interact with the NuGetFeed test host.
+/// Uses NuDepot's client SDK to interact with the NuDepot test host.
 /// </summary>
-public class NuGetFeedClientIntegrationTests : IDisposable
+public class NuDepotClientIntegrationTests : IDisposable
 {
-    private readonly Support.NuGetFeedTestApplication _app;
+    private readonly Support.NuDepotTestApplication _app;
     private readonly HttpClient _httpClient;
     private readonly NuGetClientFactory _clientFactory;
     private readonly NuGetClient _client;
 
     private readonly Stream _packageStream;
 
-    public NuGetFeedClientIntegrationTests(ITestOutputHelper output)
+    public NuDepotClientIntegrationTests(ITestOutputHelper output)
     {
-        _app = new Support.NuGetFeedTestApplication(output);
+        _app = new Support.NuDepotTestApplication(output);
 
         var serviceIndexUrl = new Uri(_app.Server.BaseAddress, "v3/index.json");
 

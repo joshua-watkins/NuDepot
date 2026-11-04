@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 /// <summary>
 /// The "source of truth" for packages' state. Packages' content

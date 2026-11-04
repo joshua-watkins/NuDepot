@@ -1,15 +1,15 @@
-# Run BaGet on your Computer
+# Run NuDepot on your Computer
 
-## Run BaGet
+## Run NuDepot
 
 1. Install the [.NET Core SDK](https://www.microsoft.com/net/download)
-1. Download and extract [BaGet's latest release](https://github.com/loic-sharma/BaGet/releases)
-1. Start the service with `dotnet BaGet.dll`
+1. Download and extract [NuDepot's latest release](https://github.com/joshua-watkins/NuDepot/releases)
+1. Start `NuDepot.Windows.exe` on Windows, or `./NuDepot.Linux` on Linux
 1. Browse `http://localhost:5000/` in your browser
 
-## Configure BaGet
+## Configure NuDepot
 
-You can modify BaGet's configurations by editing the `appsettings.json` file. For the full list of configurations, please refer to [BaGet's configuration](../configuration.md) guide.
+You can modify NuDepot's configuration by editing the `appsettings.json` file. For the full list of configurations, please refer to [NuDepot's configuration](../configuration.md) guide.
 
 ## Publish packages
 

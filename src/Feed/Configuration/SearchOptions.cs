@@ -1,4 +1,4 @@
-namespace NuGet.Feed.Configuration;
+namespace NuDepot.Feed.Configuration;
 
 public class SearchOptions
 {

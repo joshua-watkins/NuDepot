@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using NuGet.Versioning;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Storage;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace NuGet.Feed.Tests.Services
+namespace NuDepot.Feed.Tests.Services
 {
     public class PackageStorageServiceTests
     {

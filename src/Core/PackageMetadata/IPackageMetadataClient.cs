@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core.PackageMetadata;
+namespace NuDepot.Core.PackageMetadata;
 
 /// <summary>
 /// The Package Metadata client, used to fetch packages' metadata.

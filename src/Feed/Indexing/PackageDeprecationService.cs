@@ -4,23 +4,23 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Indexing;
+namespace NuDepot.Feed.Indexing;
 
 /// <inheritdoc />
 public class PackageDeprecationService : IPackageDeprecationService
 {
     private readonly IPackageDatabase _packages;
-    private readonly NuGetFeedContext _context;
+    private readonly NuDepotContext _context;
     private readonly ICatalogService _catalog;
     private readonly ILogger<PackageDeprecationService> _logger;
 
     public PackageDeprecationService(
         IPackageDatabase packages,
-        NuGetFeedContext context,
+        NuDepotContext context,
         ICatalogService catalog,
         ILogger<PackageDeprecationService> logger)
     {

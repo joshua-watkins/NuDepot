@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.WebUtilities;
 
-namespace NuGet.Feed.Tests.Support;
+namespace NuDepot.Feed.Tests.Support;
 
 /// <summary>
 /// A software passkey authenticator that answers the browser's WebAuthn calls, so tests can sign up

@@ -3,7 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Storage;
+namespace NuDepot.Feed.Storage;
 
 /// <summary>
 /// A minimal storage implementation, used for advanced scenarios.

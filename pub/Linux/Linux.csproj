@@ -19,7 +19,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="nuget.service">
+		<None Update="nudepot.service">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>

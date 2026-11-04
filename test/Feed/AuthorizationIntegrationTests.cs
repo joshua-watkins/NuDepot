@@ -8,14 +8,14 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Authentication;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Tests.Support;
-using NuGet.Feed.Validation;
+using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Tests.Support;
+using NuDepot.Feed.Validation;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NuGet.Feed.Tests;
+namespace NuDepot.Feed.Tests;
 
 /// <summary>
 /// Tests what API keys, and requests without one, may do on the feed.
@@ -301,7 +301,7 @@ public class AuthorizationIntegrationTests : IDisposable
         { true, true, KeysWithoutRoles(), "'Authorization:ApiKeys:0:Role' is required" },
 
         // Policies that can't authenticate the keys.
-        { false, true, RoleKeys(), "Call services.AddAuthentication().AddNuGetFeedApiKey()" },
+        { false, true, RoleKeys(), "Call services.AddAuthentication().AddNuDepotApiKey()" },
     };
 
     [Theory]
@@ -312,7 +312,7 @@ public class AuthorizationIntegrationTests : IDisposable
         Dictionary<string, string> configuration,
         string expectedFailure)
     {
-        var app = new NuGetFeedTestApplication(_output, configuration: configuration, useAuthentication: useAuthentication, useAuthorization: useAuthorization);
+        var app = new NuDepotTestApplication(_output, configuration: configuration, useAuthentication: useAuthentication, useAuthorization: useAuthorization);
 
         var exception = Assert.Throws<OptionsValidationException>(() => app.Services);
 
@@ -332,7 +332,7 @@ public class AuthorizationIntegrationTests : IDisposable
             },
         };
 
-        var result = new ValidateNuGetFeedOptions().Validate(Options.DefaultName, options);
+        var result = new ValidateNuDepotOptions().Validate(Options.DefaultName, options);
 
         Assert.True(result.Failed);
         Assert.Collection(
@@ -392,12 +392,12 @@ public class AuthorizationIntegrationTests : IDisposable
     private static AuthenticationHeaderValue Basic(string userName, string password)
         => new("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{password}")));
 
-    private NuGetFeedTestApplication CreateApp(
+    private NuDepotTestApplication CreateApp(
         IReadOnlyDictionary<string, string>? configuration = null,
         bool useAuthentication = true,
         bool useAuthorization = true)
     {
-        var app = new NuGetFeedTestApplication(_output, configuration: configuration, useAuthentication: useAuthentication, useAuthorization: useAuthorization);
+        var app = new NuDepotTestApplication(_output, configuration: configuration, useAuthentication: useAuthentication, useAuthorization: useAuthorization);
         _disposables.Add(app);
         return app;
     }

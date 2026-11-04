@@ -1,11 +1,11 @@
 using NuGet.Versioning;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Upstream;
+namespace NuDepot.Feed.Upstream;
 
 /// <summary>
 /// A client to interact with an upstream package source.

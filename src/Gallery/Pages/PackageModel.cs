@@ -2,9 +2,9 @@ using Markdig;
 using Microsoft.AspNetCore.Html;
 using NuGet.Frameworks;
 using NuGet.Versioning;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Core.PackageDetails;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Core.PackageDetails;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,7 +12,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Gallery.Pages;
+namespace NuDepot.Gallery.Pages;
 
 /// <summary>
 /// A package's details page.
@@ -38,7 +38,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 
     public bool Found { get; private set; }
 
-    public NuGetFeedPackageMetadata Package { get; private set; } = new();
+    public NuDepotPackageMetadata Package { get; private set; } = new();
 
     /// <summary>
     /// The package's version. Only set if <see cref="Found"/>.
@@ -135,7 +135,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         var packages = await _packages.GetPackageMetadataAsync(id, cancellationToken);
         var listedPackages = packages.Where(p => p.IsListed()).ToList();
 
-        NuGetFeedPackageMetadata? package = null;
+        NuDepotPackageMetadata? package = null;
 
         // Try to find the requested version.
         if (NuGetVersion.TryParse(version, out var requestedVersion))
@@ -148,7 +148,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 
         if (package == null)
         {
-            Package = new NuGetFeedPackageMetadata { PackageId = id };
+            Package = new NuDepotPackageMetadata { PackageId = id };
             Found = false;
             return;
         }
@@ -180,7 +180,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         PackageDownloadUrl = _feed.ToPublicUrl(Package.PackageContentUrl);
     }
 
-    private IReadOnlyList<DependencyGroupModel> ToDependencyGroups(NuGetFeedPackageMetadata package)
+    private IReadOnlyList<DependencyGroupModel> ToDependencyGroups(NuDepotPackageMetadata package)
     {
         return [.. (package.DependencyGroups ?? [])
             .Select(group => new DependencyGroupModel
@@ -237,7 +237,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         return $"{frameworkName} {frameworkVersion}";
     }
 
-    private IReadOnlyList<VersionModel> ToVersions(IReadOnlyList<NuGetFeedPackageMetadata> packages, NuGetVersion selectedVersion)
+    private IReadOnlyList<VersionModel> ToVersions(IReadOnlyList<NuDepotPackageMetadata> packages, NuGetVersion selectedVersion)
     {
         return [.. packages
             .Select(p => new VersionModel

@@ -7,17 +7,17 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using NuGet.Core;
-using NuGet.Gallery.Pages;
+using NuDepot.Core;
+using NuDepot.Gallery.Pages;
 
-namespace NuGet.Gallery;
+namespace NuDepot.Gallery;
 
 /// <summary>
 /// The website's pages.
 /// </summary>
 internal static class WebsiteEndpoints
 {
-    private const string LoggerCategory = "NuGet.Gallery";
+    private const string LoggerCategory = "NuDepot.Gallery";
 
     // GET /?q={query}&p={page}&packageType={type}&framework={framework}&prerelease={bool}
     public static async Task<IResult> IndexAsync(
@@ -125,7 +125,7 @@ internal static class WebsiteEndpoints
     /// Whether a person signed in with a passkey made the request.
     /// </summary>
     public static bool IsSignedIn(HttpContext httpContext)
-        => httpContext.User.Identity is { IsAuthenticated: true, AuthenticationType: NuGetFeedAuthenticationSchemes.User };
+        => httpContext.User.Identity is { IsAuthenticated: true, AuthenticationType: NuDepotAuthenticationSchemes.User };
 
     /// <summary>
     /// The sign-in page, returning to the current page.

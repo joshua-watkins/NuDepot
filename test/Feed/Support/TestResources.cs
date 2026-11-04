@@ -1,12 +1,12 @@
 using System;
 using System.IO;
 
-namespace NuGet.Feed.Tests
+namespace NuDepot.Feed.Tests
 {
     public static class TestResources
     {
         // TODO: either typeof(TestData).name or nameof to namespace
-        private const string ResourcePrefix = "NuGet.Feed.Tests.TestData.";
+        private const string ResourcePrefix = "NuDepot.Feed.Tests.TestData.";
 
         /// <summary>
         /// Test package created with the following properties:

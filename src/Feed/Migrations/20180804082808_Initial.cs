@@ -1,7 +1,7 @@
 using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace NuGet.Feed.Migrations
+namespace NuDepot.Feed.Migrations
 {
     public partial class Initial : Migration
     {

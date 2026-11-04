@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 using NuGet.Frameworks;
 using NuGet.Versioning;
 
-namespace NuGet.Core.Extensions;
+namespace NuDepot.Core.Extensions;
 
 /// <summary>
 /// These are documented interpretations of values returned by the catalog API.
@@ -127,7 +127,7 @@ public static class CatalogModelExtensions
         // Server side treats invalid version ranges as empty strings.
         // Source: https://github.com/NuGet/NuGet.Services.Metadata/blob/382c214c60993edfd7158bc6d223fafeebbc920c/src/Catalog/Helpers/NuGetVersionUtility.cs#L25-L34
         // Client side treats empty string version ranges as the "all" range.
-        // Source: https://github.com/NuGet/NuGet.Client/blob/849063018d8ee08625774a2dcd07ab84224dabb9/src/NuGet.Core/NuGet.Protocol/DependencyInfo/RegistrationUtility.cs#L20-L30
+        // Source: https://github.com/NuGet/NuGet.Client/blob/849063018d8ee08625774a2dcd07ab84224dabb9/src/NuDepot.Core/NuGet.Protocol/DependencyInfo/RegistrationUtility.cs#L20-L30
         // Example: https://api.nuget.org/v3/catalog0/data/2016.03.14.21.19.28/servicestack.extras.serilog.2.0.1.json
         if (!VersionRange.TryParse(packageDependency.Range ?? string.Empty, out var parsed))
         {

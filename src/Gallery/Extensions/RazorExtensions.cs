@@ -1,6 +1,6 @@
 ﻿using Humanizer;
 
-namespace NuGet.Gallery.Extensions;
+namespace NuDepot.Gallery.Extensions;
 
 public static class RazorExtensions
 {

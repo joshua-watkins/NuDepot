@@ -5,12 +5,12 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Core.Serialization;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Core.Serialization;
 using NuGet.Versioning;
 
-namespace NuGet.Core.PackageDetails;
+namespace NuDepot.Core.PackageDetails;
 
 /// <summary>
 /// The client to interact with a NuGet server's package details resources.
@@ -42,16 +42,16 @@ public class RawPackageDetailsClient : IPackageDetailsClient
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<NuGetFeedPackageMetadata>> GetPackageMetadataAsync(
+    public async Task<IReadOnlyList<NuDepotPackageMetadata>> GetPackageMetadataAsync(
         string packageId,
         CancellationToken cancellationToken = default)
     {
-        var result = new List<NuGetFeedPackageMetadata>();
+        var result = new List<NuDepotPackageMetadata>();
 
         var url = $"{_packageMetadataUrl}/{packageId.ToLowerInvariant()}/index.json";
         var registrationIndex = await _httpClient.GetFromJsonOrDefaultAsync(
             url,
-            NuGetJsonContext.Default.NuGetFeedRegistrationIndexResponse,
+            NuGetJsonContext.Default.NuDepotRegistrationIndexResponse,
             cancellationToken);
 
         if (registrationIndex?.Pages == null)
@@ -69,7 +69,7 @@ public class RawPackageDetailsClient : IPackageDetailsClient
             {
                 var externalPage = await _httpClient.GetFromJsonAsync(
                     page.RegistrationPageUrl,
-                    NuGetJsonContext.Default.NuGetFeedRegistrationIndexPage,
+                    NuGetJsonContext.Default.NuDepotRegistrationIndexPage,
                     cancellationToken);
 
                 // Skip malformed external pages.

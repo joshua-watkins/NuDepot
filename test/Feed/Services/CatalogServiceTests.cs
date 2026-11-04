@@ -5,19 +5,19 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Extensions;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Storage;
 using Xunit;
 
-namespace NuGet.Feed.Tests.Services
+namespace NuDepot.Feed.Tests.Services
 {
     public class CatalogServiceTests : IDisposable
     {
         // SQLite deletes an in-memory database when its last connection closes.
         private readonly SqliteConnection _keepAlive;
-        private readonly NuGetFeedContext _context;
+        private readonly NuDepotContext _context;
         private readonly CatalogService _target;
 
         public CatalogServiceTests()
@@ -27,11 +27,11 @@ namespace NuGet.Feed.Tests.Services
             _keepAlive = new SqliteConnection(connectionString);
             _keepAlive.Open();
 
-            var options = new DbContextOptionsBuilder<NuGetFeedContext>()
+            var options = new DbContextOptionsBuilder<NuDepotContext>()
                 .UseSqlite(connectionString)
                 .Options;
 
-            _context = new NuGetFeedContext(options);
+            _context = new NuDepotContext(options);
             _context.RunMigrationsAsync(default).GetAwaiter().GetResult();
 
             _target = new CatalogService(

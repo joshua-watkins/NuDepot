@@ -7,9 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
-using NuGet.Core;
-using NuGet.Feed.Extensions;
-using NuGet.Feed.Indexing;
+using NuDepot.Core;
+using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Indexing;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,13 +20,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
 
-namespace NuGet.Feed.Tests.Support;
+namespace NuDepot.Feed.Tests.Support;
 
 /// <summary>
 /// Hosts the server in memory, the way the Windows and Linux hosts do, without the website.
 /// The application starts the first time it's used.
 /// </summary>
-internal sealed class NuGetFeedTestApplication : IDisposable
+internal sealed class NuDepotTestApplication : IDisposable
 {
     private readonly ITestOutputHelper _output;
     private readonly HttpClient? _upstreamClient;
@@ -42,7 +42,7 @@ internal sealed class NuGetFeedTestApplication : IDisposable
     /// <param name="useAuthentication">Whether the application adds the feed's API key authentication. Without it, the feed is open.</param>
     /// <param name="useAuthorization">Whether the application adds the feed's authorization policies, for API key roles.</param>
     /// <param name="useUsers">Whether the application adds the feed's users, who sign in with passkeys.</param>
-    public NuGetFeedTestApplication(
+    public NuDepotTestApplication(
         ITestOutputHelper output,
         HttpClient? upstreamClient = null,
         IReadOnlyDictionary<string, string>? configuration = null,
@@ -106,7 +106,7 @@ internal sealed class NuGetFeedTestApplication : IDisposable
         // Each test application gets its own in-memory database, which the server migrates at startup,
         // and a temporary storage path.
         var testId = Guid.NewGuid().ToString("N");
-        var storagePath = Path.Combine(Path.GetTempPath(), "NuGetFeedTests", testId, "Packages");
+        var storagePath = Path.Combine(Path.GetTempPath(), "NuDepotTests", testId, "Packages");
 
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -116,7 +116,7 @@ internal sealed class NuGetFeedTestApplication : IDisposable
 
         builder.WebHost.UseTestServer();
 
-        // NuGetFeed uses console logging by default. This logger throws operation
+        // NuDepot uses console logging by default. This logger throws operation
         // cancelled exceptions when the host shuts down, causing the the debugger
         // to pause repeatedly if CLR exceptions are enabled.
         builder.Logging.ClearProviders();
@@ -131,7 +131,7 @@ internal sealed class NuGetFeedTestApplication : IDisposable
             { "PackageDeletionBehavior", "HardDelete" },
             { "AllowPackageOverwrites", "true" },
             { "Database:Type", "Sqlite" },
-            { "Database:ConnectionString", $"Data Source=NuGetFeedTests-{testId};Mode=Memory;Cache=Shared" },
+            { "Database:ConnectionString", $"Data Source=NuDepotTests-{testId};Mode=Memory;Cache=Shared" },
             { "Storage:Type", "FileSystem" },
             { "Storage:Path", storagePath },
             { "Search:Type", "Database" },
@@ -141,7 +141,7 @@ internal sealed class NuGetFeedTestApplication : IDisposable
 
         builder.Configuration.AddInMemoryCollection(_configuration);
 
-        builder.Services.AddNuGetFeed(feed =>
+        builder.Services.AddNuDepot(feed =>
         {
             feed.AddSqliteDatabase();
             feed.AddFileStorage();
@@ -156,17 +156,17 @@ internal sealed class NuGetFeedTestApplication : IDisposable
         builder.Services.AddSingleton(time.Object);
         if (_useAuthentication)
         {
-            var authentication = builder.Services.AddAuthentication().AddNuGetFeedApiKey();
+            var authentication = builder.Services.AddAuthentication().AddNuDepotApiKey();
             if (_useUsers)
             {
-                authentication.AddNuGetFeedUsers();
+                authentication.AddNuDepotUsers();
                 builder.Services.Configure<CookieAuthenticationOptions>(
-                    NuGetFeedAuthenticationSchemes.User,
+                    NuDepotAuthenticationSchemes.User,
                     options => options.TimeProvider = Clock);
             }
         }
 
-        if (_useAuthorization) builder.Services.AddAuthorizationBuilder().AddNuGetFeedPolicies();
+        if (_useAuthorization) builder.Services.AddAuthorizationBuilder().AddNuDepotPolicies();
         if (_upstreamClient != null)
         {
             builder.Services.AddSingleton(_upstreamClient);
@@ -174,15 +174,15 @@ internal sealed class NuGetFeedTestApplication : IDisposable
 
         var app = builder.Build();
 
-        app.UseNuGetFeed();
+        app.UseNuDepot();
         app.UseRouting();
 
-        app.UseCors(ConfigureNuGetFeedOptions.CorsPolicy);
+        app.UseCors(ConfigureNuDepotOptions.CorsPolicy);
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseOperationCancelledMiddleware();
 
-        app.MapNuGetFeed();
+        app.MapNuDepot();
 
         try
         {
@@ -199,10 +199,10 @@ internal sealed class NuGetFeedTestApplication : IDisposable
     }
 }
 
-internal static class NuGetFeedTestApplicationExtensions
+internal static class NuDepotTestApplicationExtensions
 {
     public static async Task AddPackageAsync(
-        this NuGetFeedTestApplication app,
+        this NuDepotTestApplication app,
         Stream package,
         CancellationToken cancellationToken = default)
     {
@@ -219,7 +219,7 @@ internal static class NuGetFeedTestApplicationExtensions
     }
 
     public static async Task AddSymbolPackageAsync(
-        this NuGetFeedTestApplication app,
+        this NuDepotTestApplication app,
         Stream symbolPackage,
         CancellationToken cancellationToken = default)
     {

@@ -3,10 +3,10 @@
   <Fragment>
     <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
       <Component>
-        <File Id="NuGetFeedExe" Name="NuGet.Windows.exe" Source="!(bindpath.Windows)NuGet.Windows.exe" KeyPath="yes" />
+        <File Id="NuDepotExe" Name="NuDepot.Windows.exe" Source="!(bindpath.Windows)NuDepot.Windows.exe" KeyPath="yes" />
 
-        <ServiceInstall Name="NuGetFeed"
-                        DisplayName="NuGetFeed"
+        <ServiceInstall Name="NuDepot"
+                        DisplayName="NuDepot"
                         Description="!(loc.Description)"
                         Type="ownProcess"
                         Start="auto"
@@ -20,8 +20,8 @@
                               ResetPeriodInDays="1" />
         </ServiceInstall>
 
-        <ServiceControl Id="NuGetFeedServiceControl"
-                        Name="NuGetFeed"
+        <ServiceControl Id="NuDepotServiceControl"
+                        Name="NuDepot"
                         Start="install"
                         Stop="both"
                         Remove="uninstall"
@@ -31,7 +31,7 @@
           The service logs to the Application event log. LocalService isn't allowed to
           create the event source, so register it here.
         -->
-        <util:EventSource Name="NuGetFeed"
+        <util:EventSource Name="NuDepot"
                           Log="Application"
                           EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
       </Component>
@@ -44,7 +44,7 @@
 
     <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
       <Files Include="!(bindpath.Windows)**">
-        <Exclude Files="!(bindpath.Windows)NuGet.Windows.exe" />
+        <Exclude Files="!(bindpath.Windows)NuDepot.Windows.exe" />
         <Exclude Files="!(bindpath.Windows)appsettings.json" />
         <Exclude Files="!(bindpath.Windows)appsettings.Development.json" />
         <Exclude Files="!(bindpath.Windows)**\*.pdb" />

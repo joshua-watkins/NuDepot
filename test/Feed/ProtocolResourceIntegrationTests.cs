@@ -10,16 +10,16 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using NuGet.Core.Catalog;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Tests.Support;
+using NuDepot.Core.Catalog;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Tests.Support;
 using NuGet.Packaging;
 using NuGet.Packaging.Signing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NuGet.Feed.Tests;
+namespace NuDepot.Feed.Tests;
 
 /// <summary>
 /// Tests the NuGet protocol resources beyond the basics: search, SemVer 2.0.0 registrations, the catalog,
@@ -244,7 +244,7 @@ public class ProtocolResourceIntegrationTests : IDisposable
         // Make the package look like it was indexed before the catalog existed.
         using (var scope = app.Services.CreateScope())
         {
-            var context = scope.ServiceProvider.GetRequiredService<NuGetFeedContext>();
+            var context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
             context.CatalogEntries.RemoveRange(await context.CatalogEntries.ToListAsync());
             foreach (var existing in await context.Packages.ToListAsync()) existing.PackageHash = null;
             await context.SaveChangesAsync(default);
@@ -443,14 +443,14 @@ public class ProtocolResourceIntegrationTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/repository-signatures/5.0.0/index.json")).StatusCode);
     }
 
-    private NuGetFeedTestApplication CreateApp(IReadOnlyDictionary<string, string>? configuration = null)
+    private NuDepotTestApplication CreateApp(IReadOnlyDictionary<string, string>? configuration = null)
     {
-        var app = new NuGetFeedTestApplication(_output, configuration: configuration);
+        var app = new NuDepotTestApplication(_output, configuration: configuration);
         _disposables.Add(app);
         return app;
     }
 
-    private HttpClient CreateClient(out NuGetFeedTestApplication app, IReadOnlyDictionary<string, string>? configuration = null)
+    private HttpClient CreateClient(out NuDepotTestApplication app, IReadOnlyDictionary<string, string>? configuration = null)
     {
         app = CreateApp(configuration);
         return app.CreateClient();

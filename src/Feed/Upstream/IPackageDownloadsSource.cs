@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Upstream;
+namespace NuDepot.Feed.Upstream;
 
 public interface IPackageDownloadsSource
 {

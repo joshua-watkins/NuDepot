@@ -2,7 +2,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Indexing;
+namespace NuDepot.Feed.Indexing;
 
 /// <summary>
 /// The result of attempting to index a symbol package.

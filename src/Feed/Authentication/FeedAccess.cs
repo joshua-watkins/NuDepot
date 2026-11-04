@@ -7,10 +7,10 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
-using NuGet.Core;
-using NuGet.Feed.Configuration;
+using NuDepot.Core;
+using NuDepot.Feed.Configuration;
 
-namespace NuGet.Feed.Authentication;
+namespace NuDepot.Feed.Authentication;
 
 /// <summary>
 /// How the feed checks requests. The host chooses by adding the feed's authentication and authorization.
@@ -23,14 +23,14 @@ public enum FeedAccessMode
     Open,
 
     /// <summary>
-    /// The host adds the feed's API key authentication (<c>AddAuthentication().AddNuGetFeedApiKey()</c>):
+    /// The host adds the feed's API key authentication (<c>AddAuthentication().AddNuDepotApiKey()</c>):
     /// any valid API key may do anything. Requests without one may do what
     /// <see cref="FeedAuthorizationOptions.AnonymousRole"/> allows.
     /// </summary>
     ApiKey,
 
     /// <summary>
-    /// The host adds the feed's authorization policies too (<c>AddAuthorizationBuilder().AddNuGetFeedPolicies()</c>):
+    /// The host adds the feed's authorization policies too (<c>AddAuthorizationBuilder().AddNuDepotPolicies()</c>):
     /// each API key may do what its role allows.
     /// </summary>
     Roles,
@@ -40,14 +40,14 @@ public enum FeedAccessMode
 /// Decides what a request may do on the feed, from its API key or signed-in user.
 /// </summary>
 public class FeedAccess(
-    IOptionsMonitor<NuGetFeedOptions> options,
+    IOptionsMonitor<NuDepotOptions> options,
     IOptionsMonitor<FeedAuthorizationOptions> authorization,
     IOptions<AuthenticationOptions> authenticationSchemes,
     IOptions<AuthorizationOptions> authorizationPolicies)
 {
     private const string LegacyApiKeyName = "ApiKey";
 
-    private readonly IOptionsMonitor<NuGetFeedOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly IOptionsMonitor<NuDepotOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IOptionsMonitor<FeedAuthorizationOptions> _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
 
     /// <summary>
@@ -136,7 +136,7 @@ public class FeedAccess(
     {
         if (authorization.GetPolicy(FeedPolicies.Read) != null) return FeedAccessMode.Roles;
 
-        return authentication.SchemeMap.ContainsKey(NuGetFeedAuthenticationSchemes.ApiKey)
+        return authentication.SchemeMap.ContainsKey(NuDepotAuthenticationSchemes.ApiKey)
             ? FeedAccessMode.ApiKey
             : FeedAccessMode.Open;
     }
@@ -145,12 +145,12 @@ public class FeedAccess(
     /// Whether the host added the feed's users.
     /// </summary>
     internal static bool HasUsers(AuthenticationOptions authentication)
-        => authentication.SchemeMap.ContainsKey(NuGetFeedAuthenticationSchemes.User);
+        => authentication.SchemeMap.ContainsKey(NuDepotAuthenticationSchemes.User);
 
     /// <summary>
-    /// The configured API keys: <see cref="NuGetFeedOptions.ApiKey"/> and <see cref="FeedAuthorizationOptions.ApiKeys"/>.
+    /// The configured API keys: <see cref="NuDepotOptions.ApiKey"/> and <see cref="FeedAuthorizationOptions.ApiKeys"/>.
     /// </summary>
-    internal static List<(string Name, string Key, FeedRole Role)> GetApiKeys(NuGetFeedOptions options, FeedAuthorizationOptions authorization)
+    internal static List<(string Name, string Key, FeedRole Role)> GetApiKeys(NuDepotOptions options, FeedAuthorizationOptions authorization)
     {
         var keys = new List<(string Name, string Key, FeedRole Role)>();
 

@@ -1,7 +1,7 @@
 <Project Sdk="WixToolset.Sdk/7.0.1">
 
 	<PropertyGroup>
-		<OutputName>NuGetFeed</OutputName>
+		<OutputName>NuDepot</OutputName>
 		<InstallerPlatform>x64</InstallerPlatform>
 		<!-- Some .NET runtime files are versioned without a language; that's expected for a self-contained app. -->
 		<SuppressIces>ICE60</SuppressIces>

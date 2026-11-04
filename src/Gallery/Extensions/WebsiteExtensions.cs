@@ -4,13 +4,13 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using NuGet.Core;
-using NuGet.Core.PackageDetails;
-using NuGet.Core.Search;
-using NuGet.Core.ServiceIndex;
-using NuGet.Gallery.Pages;
+using NuDepot.Core;
+using NuDepot.Core.PackageDetails;
+using NuDepot.Core.Search;
+using NuDepot.Core.ServiceIndex;
+using NuDepot.Gallery.Pages;
 
-namespace NuGet.Gallery.Extensions;
+namespace NuDepot.Gallery.Extensions;
 
 public static class WebsiteExtensions
 {
@@ -18,7 +18,7 @@ public static class WebsiteExtensions
     /// Adds the NuGet feed website. The website reads packages from the feed configured by
     /// <see cref="NuGetWebsiteOptions.ServiceIndexUrl"/>, or from a server hosted in the same application.
     /// </summary>
-    public static IServiceCollection AddNuGetFeedUI(this IServiceCollection services)
+    public static IServiceCollection AddNuDepotUI(this IServiceCollection services)
     {
         if (services == null) throw new ArgumentNullException(nameof(services));
 
@@ -44,7 +44,7 @@ public static class WebsiteExtensions
     /// <summary>
     /// Maps the NuGet feed website's pages and files.
     /// </summary>
-    public static IEndpointRouteBuilder MapNuGetFeedUI(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapNuDepotUI(this IEndpointRouteBuilder endpoints)
     {
         if (endpoints == null) throw new ArgumentNullException(nameof(endpoints));
 
@@ -68,7 +68,7 @@ public static class WebsiteExtensions
             var httpContext = context.HttpContext;
             if (httpContext.RequestServices.GetRequiredService<FeedConnection>().SignInAvailable)
             {
-                var result = await httpContext.AuthenticateAsync(NuGetFeedAuthenticationSchemes.User);
+                var result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
                 if (result.Succeeded)
                 {
                     httpContext.User = result.Principal;

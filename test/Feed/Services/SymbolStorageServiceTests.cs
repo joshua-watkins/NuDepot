@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using Xunit;
 
-namespace NuGet.Feed.Tests.Services
+namespace NuDepot.Feed.Tests.Services
 {
     public class SymbolStorageServiceTests
     {

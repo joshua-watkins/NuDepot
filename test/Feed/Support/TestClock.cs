@@ -1,6 +1,6 @@
 using System;
 
-namespace NuGet.Feed.Tests.Support;
+namespace NuDepot.Feed.Tests.Support;
 
 /// <summary>
 /// A clock that tests move forward. It starts at the real time, since the test's cookies expire in real time.

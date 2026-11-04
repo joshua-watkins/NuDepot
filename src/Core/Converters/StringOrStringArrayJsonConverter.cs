@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NuGet.Core.Converters;
+namespace NuDepot.Core.Converters;
 
 /// <summary>
 /// This is an internal API that may be changed or removed without notice in any release.

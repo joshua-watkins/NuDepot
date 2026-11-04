@@ -1,4 +1,4 @@
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 public class Routes
 {

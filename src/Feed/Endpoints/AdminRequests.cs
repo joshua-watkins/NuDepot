@@ -1,4 +1,4 @@
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// The body of a request to deprecate a package version.

@@ -2,16 +2,16 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Catalog;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Core.PackageContent;
-using NuGet.Core.PackageDetails;
-using NuGet.Core.PackageMetadata;
-using NuGet.Core.Search;
-using NuGet.Core.ServiceIndex;
+using NuDepot.Core.Catalog;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Core.PackageContent;
+using NuDepot.Core.PackageDetails;
+using NuDepot.Core.PackageMetadata;
+using NuDepot.Core.Search;
+using NuDepot.Core.ServiceIndex;
 
-namespace NuGet.Core;
+namespace NuDepot.Core;
 
 /// <summary>
 /// The <see cref="NuGetClientFactory"/> creates clients to interact with a NuGet server.

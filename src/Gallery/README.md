@@ -1,4 +1,4 @@
-# NuGet.Gallery
+# NuDepot.Gallery
 
 A nuget.org-style website for browsing a NuGet V3 feed. It only reads the feed through the
 NuGet V3 protocol, so it can show this solution's server or any other V3 feed.
@@ -9,12 +9,12 @@ served by minimal API endpoints. Each page's data comes from a model in the `Pag
 ## Hosting it
 
 The website is a Razor class library. The Windows and Linux hosts in `pub` add it to the server's
-application with `services.AddNuGetFeedUI()` and `endpoints.MapNuGetFeedUI()`. To run it during
+application with `services.AddNuDepotUI()` and `endpoints.MapNuDepotUI()`. To run it during
 development, start the Windows host (`pub/Windows`), which runs the server and the website together.
 
 The website's files in `wwwroot` (scripts, styles, images and libraries) are embedded in the
-assembly, so the library is a single DLL. `MapNuGetFeedUI()` serves them under
-`_content/NuGet.Gallery`; hosts don't copy or serve them. After changing a file, rebuild to see it.
+assembly, so the library is a single DLL. `MapNuDepotUI()` serves them under
+`_content/NuDepot.Gallery`; hosts don't copy or serve them. After changing a file, rebuild to see it.
 
 The website reads the feed from its own application. Set `Website:ServiceIndexUrl` to the service
 index of another feed to show that feed instead, for example `https://api.nuget.org/v3/index.json`.

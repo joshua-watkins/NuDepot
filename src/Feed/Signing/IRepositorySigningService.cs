@@ -3,7 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Signing;
+namespace NuDepot.Feed.Signing;
 
 /// <summary>
 /// Adds this server's repository signature to pushed packages.

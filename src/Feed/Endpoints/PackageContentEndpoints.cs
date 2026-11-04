@@ -3,11 +3,11 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using NuGet.Core.Serialization;
-using NuGet.Feed.Content;
+using NuDepot.Core.Serialization;
+using NuDepot.Feed.Content;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// The Package Content resource, used to download content from packages.

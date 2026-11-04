@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NuGet.Versioning;
-using NuGet.Feed.Serialization;
+using NuDepot.Feed.Serialization;
 
-namespace NuGet.Feed.Upstream;
+namespace NuDepot.Feed.Upstream;
 
 // See https://github.com/NuGet/NuGet.Services.Metadata/blob/master/src/NuGet.Indexing/Downloads.cs
 public class PackageDownloadsJsonSource : IPackageDownloadsSource

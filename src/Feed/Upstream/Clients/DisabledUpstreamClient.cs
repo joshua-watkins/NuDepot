@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Upstream.Clients;
+namespace NuDepot.Feed.Upstream.Clients;
 
 /// <summary>
 /// The client used when there are no upstream package sources.

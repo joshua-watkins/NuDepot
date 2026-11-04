@@ -2,12 +2,12 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
-using NuGet.Core.Models;
-using NuGet.Core.Search;
-using NuGet.Gallery.Pages;
+using NuDepot.Core.Models;
+using NuDepot.Core.Search;
+using NuDepot.Gallery.Pages;
 using Xunit;
 
-namespace NuGet.Gallery.Tests;
+namespace NuDepot.Gallery.Tests;
 
 public class IndexModelFacts
 {

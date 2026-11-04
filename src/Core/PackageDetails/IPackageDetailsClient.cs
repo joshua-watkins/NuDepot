@@ -2,14 +2,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 using NuGet.Versioning;
 
-namespace NuGet.Core.PackageDetails;
+namespace NuDepot.Core.PackageDetails;
 
 /// <summary>
 /// The client used to fetch the information shown on a package's details page.
-/// This builds on the Package Metadata resource, NuGetFeed's extensions to it,
+/// This builds on the Package Metadata resource, NuDepot's extensions to it,
 /// and the README URI template resource.
 ///
 /// See https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource
@@ -19,13 +19,13 @@ public interface IPackageDetailsClient
 {
     /// <summary>
     /// Find the metadata for all versions of a package, including unlisted versions.
-    /// Servers that don't implement NuGetFeed's extensions to the protocol return
+    /// Servers that don't implement NuDepot's extensions to the protocol return
     /// default values for the extended properties.
     /// </summary>
     /// <param name="packageId">The package ID.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package's metadata, or an empty list if the package does not exist.</returns>
-    Task<IReadOnlyList<NuGetFeedPackageMetadata>> GetPackageMetadataAsync(
+    Task<IReadOnlyList<NuDepotPackageMetadata>> GetPackageMetadataAsync(
         string packageId,
         CancellationToken cancellationToken = default);
 

@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Extensions;
+namespace NuDepot.Feed.Extensions;
 
 public static class StreamExtensions
 {

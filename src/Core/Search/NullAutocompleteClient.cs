@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core.Search;
+namespace NuDepot.Core.Search;
 
 public class NullAutocompleteClient : IAutocompleteClient
 {

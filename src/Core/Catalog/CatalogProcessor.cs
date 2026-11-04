@@ -2,10 +2,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core.Catalog;
+namespace NuDepot.Core.Catalog;
 
 /// <summary>
 /// Processes catalog leafs in chronological order.

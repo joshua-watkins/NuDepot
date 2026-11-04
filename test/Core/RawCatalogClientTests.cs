@@ -1,11 +1,11 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using NuGet.Core.Catalog;
-using NuGet.Core.Tests.Support;
+using NuDepot.Core.Catalog;
+using NuDepot.Core.Tests.Support;
 using Xunit;
 
-namespace NuGet.Core.Tests;
+namespace NuDepot.Core.Tests;
 
 public class RawCatalogClientTests : IClassFixture<ProtocolFixture>
 {

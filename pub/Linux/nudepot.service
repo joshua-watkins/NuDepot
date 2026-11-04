@@ -1,0 +1,25 @@
+[Unit]
+Description=NuDepot A lightweight NuGet and symbol server.
+After=network.target
+StartLimitIntervalSec=10
+
+[Service]
+# The application reports start-up and shutdown to systemd (UseSystemd/AddSystemd).
+Type=notify
+WorkingDirectory=/usr/share/nudepot/
+ExecStart=/usr/share/nudepot/NuDepot.Linux
+Environment="NUDEPOT_CONFIG_ROOT=/usr/share/nudepot"
+# Uncomment this to listen on all network interfaces instead of localhost:5000.
+#Environment="ASPNETCORE_URLS=http://0.0.0.0:5000"
+
+# Creates /var/lib/nudepot, owned by the service user, for the database and packages.
+StateDirectory=nudepot
+
+Restart=always
+RestartSec=1
+User=nudepot
+Group=nudepot
+SyslogIdentifier=nudepot
+
+[Install]
+WantedBy=multi-user.target

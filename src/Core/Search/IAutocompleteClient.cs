@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core.Search;
+namespace NuDepot.Core.Search;
 
 /// <summary>
 /// The client used to search for packages.

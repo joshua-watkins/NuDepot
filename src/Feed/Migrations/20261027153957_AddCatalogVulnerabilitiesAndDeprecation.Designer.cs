@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 
 #nullable disable
 
-namespace NuGet.Feed.Migrations
+namespace NuDepot.Feed.Migrations
 {
-    [DbContext(typeof(NuGetFeedContext))]
+    [DbContext(typeof(NuDepotContext))]
     [Migration("20261027153957_AddCatalogVulnerabilitiesAndDeprecation")]
     partial class AddCatalogVulnerabilitiesAndDeprecation
     {
@@ -20,7 +20,7 @@ namespace NuGet.Feed.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
-            modelBuilder.Entity("NuGet.Feed.Entities.CatalogEntry", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.CatalogEntry", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd()
@@ -61,7 +61,7 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("CatalogEntries");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.Package", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.Package", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd()
@@ -210,7 +210,7 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("Packages");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.PackageDependency", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.PackageDependency", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd()
@@ -240,7 +240,7 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("PackageDependencies");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.PackageType", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.PackageType", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd()
@@ -266,7 +266,7 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("PackageTypes");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.TargetFramework", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.TargetFramework", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd()
@@ -288,7 +288,7 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("TargetFrameworks");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.VulnerabilityAdvisory", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.VulnerabilityAdvisory", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd()
@@ -323,18 +323,18 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("VulnerabilityAdvisories");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.PackageDependency", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.PackageDependency", b =>
                 {
-                    b.HasOne("NuGet.Feed.Entities.Package", "Package")
+                    b.HasOne("NuDepot.Feed.Entities.Package", "Package")
                         .WithMany("Dependencies")
                         .HasForeignKey("PackageKey");
 
                     b.Navigation("Package");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.PackageType", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.PackageType", b =>
                 {
-                    b.HasOne("NuGet.Feed.Entities.Package", "Package")
+                    b.HasOne("NuDepot.Feed.Entities.Package", "Package")
                         .WithMany("PackageTypes")
                         .HasForeignKey("PackageKey")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -343,9 +343,9 @@ namespace NuGet.Feed.Migrations
                     b.Navigation("Package");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.TargetFramework", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.TargetFramework", b =>
                 {
-                    b.HasOne("NuGet.Feed.Entities.Package", "Package")
+                    b.HasOne("NuDepot.Feed.Entities.Package", "Package")
                         .WithMany("TargetFrameworks")
                         .HasForeignKey("PackageKey")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -354,7 +354,7 @@ namespace NuGet.Feed.Migrations
                     b.Navigation("Package");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.Package", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.Package", b =>
                 {
                     b.Navigation("Dependencies");
 

@@ -6,11 +6,11 @@ using System.Reflection.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using NuGet.Feed.Extensions;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Storage;
 using NuGet.Packaging;
 
-namespace NuGet.Feed.Indexing;
+namespace NuDepot.Feed.Indexing;
 
 // Based off: https://github.com/NuGet/NuGetGallery/blob/master/src/NuGetGallery/Services/SymbolPackageUploadService.cs
 // Based off: https://github.com/NuGet/NuGet.Jobs/blob/master/src/Validation.Symbols/SymbolsValidatorService.cs#L44

@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json.Serialization;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 using Xunit;
 
-namespace NuGet.Core.Tests.Metadata
+namespace NuDepot.Core.Tests.Metadata
 {
     public class ModelTests
     {
         /// <summary>
-        /// NuGetFeed extends the NuGet protocol to add more functionality.
+        /// NuDepot extends the NuGet protocol to add more functionality.
         /// Since System.Text.Json does not support polymorphic serialization,
         /// this was implemented by duplicating the protocol's models from the
-        /// "NuGet.Core" project. These tests ensure that the duplicates
+        /// "NuDepot.Core" project. These tests ensure that the duplicates
         /// stay in sync with the original protocol models.
         /// </summary>
         public static IEnumerable<object[]> ExtendedModelsData()
@@ -24,7 +24,7 @@ namespace NuGet.Core.Tests.Metadata
                 new ExtendedModelData
                 {
                     OriginalType = typeof(RegistrationIndexResponse),
-                    DerivedType = typeof(NuGetFeedRegistrationIndexResponse),
+                    DerivedType = typeof(NuDepotRegistrationIndexResponse),
 
                     AddedProperties = new Dictionary<string, Type>
                     {
@@ -37,7 +37,7 @@ namespace NuGet.Core.Tests.Metadata
                             "Pages",
                             (
                                 From: typeof(IReadOnlyList<RegistrationIndexPage>),
-                                To: typeof(IReadOnlyList<NuGetFeedRegistrationIndexPage>)
+                                To: typeof(IReadOnlyList<NuDepotRegistrationIndexPage>)
                             )
                         },
                     }
@@ -49,7 +49,7 @@ namespace NuGet.Core.Tests.Metadata
                 new ExtendedModelData
                 {
                     OriginalType = typeof(RegistrationIndexPage),
-                    DerivedType = typeof(NuGetFeedRegistrationIndexPage),
+                    DerivedType = typeof(NuDepotRegistrationIndexPage),
 
                     ModifiedProperties = new Dictionary<string, (Type From, Type To)>
                     {
@@ -57,7 +57,7 @@ namespace NuGet.Core.Tests.Metadata
                             "ItemsOrNull",
                             (
                                 From: typeof(IReadOnlyList<RegistrationIndexPageItem>),
-                                To: typeof(IReadOnlyList<NuGetFeedRegistrationIndexPageItem>)
+                                To: typeof(IReadOnlyList<NuDepotRegistrationIndexPageItem>)
                             )
                         },
                     }
@@ -69,12 +69,12 @@ namespace NuGet.Core.Tests.Metadata
                 new ExtendedModelData
                 {
                     OriginalType = typeof(RegistrationIndexPageItem),
-                    DerivedType = typeof(NuGetFeedRegistrationIndexPageItem),
+                    DerivedType = typeof(NuDepotRegistrationIndexPageItem),
 
                     ModifiedProperties = new Dictionary<string, (Type From, Type To)>
                     {
                         {
-                            "PackageMetadata", ( From: typeof(Models.PackageMetadata), To: typeof(NuGetFeedPackageMetadata) )
+                            "PackageMetadata", ( From: typeof(Models.PackageMetadata), To: typeof(NuDepotPackageMetadata) )
                         },
                     }
                 }
@@ -85,7 +85,7 @@ namespace NuGet.Core.Tests.Metadata
                 new ExtendedModelData
                 {
                     OriginalType = typeof(Models.PackageMetadata),
-                    DerivedType = typeof(NuGetFeedPackageMetadata),
+                    DerivedType = typeof(NuDepotPackageMetadata),
 
                     AddedProperties = new Dictionary<string, Type>
                     {
@@ -211,24 +211,24 @@ namespace NuGet.Core.Tests.Metadata
         public class ExtendedModelData
         {
             /// <summary>
-            /// The model's type in the "NuGet.Core" project that was extended.
+            /// The model's type in the "NuDepot.Core" project that was extended.
             /// </summary>
             public Type? OriginalType { get; set; }
 
             /// <summary>
-            /// The model's type in the "NuGet.Core" project that extends a
-            /// type from the "NuGet.Core" project.
+            /// The model's type in the "NuDepot.Core" project that extends a
+            /// type from the "NuDepot.Core" project.
             /// </summary>
             public Type? DerivedType { get; set; }
 
             /// <summary>
-            /// The properties added by the model type in the "NuGet.Core" project.
+            /// The properties added by the model type in the "NuDepot.Core" project.
             /// </summary>
             public Dictionary<string, Type> AddedProperties { get; set; } = new Dictionary<string, Type>();
 
             /// <summary>
             /// The properties whose types were modified by the model type in the
-            /// "NuGet.Core" project.
+            /// "NuDepot.Core" project.
             /// </summary>
             public Dictionary<string, (Type From, Type To)> ModifiedProperties { get; set; }
                 = new Dictionary<string, (Type From, Type To)>();

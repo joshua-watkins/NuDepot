@@ -1,8 +1,8 @@
 ﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Id="NuGetFeed.WindowsService"
-           Name="NuGetFeed"
-           Manufacturer="NuGetFeed"
-           Version="!(bind.FileVersion.NuGetFeedExe)"
+  <Package Id="NuDepot.WindowsService"
+           Name="NuDepot"
+           Manufacturer="NuDepot"
+           Version="!(bind.FileVersion.NuDepotExe)"
            InstallerVersion="500"
            Scope="perMachine">
     <SummaryInformation Description="!(loc.Description)" />

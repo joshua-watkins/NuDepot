@@ -4,11 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 using Xunit;
 
-namespace NuGet.Feed.Tests.Services
+namespace NuDepot.Feed.Tests.Services
 {
     public class PackageDatabaseTests
     {
@@ -243,7 +243,7 @@ namespace NuGet.Feed.Tests.Services
 
             // SQLite deletes an in-memory database when its last connection closes.
             private readonly SqliteConnection _keepAlive;
-            private readonly NuGetFeedContext _context;
+            private readonly NuDepotContext _context;
 
             protected readonly PackageDatabase _target;
 
@@ -274,13 +274,13 @@ namespace NuGet.Feed.Tests.Services
                 _keepAlive.Dispose();
             }
 
-            protected NuGetFeedContext CreateContext()
+            protected NuDepotContext CreateContext()
             {
-                var options = new DbContextOptionsBuilder<NuGetFeedContext>()
+                var options = new DbContextOptionsBuilder<NuDepotContext>()
                     .UseSqlite(_connectionString)
                     .Options;
 
-                return new NuGetFeedContext(options);
+                return new NuDepotContext(options);
             }
 
             /// <summary>

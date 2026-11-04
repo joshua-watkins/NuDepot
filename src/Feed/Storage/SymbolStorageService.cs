@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Storage;
+namespace NuDepot.Feed.Storage;
 
 public class SymbolStorageService : ISymbolStorageService
 {

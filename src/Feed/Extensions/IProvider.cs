@@ -1,7 +1,7 @@
 using System;
 using Microsoft.Extensions.Configuration;
 
-namespace NuGet.Feed.Extensions;
+namespace NuDepot.Feed.Extensions;
 
 /// <summary>
 /// Attempts to provide the <typeparamref name="TService"/>.

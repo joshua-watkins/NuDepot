@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Core.Catalog;
+namespace NuDepot.Core.Catalog;
 
 /// <summary>
 /// The NuGet Catalog resource is an append-only data structure indexed by time.

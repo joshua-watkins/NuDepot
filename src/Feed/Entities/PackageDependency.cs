@@ -1,4 +1,4 @@
-namespace NuGet.Feed.Entities;
+namespace NuDepot.Feed.Entities;
 
 // See NuGetGallery.Core's: https://github.com/NuGet/NuGetGallery/blob/master/src/NuGetGallery.Core/Entities/PackageDependency.cs
 public class PackageDependency

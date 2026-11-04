@@ -1,10 +1,10 @@
 using NuGet.Versioning;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Storage;
+namespace NuDepot.Feed.Storage;
 
 /// <summary>
 /// Stores packages' content. Packages' state are stored by the

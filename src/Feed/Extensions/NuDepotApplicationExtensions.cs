@@ -1,22 +1,22 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Search;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Search;
+using NuDepot.Feed.Storage;
 
-namespace NuGet.Feed.Extensions;
+namespace NuDepot.Feed.Extensions;
 
-public static class NuGetFeedApplicationExtensions
+public static class NuDepotApplicationExtensions
 {
-    public static NuGetFeedApplication AddFileStorage(this NuGetFeedApplication app)
+    public static NuDepotApplication AddFileStorage(this NuDepotApplication app)
     {
         app.Services.TryAddTransient<IStorageService>(provider => provider.GetRequiredService<FileStorageService>());
         return app;
     }
 
-    public static NuGetFeedApplication AddFileStorage(
-        this NuGetFeedApplication app,
+    public static NuDepotApplication AddFileStorage(
+        this NuDepotApplication app,
         Action<FileSystemStorageOptions> configure)
     {
         app.AddFileStorage();
@@ -24,13 +24,13 @@ public static class NuGetFeedApplicationExtensions
         return app;
     }
 
-    public static NuGetFeedApplication AddNullStorage(this NuGetFeedApplication app)
+    public static NuDepotApplication AddNullStorage(this NuDepotApplication app)
     {
         app.Services.TryAddTransient<IStorageService>(provider => provider.GetRequiredService<NullStorageService>());
         return app;
     }
 
-    public static NuGetFeedApplication AddNullSearch(this NuGetFeedApplication app)
+    public static NuDepotApplication AddNullSearch(this NuDepotApplication app)
     {
         app.Services.TryAddTransient<ISearchIndexer>(provider => provider.GetRequiredService<NullSearchIndexer>());
         app.Services.TryAddTransient<ISearchService>(provider => provider.GetRequiredService<NullSearchService>());

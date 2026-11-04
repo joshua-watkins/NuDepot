@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
-using NuGet.Core;
+using NuDepot.Core;
 
-namespace NuGet.Gallery;
+namespace NuDepot.Gallery;
 
 /// <summary>
 /// The website's connection to the NuGet feed it displays. The website only talks
@@ -47,7 +47,7 @@ public class FeedConnection
         _serviceIndexUrl = new Lazy<string>(() => _isCoHosted ? GetLocalServiceIndexUrl() : configuredUrl!);
         _clientFactory = new Lazy<NuGetClientFactory>(() => new NuGetClientFactory(CreateHttpClient(options.Value.ApiKey), ServiceIndexUrl));
 
-        SignInAvailable = _isCoHosted && authentication.Value.SchemeMap.ContainsKey(NuGetFeedAuthenticationSchemes.User);
+        SignInAvailable = _isCoHosted && authentication.Value.SchemeMap.ContainsKey(NuDepotAuthenticationSchemes.User);
     }
 
     /// <summary>

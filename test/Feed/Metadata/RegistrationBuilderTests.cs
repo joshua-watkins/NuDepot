@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using Moq;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Metadata;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Metadata;
 using NuGet.Versioning;
 using Xunit;
 
-namespace NuGet.Feed.Tests.Metadata
+namespace NuDepot.Feed.Tests.Metadata
 {
     public class RegistrationBuilderTests
     {
@@ -21,7 +21,7 @@ namespace NuGet.Feed.Tests.Metadata
         public void TheRegistrationIndexResponseIsSortedByVersion()
         {
             // Arrange
-            var packageId = "NuGetFeed.Test";
+            var packageId = "NuDepot.Test";
             var authors = new string[] { "test" };
 
             var packages = new List<Package>

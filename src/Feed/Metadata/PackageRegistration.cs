@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 
-namespace NuGet.Feed.Metadata;
+namespace NuDepot.Feed.Metadata;
 
 /// <summary>
 /// The information on all versions of a package.

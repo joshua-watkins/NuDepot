@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Html;
-using NuGet.Gallery.Pages;
+using NuDepot.Gallery.Pages;
 
-namespace NuGet.Gallery.Serialization;
+namespace NuDepot.Gallery.Serialization;
 
 /// <summary>
 /// Source generated JSON serialization for the data the pages pass to their scripts.

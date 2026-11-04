@@ -4,16 +4,16 @@ using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using NuGet.Feed.Entities.Converters;
+using NuDepot.Feed.Entities.Converters;
 
-namespace NuGet.Feed.Entities;
+namespace NuDepot.Feed.Entities;
 
 /// <summary>
 /// The package database. The database provider is chosen by the "Database:Type" configuration,
-/// see <see cref="Extensions.DependencyInjectionExtensions.AddNuGetFeedDatabaseProvider"/>.
+/// see <see cref="Extensions.DependencyInjectionExtensions.AddNuDepotDatabaseProvider"/>.
 /// Settings that only apply to one provider are behind checks like <see cref="SqliteDatabaseFacadeExtensions.IsSqlite"/>.
 /// </summary>
-public class NuGetFeedContext : DbContext
+public class NuDepotContext : DbContext
 {
     public const int DefaultMaxStringLength = 4000;
 
@@ -48,7 +48,7 @@ public class NuGetFeedContext : DbContext
     /// </summary>
     private const int SqliteUniqueConstraintViolationErrorCode = 19;
 
-    public NuGetFeedContext(DbContextOptions<NuGetFeedContext> options)
+    public NuDepotContext(DbContextOptions<NuDepotContext> options)
         : base(options)
     { }
 

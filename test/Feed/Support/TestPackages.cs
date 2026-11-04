@@ -7,7 +7,7 @@ using NuGet.Packaging;
 using NuGet.Packaging.Licenses;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Tests.Support;
+namespace NuDepot.Feed.Tests.Support;
 
 /// <summary>
 /// Builds packages for tests.
@@ -76,7 +76,7 @@ internal static class TestCertificates
     {
         using var rsa = RSA.Create(2048);
         var request = new CertificateRequest(
-            "CN=NuGetFeed Test Repository",
+            "CN=NuDepot Test Repository",
             rsa,
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pkcs1);

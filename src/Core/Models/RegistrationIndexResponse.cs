@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace NuGet.Core.Models;
+namespace NuDepot.Core.Models;
 
 /// <summary>
 /// The metadata for a package and all of its versions.

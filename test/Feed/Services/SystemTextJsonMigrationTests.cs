@@ -6,11 +6,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
-using NuGet.Feed.Entities.Converters;
-using NuGet.Feed.Upstream;
+using NuDepot.Feed.Entities.Converters;
+using NuDepot.Feed.Upstream;
 using Xunit;
 
-namespace NuGet.Feed.Tests.Services;
+namespace NuDepot.Feed.Tests.Services;
 
 public class StringArrayToJsonConverterTests
 {

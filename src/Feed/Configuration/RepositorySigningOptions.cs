@@ -1,4 +1,4 @@
-namespace NuGet.Feed.Configuration;
+namespace NuDepot.Feed.Configuration;
 
 /// <summary>
 /// How the server repository signs pushed packages.

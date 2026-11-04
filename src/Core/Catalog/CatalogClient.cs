@@ -1,10 +1,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Catalog;
-using NuGet.Core.Models;
+using NuDepot.Core.Catalog;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core;
+namespace NuDepot.Core;
 
 public partial class NuGetClientFactory
 {

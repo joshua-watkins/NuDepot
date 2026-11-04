@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 
-namespace NuGet.Feed.Search;
+namespace NuDepot.Feed.Search;
 
 public interface ISearchIndexer
 {

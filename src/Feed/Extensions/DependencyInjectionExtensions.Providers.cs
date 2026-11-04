@@ -5,17 +5,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Search;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Search;
 
-namespace NuGet.Feed.Extensions;
+namespace NuDepot.Feed.Extensions;
 
 public static partial class DependencyInjectionExtensions
 {
-    private static readonly string DatabaseTypeKey = $"{nameof(NuGetFeedOptions.Database)}:{nameof(DatabaseOptions.Type)}";
-    private static readonly string SearchTypeKey = $"{nameof(NuGetFeedOptions.Search)}:{nameof(SearchOptions.Type)}";
-    private static readonly string StorageTypeKey = $"{nameof(NuGetFeedOptions.Storage)}:{nameof(StorageOptions.Type)}";
+    private static readonly string DatabaseTypeKey = $"{nameof(NuDepotOptions.Database)}:{nameof(DatabaseOptions.Type)}";
+    private static readonly string SearchTypeKey = $"{nameof(NuDepotOptions.Search)}:{nameof(SearchOptions.Type)}";
+    private static readonly string StorageTypeKey = $"{nameof(NuDepotOptions.Storage)}:{nameof(StorageOptions.Type)}";
 
     private static readonly string DatabaseSearchType = "Database";
 
@@ -71,14 +71,14 @@ public static partial class DependencyInjectionExtensions
     }
 
     /// <summary>
-    /// Add a database that <see cref="NuGetFeedContext"/> can use. The context uses the
+    /// Add a database that <see cref="NuDepotContext"/> can use. The context uses the
     /// database whose type matches the "Database:Type" configuration.
     /// </summary>
     /// <param name="services">The dependency injection container.</param>
     /// <param name="databaseType">The database's type in the configuration, like "Sqlite".</param>
     /// <param name="configureContext">Configures the context to use the database.</param>
     /// <returns>The dependency injection container.</returns>
-    public static IServiceCollection AddNuGetFeedDatabaseProvider(
+    public static IServiceCollection AddNuDepotDatabaseProvider(
         this IServiceCollection services,
         string databaseType,
         Action<IServiceProvider, DbContextOptionsBuilder> configureContext)
@@ -86,7 +86,7 @@ public static partial class DependencyInjectionExtensions
         // The context is registered once, and configured by whichever database is active.
         if (!services.Any(service => service.ServiceType == typeof(DatabaseProvider)))
         {
-            services.AddDbContext<NuGetFeedContext>(ConfigureDatabase);
+            services.AddDbContext<NuDepotContext>(ConfigureDatabase);
             services.TryAddTransient<IPackageDatabase, PackageDatabase>();
 
             // The database can also search packages.
@@ -141,7 +141,7 @@ public static partial class DependencyInjectionExtensions
     }
 
     /// <summary>
-    /// A database that <see cref="NuGetFeedContext"/> can use.
+    /// A database that <see cref="NuDepotContext"/> can use.
     /// </summary>
     private sealed record DatabaseProvider(
         string DatabaseType,

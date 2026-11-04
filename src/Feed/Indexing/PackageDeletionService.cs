@@ -3,26 +3,26 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Storage;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Indexing;
+namespace NuDepot.Feed.Indexing;
 
 public class PackageDeletionService : IPackageDeletionService
 {
     private readonly IPackageDatabase _packages;
     private readonly IPackageStorageService _storage;
     private readonly ICatalogService _catalog;
-    private readonly NuGetFeedOptions _options;
+    private readonly NuDepotOptions _options;
     private readonly ILogger<PackageDeletionService> _logger;
 
     public PackageDeletionService(
         IPackageDatabase packages,
         IPackageStorageService storage,
         ICatalogService catalog,
-        IOptionsSnapshot<NuGetFeedOptions> options,
+        IOptionsSnapshot<NuDepotOptions> options,
         ILogger<PackageDeletionService> logger)
     {
         _packages = packages ?? throw new ArgumentNullException(nameof(packages));

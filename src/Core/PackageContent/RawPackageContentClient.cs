@@ -4,12 +4,12 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Core.Serialization;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Core.Serialization;
 using NuGet.Versioning;
 
-namespace NuGet.Core.PackageContent;
+namespace NuDepot.Core.PackageContent;
 
 /// <summary>
 /// The client to interact with an upstream source's Package Content resource.

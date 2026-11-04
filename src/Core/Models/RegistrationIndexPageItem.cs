@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NuGet.Core.Models;
+namespace NuDepot.Core.Models;
 
 /// <summary>
 /// An item in the <see cref="CatalogIndex"/> that references a <see cref="CatalogLeaf"/>.

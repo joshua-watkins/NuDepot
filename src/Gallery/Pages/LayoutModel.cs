@@ -1,4 +1,4 @@
-namespace NuGet.Gallery.Pages;
+namespace NuDepot.Gallery.Pages;
 
 /// <summary>
 /// The pages' shared layout: the header with the navigation and search box.

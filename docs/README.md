@@ -1,2 +1,1 @@
-Please use the [documentation website](https://loic-sharma.github.io/BaGet/)
-for the best browsing experience.
+Start with the [documentation index](index.md).

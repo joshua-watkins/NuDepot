@@ -1,17 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using NuGet.Versioning;
-using NuGet.Core.Models;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Indexing;
-using NuGet.Feed.Metadata;
-using NuGet.Feed.Vulnerabilities;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Indexing;
+using NuDepot.Feed.Metadata;
+using NuDepot.Feed.Vulnerabilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Search;
+namespace NuDepot.Feed.Search;
 
 /// <summary>
 /// Searches the package database. Filters like prerelease and package type run in the database;
@@ -19,13 +19,13 @@ namespace NuGet.Feed.Search;
 /// </summary>
 public class DatabaseSearchService : ISearchService
 {
-    private readonly NuGetFeedContext _context;
+    private readonly NuDepotContext _context;
     private readonly IFrameworkCompatibilityService _frameworks;
     private readonly IVulnerabilityService _vulnerabilities;
     private readonly ISearchResponseBuilder _searchBuilder;
 
     public DatabaseSearchService(
-        NuGetFeedContext context,
+        NuDepotContext context,
         IFrameworkCompatibilityService frameworks,
         IVulnerabilityService vulnerabilities,
         ISearchResponseBuilder searchBuilder)

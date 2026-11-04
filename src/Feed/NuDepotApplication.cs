@@ -1,11 +1,11 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
-public class NuGetFeedApplication
+public class NuDepotApplication
 {
-    public NuGetFeedApplication(IServiceCollection services)
+    public NuDepotApplication(IServiceCollection services)
     {
         Services = services ?? throw new ArgumentNullException(nameof(services));
     }

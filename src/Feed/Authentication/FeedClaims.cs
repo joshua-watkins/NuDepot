@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Security.Claims;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 
-namespace NuGet.Feed.Authentication;
+namespace NuDepot.Feed.Authentication;
 
 /// <summary>
 /// The claims the feed issues for API keys and users. <see cref="FeedAccess"/> only trusts roles the feed issued.

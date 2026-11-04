@@ -4,17 +4,17 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Extensions;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Extensions;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 public static class SqliteApplicationExtensions
 {
-    public static NuGetFeedApplication AddSqliteDatabase(this NuGetFeedApplication app)
+    public static NuDepotApplication AddSqliteDatabase(this NuDepotApplication app)
     {
         app.Services.AddSingleton<SqliteInMemoryDatabases>();
-        app.Services.AddNuGetFeedDatabaseProvider("Sqlite", (provider, options) =>
+        app.Services.AddNuDepotDatabaseProvider("Sqlite", (provider, options) =>
         {
             var databaseOptions = provider.GetRequiredService<IOptionsSnapshot<DatabaseOptions>>();
             var connectionString = databaseOptions.Value.ConnectionString;
@@ -26,8 +26,8 @@ public static class SqliteApplicationExtensions
         return app;
     }
 
-    public static NuGetFeedApplication AddSqliteDatabase(
-        this NuGetFeedApplication app,
+    public static NuDepotApplication AddSqliteDatabase(
+        this NuDepotApplication app,
         Action<DatabaseOptions> configure)
     {
         app.AddSqliteDatabase();
@@ -37,7 +37,7 @@ public static class SqliteApplicationExtensions
 }
 
 /// <summary>
-/// Keeps in-memory SQLite databases, like "Data Source=NuGetFeed;Mode=Memory;Cache=Shared",
+/// Keeps in-memory SQLite databases, like "Data Source=NuDepot;Mode=Memory;Cache=Shared",
 /// alive for the application's lifetime. SQLite deletes an in-memory database when its last
 /// connection closes, and Entity Framework closes its connection after each operation.
 /// </summary>

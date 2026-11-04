@@ -4,12 +4,12 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Search;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Search;
+using NuDepot.Feed.Storage;
 using System;
 
-namespace NuGet.Feed.Extensions;
+namespace NuDepot.Feed.Extensions;
 
 public static class IServiceCollectionExtensions
 {
@@ -18,22 +18,22 @@ public static class IServiceCollectionExtensions
     /// that persist packages. Use <paramref name="configureAction"/> to pick the database
     /// and storage providers, for example <c>app.AddSqliteDatabase()</c> and <c>app.AddFileStorage()</c>.
     /// </summary>
-    public static IServiceCollection AddNuGetFeed(
+    public static IServiceCollection AddNuDepot(
         this IServiceCollection services,
-        Action<NuGetFeedApplication> configureAction)
+        Action<NuDepotApplication> configureAction)
     {
         // TODO: Ideally we'd use:
         //
-        //       services.ConfigureOptions<ConfigureNuGetFeedOptions>();
+        //       services.ConfigureOptions<ConfigureNuDepotOptions>();
         //
         //       However, "ConfigureOptions" doesn't register validations as expected.
         //       We'll instead register all these configurations manually.
         // See: https://github.com/dotnet/runtime/issues/38491
-        services.AddTransient<IConfigureOptions<CorsOptions>, ConfigureNuGetFeedOptions>();
-        services.AddTransient<IConfigureOptions<FormOptions>, ConfigureNuGetFeedOptions>();
-        services.AddTransient<IConfigureOptions<ForwardedHeadersOptions>, ConfigureNuGetFeedOptions>();
-        services.AddTransient<IConfigureOptions<IISServerOptions>, ConfigureNuGetFeedOptions>();
-        services.AddTransient<IValidateOptions<NuGetFeedOptions>, ConfigureNuGetFeedOptions>();
+        services.AddTransient<IConfigureOptions<CorsOptions>, ConfigureNuDepotOptions>();
+        services.AddTransient<IConfigureOptions<FormOptions>, ConfigureNuDepotOptions>();
+        services.AddTransient<IConfigureOptions<ForwardedHeadersOptions>, ConfigureNuDepotOptions>();
+        services.AddTransient<IConfigureOptions<IISServerOptions>, ConfigureNuDepotOptions>();
+        services.AddTransient<IValidateOptions<NuDepotOptions>, ConfigureNuDepotOptions>();
 
         services.AddOptions<IISServerOptions>()
             .Configure<IConfiguration>((options, config) => config.GetSection(nameof(IISServerOptions)).Bind(options));
@@ -41,13 +41,13 @@ public static class IServiceCollectionExtensions
         services.AddRouting(options => options.LowercaseUrls = true);
 
         services.AddHttpContextAccessor();
-        services.AddTransient<IUrlGenerator, NuGetFeedUrlGenerator>();
+        services.AddTransient<IUrlGenerator, NuDepotUrlGenerator>();
 
-        services.AddNuGetFeedApplication(configureAction);
+        services.AddNuDepotApplication(configureAction);
 
-        // You can swap between implementations of subsystems like storage and search using NuGetFeed's configuration.
+        // You can swap between implementations of subsystems like storage and search using NuDepot's configuration.
         // Each subsystem's implementation has a provider that reads the configuration to determine if it should be
-        // activated. NuGetFeed will run through all its providers until it finds one that is active.
+        // activated. NuDepot will run through all its providers until it finds one that is active.
         services.AddTransient(DependencyInjectionExtensions.GetServiceFromProviders<IStorageService>);
         services.AddTransient(DependencyInjectionExtensions.GetServiceFromProviders<ISearchService>);
         services.AddTransient(DependencyInjectionExtensions.GetServiceFromProviders<ISearchIndexer>);

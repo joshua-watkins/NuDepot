@@ -2,22 +2,22 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
 using NuGet.Versioning;
-using NuGet.Feed.Configuration;
+using NuDepot.Feed.Configuration;
 using System;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 // TODO: This should validate the "Host" header against known valid values
-public class NuGetFeedUrlGenerator : IUrlGenerator
+public class NuDepotUrlGenerator : IUrlGenerator
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly LinkGenerator _linkGenerator;
-    private readonly IOptions<NuGetFeedOptions> _options;
+    private readonly IOptions<NuDepotOptions> _options;
 
-    public NuGetFeedUrlGenerator(
+    public NuDepotUrlGenerator(
         IHttpContextAccessor httpContextAccessor,
         LinkGenerator linkGenerator,
-        IOptions<NuGetFeedOptions> options)
+        IOptions<NuDepotOptions> options)
     {
         _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         _linkGenerator = linkGenerator ?? throw new ArgumentNullException(nameof(linkGenerator));
@@ -71,7 +71,7 @@ public class NuGetFeedUrlGenerator : IUrlGenerator
 
     public string GetRegistrationPageUrl(string id, NuGetVersion lower, NuGetVersion upper)
     {
-        // NuGetFeed does not support paging the registration resource.
+        // NuDepot does not support paging the registration resource.
         throw new NotImplementedException();
     }
 

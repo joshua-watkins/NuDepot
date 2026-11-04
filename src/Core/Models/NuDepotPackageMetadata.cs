@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace NuGet.Core.Models;
+namespace NuDepot.Core.Models;
 
 /// <summary>
-/// NuGetFeed's extensions to the package metadata model. These additions
+/// NuDepot's extensions to the package metadata model. These additions
 /// are not part of the official protocol.
 /// </summary>
-public class NuGetFeedPackageMetadata : Models.PackageMetadata
+public class NuDepotPackageMetadata : Models.PackageMetadata
 {
     [JsonPropertyName("downloads")]
     public long Downloads { get; set; }

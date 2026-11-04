@@ -1,13 +1,13 @@
 using NuGet.Versioning;
-using NuGet.Core.Models;
-using NuGet.Feed.Storage;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Storage;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Content;
+namespace NuDepot.Feed.Content;
 
 /// <summary>
 /// Implements the NuGet Package Content resource in NuGet's V3 protocol.

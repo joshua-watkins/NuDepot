@@ -10,11 +10,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NuGet.Core;
-using NuGet.Feed.Extensions;
-using NuGet.Feed.Users;
+using NuDepot.Core;
+using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Users;
 
-namespace NuGet.Feed.Authentication;
+namespace NuDepot.Feed.Authentication;
 
 /// <summary>
 /// Authenticates requests by their API key. NuGet clients send a key in the X-NuGet-ApiKey header
@@ -29,12 +29,12 @@ internal sealed class ApiKeyAuthenticationHandler(
     UrlEncoder encoder,
     FeedAccess access) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    public const string SchemeName = NuGetFeedAuthenticationSchemes.ApiKey;
+    public const string SchemeName = NuDepotAuthenticationSchemes.ApiKey;
 
     /// <summary>
     /// The issuer of the claims the feed trusts for roles.
     /// </summary>
-    public const string Issuer = "NuGetFeed";
+    public const string Issuer = "NuDepot";
 
     private readonly FeedAccess _access = access ?? throw new ArgumentNullException(nameof(access));
 
@@ -72,7 +72,7 @@ internal sealed class ApiKeyAuthenticationHandler(
         // Asking for Basic credentials makes NuGet clients, including Visual Studio,
         // retry with the package source's credentials from nuget.config.
         Response.StatusCode = StatusCodes.Status401Unauthorized;
-        Response.Headers.WWWAuthenticate = "Basic realm=\"NuGetFeed\", charset=\"UTF-8\"";
+        Response.Headers.WWWAuthenticate = "Basic realm=\"NuDepot\", charset=\"UTF-8\"";
 
         return Task.CompletedTask;
     }

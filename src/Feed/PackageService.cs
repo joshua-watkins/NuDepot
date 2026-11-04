@@ -4,12 +4,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Indexing;
-using NuGet.Feed.Upstream;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Indexing;
+using NuDepot.Feed.Upstream;
 using NuGet.Versioning;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 public class PackageService : IPackageService
 {

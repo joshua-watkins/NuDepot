@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NuGet.Frameworks;
 
-namespace NuGet.Feed.Indexing;
+namespace NuDepot.Feed.Indexing;
 
 using static NuGet.Frameworks.FrameworkConstants;
 

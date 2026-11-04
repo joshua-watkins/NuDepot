@@ -1,9 +1,9 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Metadata;
+namespace NuDepot.Feed.Metadata;
 
 /// <summary>
 /// The Package Metadata client, used to fetch packages' metadata.
@@ -20,7 +20,7 @@ public interface IPackageMetadataService
     /// <param name="semVer2">Whether to include SemVer 2.0.0 packages (RegistrationsBaseUrl/3.6.0).</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package's registration index, or null if the package does not exist</returns>
-    Task<NuGetFeedRegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(string packageId, bool semVer2 = false, CancellationToken cancellationToken = default);
+    Task<NuDepotRegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(string packageId, bool semVer2 = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get the metadata for a single package version, if the package exists.

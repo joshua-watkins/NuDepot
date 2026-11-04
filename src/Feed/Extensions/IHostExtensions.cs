@@ -3,16 +3,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Validation;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Validation;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Extensions;
+namespace NuDepot.Feed.Extensions;
 
 public static class IHostExtensions
 {
@@ -20,13 +20,13 @@ public static class IHostExtensions
     /// The environment variable that holds the folder to read appsettings.json from,
     /// if it isn't the application's content root.
     /// </summary>
-    public const string ConfigRootVariable = "NUGETFEED_CONFIG_ROOT";
+    public const string ConfigRootVariable = "NUDEPOT_CONFIG_ROOT";
 
     /// <summary>
     /// Reads the appsettings files from the folder in <see cref="ConfigRootVariable"/>, if it is set.
     /// The files keep their precedence relative to environment variables and command line arguments.
     /// </summary>
-    public static IHostApplicationBuilder UseNuGetFeedConfigRoot(this IHostApplicationBuilder builder)
+    public static IHostApplicationBuilder UseNuDepotConfigRoot(this IHostApplicationBuilder builder)
     {
         if (builder == null) throw new ArgumentNullException(nameof(builder));
 
@@ -61,13 +61,13 @@ public static class IHostExtensions
         CancellationToken cancellationToken = default)
     {
         // Run migrations if necessary.
-        var options = host.Services.GetRequiredService<IOptions<NuGetFeedOptions>>();
+        var options = host.Services.GetRequiredService<IOptions<NuDepotOptions>>();
 
         if (options.Value.RunMigrationsAtStartup)
         {
             using (var scope = host.Services.CreateScope())
             {
-                var context = scope.ServiceProvider.GetService<NuGetFeedContext>();
+                var context = scope.ServiceProvider.GetService<NuDepotContext>();
                 if (context != null)
                 {
                     await context.RunMigrationsAsync(cancellationToken);

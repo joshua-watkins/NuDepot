@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NuGet.Core.Models;
+namespace NuDepot.Core.Models;
 
 /// <summary>
 /// The alternate package that should be used instead of a deprecated package.

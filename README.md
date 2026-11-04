@@ -1,4 +1,4 @@
-# NuGet Feed
+# NuDepot
 
 [NuGet] and [symbol] server. Implements https://learn.microsoft.com/en-us/nuget/api/overview
 
@@ -6,7 +6,7 @@
 
 1. Install the [.NET SDK]
 2. Download and extract the [latest release]
-3. Start the service with `dotnet NuGetFeed.dll`
+3. Start `NuDepot.Windows.exe` on Windows, or `./NuDepot.Linux` on Linux
 4. Browse `http://localhost:5000/` in your browser
 
 ## Features
@@ -15,18 +15,17 @@
 * Runs on Windows and Linux.
 * Updated to latest .NET LTS release.
 
-NuGetFeed.Core - core shared libraries - nuget package output
-NuGetFeed.Server - package feed backend services.AddNuGetFeed() application.AddNuGetFeed() - nuget package output
-NuGetFeed.Website - optional web frontend services.AddNuGetFeedUI() application.AddNuGetFeedUI() - nuget package output
+NuDepot.Core - core shared libraries - nuget package output
+NuDepot.Feed - package feed backend services.AddNuDepot() application.AddNuDepot() - nuget package output
+NuDepot.Gallery - optional web frontend services.AddNuDepotUI() application.AddNuDepotUI() - nuget package output
 
-NuGetFeed.Windows - Windows Service deployment/publish
-NuGetFeed.Windows.Setup - MSI package for above - publish to .msi file
-NuGetFeed.Linux - Linux SystemD Service - folder publish to .tar.gz file
-NuGetFeed.Sample - minimum viable product example? probably not necessary, can just be documented
+NuDepot.Windows - Windows Service deployment/publish
+NuDepot.Windows.Setup - MSI package for above - publish to .msi file
+NuDepot.Linux - Linux SystemD Service - folder publish to .tar.gz file
 
-NuGetFeed.Core.Tests
-NuGetFeed.Server.Tests
-NuGetFeed.Website.Tests
+NuDepot.Core.Tests
+NuDepot.Feed.Tests
+NuDepot.Gallery.Tests
 
 TBD if it's worth maintaining mirroring.
 Offline support: [mirror a NuGet feed] to speed up builds and enable offline downloads
@@ -34,5 +33,5 @@ Offline support: [mirror a NuGet feed] to speed up builds and enable offline dow
 [NuGet]: https://learn.microsoft.com/nuget/what-is-nuget
 [symbol]: https://docs.microsoft.com/en-us/windows/desktop/debug/symbol-servers-and-symbol-stores
 [.NET SDK]: https://www.microsoft.com/net/download
-[latest release]: https://github.com/joshua-watkins/NuGetFeed/releases
-[mirror a NuGet feed]: https://loic-sharma.github.io/BaGet/configuration/#enable-read-through-caching
+[latest release]: https://github.com/joshua-watkins/NuDepot/releases
+[mirror a NuGet feed]: docs/configuration.md#enable-read-through-caching

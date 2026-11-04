@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using NuGet.Core.Models;
-using NuGet.Core.Search;
+using NuDepot.Core.Models;
+using NuDepot.Core.Search;
 
-namespace NuGet.Gallery.Pages;
+namespace NuDepot.Gallery.Pages;
 
 /// <summary>
 /// The search page.

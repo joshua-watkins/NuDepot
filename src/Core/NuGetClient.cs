@@ -6,14 +6,14 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Core.PackageContent;
-using NuGet.Core.PackageMetadata;
-using NuGet.Core.Search;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Core.PackageContent;
+using NuDepot.Core.PackageMetadata;
+using NuDepot.Core.Search;
 using NuGet.Versioning;
 
-namespace NuGet.Core;
+namespace NuDepot.Core;
 
 /// <summary>
 /// The client to interact with a NuGet server.

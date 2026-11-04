@@ -1,11 +1,11 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using NuGet.Core.Serialization;
-using NuGet.Feed.Metadata;
+using NuDepot.Core.Serialization;
+using NuDepot.Feed.Metadata;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// The Package Metadata resource, used to fetch packages' information.
@@ -41,7 +41,7 @@ internal static class PackageMetadataEndpoints
             return Results.NotFound();
         }
 
-        return Results.Json(index, NuGetJsonContext.Default.NuGetFeedRegistrationIndexResponse);
+        return Results.Json(index, NuGetJsonContext.Default.NuDepotRegistrationIndexResponse);
     }
 
     private static async Task<IResult> GetRegistrationLeafAsync(

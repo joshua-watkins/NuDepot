@@ -2,12 +2,12 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Vulnerabilities;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Vulnerabilities;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Metadata;
+namespace NuDepot.Feed.Metadata;
 
 /// <inheritdoc />
 public class DefaultPackageMetadataService : IPackageMetadataService
@@ -29,7 +29,7 @@ public class DefaultPackageMetadataService : IPackageMetadataService
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
     }
 
-    public async Task<NuGetFeedRegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(
+    public async Task<NuDepotRegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(
         string packageId,
         bool semVer2 = false,
         CancellationToken cancellationToken = default)

@@ -1,6 +1,6 @@
 using System;
 
-namespace NuGet.Core.Catalog;
+namespace NuDepot.Core.Catalog;
 
 /// <summary>
 /// The options to configure <see cref="CatalogProcessor"/>.

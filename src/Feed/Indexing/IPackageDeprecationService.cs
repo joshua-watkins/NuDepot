@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Indexing;
+namespace NuDepot.Feed.Indexing;
 
 /// <summary>
 /// Deprecates and undeprecates package versions.

@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace NuGet.Feed.Migrations
+namespace NuDepot.Feed.Migrations
 {
     /// <inheritdoc />
     public partial class AddEmbeddedLicenseColumns : Migration

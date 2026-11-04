@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using NuGet.Core.Models;
-using NuGet.Feed.Metadata;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Metadata;
 
-namespace NuGet.Feed.Search;
+namespace NuDepot.Feed.Search;
 
 public interface ISearchResponseBuilder
 {

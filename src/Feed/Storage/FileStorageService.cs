@@ -3,10 +3,10 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Extensions;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Extensions;
 
-namespace NuGet.Feed.Storage;
+namespace NuDepot.Feed.Storage;
 
 /// <summary>
 /// Stores content on disk.

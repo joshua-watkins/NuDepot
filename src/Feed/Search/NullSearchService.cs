@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 
-namespace NuGet.Feed.Search;
+namespace NuDepot.Feed.Search;
 
 /// <summary>
 /// A minimal search service implementation, used for advanced scenarios.

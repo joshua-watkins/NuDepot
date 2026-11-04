@@ -1,16 +1,16 @@
 using System;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Configuration;
+using NuDepot.Feed.Configuration;
 
-namespace NuGet.Feed.Validation;
+namespace NuDepot.Feed.Validation;
 
 /// <summary>
-/// Validates NuGetFeed's options, used at startup.
+/// Validates NuDepot's options, used at startup.
 /// </summary>
 public class ValidateStartupOptions
 {
-    private readonly IOptions<NuGetFeedOptions> _root;
+    private readonly IOptions<NuDepotOptions> _root;
     private readonly IOptions<DatabaseOptions> _database;
     private readonly IOptions<StorageOptions> _storage;
     private readonly IOptions<MirrorOptions> _mirror;
@@ -18,7 +18,7 @@ public class ValidateStartupOptions
     private readonly ILogger<ValidateStartupOptions> _logger;
 
     public ValidateStartupOptions(
-        IOptions<NuGetFeedOptions> root,
+        IOptions<NuDepotOptions> root,
         IOptions<DatabaseOptions> database,
         IOptions<StorageOptions> storage,
         IOptions<MirrorOptions> mirror,
@@ -54,13 +54,13 @@ public class ValidateStartupOptions
                 _logger.LogError("{OptionsFailure}", failure);
             }
 
-            _logger.LogError(e, "NuGetFeed configuration is invalid.");
+            _logger.LogError(e, "NuDepot configuration is invalid.");
             return false;
         }
         catch (InvalidOperationException e)
         {
             // The configuration binder throws for values it can't convert, like an unknown role.
-            _logger.LogError(e, "NuGetFeed configuration is invalid.");
+            _logger.LogError(e, "NuDepot configuration is invalid.");
             return false;
         }
     }

@@ -1,18 +1,18 @@
 using System.Text.Json.Serialization;
 
-namespace NuGet.Core.Models;
+namespace NuDepot.Core.Models;
 
 /// <summary>
-/// NuGetFeed's extensions to a registration index page.
+/// NuDepot's extensions to a registration index page.
 /// Extends <see cref="RegistrationIndexPageItem"/>.
 /// </summary>
 /// <remarks>
-/// TODO: After this project is updated to .NET 5, make <see cref="NuGetFeedRegistrationIndexPageItem"/>
+/// TODO: After this project is updated to .NET 5, make <see cref="NuDepotRegistrationIndexPageItem"/>
 /// extend <see cref="RegistrationIndexPageItem"/> and remove identical properties.
 /// Properties that are modified should be marked with the "new" modified.
 /// See: https://github.com/dotnet/runtime/pull/32107
 /// </remarks>
-public class NuGetFeedRegistrationIndexPageItem
+public class NuDepotRegistrationIndexPageItem
 {
 #region Original properties from RegistrationIndexPageItem.
     [JsonPropertyName("@id")]
@@ -24,8 +24,8 @@ public class NuGetFeedRegistrationIndexPageItem
 
     /// <summary>
     /// The catalog entry containing the package metadata.
-    /// This was modified to use NuGetFeed's extended package metadata model.
+    /// This was modified to use NuDepot's extended package metadata model.
     /// </summary>
     [JsonPropertyName("catalogEntry")]
-    public NuGetFeedPackageMetadata PackageMetadata { get; set; } = null!;
+    public NuDepotPackageMetadata PackageMetadata { get; set; } = null!;
 }

@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using NuGet.Versioning;
-using NuGet.Core;
-using NuGet.Core.Models;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Upstream.Clients;
+using NuDepot.Core;
+using NuDepot.Core.Models;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Upstream.Clients;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,7 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace NuGet.Feed.Tests
+namespace NuDepot.Feed.Tests
 {
     public class V3UpstreamClientTests
     {

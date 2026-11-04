@@ -1,6 +1,6 @@
 using NuGet.Versioning;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 /// <summary>
 /// Used to create URLs to resources in the NuGet protocol.

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 public class NuGetServerOptions
 {

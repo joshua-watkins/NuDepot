@@ -4,12 +4,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using NuGet.Feed.Indexing;
-using NuGet.Feed.Metadata;
-using NuGet.Feed.Serialization;
+using NuDepot.Feed.Indexing;
+using NuDepot.Feed.Metadata;
+using NuDepot.Feed.Serialization;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// Deprecates package versions. This isn't part of the NuGet protocol; deprecations are

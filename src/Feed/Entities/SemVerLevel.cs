@@ -1,4 +1,4 @@
-namespace NuGet.Feed.Entities;
+namespace NuDepot.Feed.Entities;
 
 public enum SemVerLevel
 {

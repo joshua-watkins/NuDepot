@@ -1,7 +1,7 @@
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 using NuGet.Versioning;
 
-namespace NuGet.Core.Extensions;
+namespace NuDepot.Core.Extensions;
 
 /// <summary>
 /// These are documented interpretations of values returned by the Search resource.

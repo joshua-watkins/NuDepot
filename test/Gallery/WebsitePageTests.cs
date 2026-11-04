@@ -11,15 +11,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Moq;
-using NuGet.Core.Models;
-using NuGet.Core.PackageDetails;
-using NuGet.Core.Search;
-using NuGet.Core.ServiceIndex;
-using NuGet.Gallery.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Core.PackageDetails;
+using NuDepot.Core.Search;
+using NuDepot.Core.ServiceIndex;
+using NuDepot.Gallery.Extensions;
 using NuGet.Versioning;
 using Xunit;
 
-namespace NuGet.Gallery.Tests;
+namespace NuDepot.Gallery.Tests;
 
 /// <summary>
 /// Renders the website's pages through the website application, with fake feed clients.
@@ -48,14 +48,14 @@ public class WebsitePageTests : IDisposable
             { "Website:ServiceIndexUrl", ServiceIndexUrl },
         });
 
-        builder.Services.AddNuGetFeedUI();
+        builder.Services.AddNuDepotUI();
         builder.Services.AddSingleton(_search.Object);
         builder.Services.AddSingleton(_packages.Object);
         builder.Services.AddSingleton(_serviceIndex.Object);
 
         _app = builder.Build();
         _app.UseRouting();
-        _app.MapNuGetFeedUI();
+        _app.MapNuDepotUI();
         _app.StartAsync().GetAwaiter().GetResult();
 
         _search
@@ -89,7 +89,7 @@ public class WebsitePageTests : IDisposable
 
         var html = await GetPageAsync("/?q=json");
 
-        Assert.Contains("<title>Packages - NuGetFeed</title>", html);
+        Assert.Contains("<title>Packages - NuDepot</title>", html);
         Assert.Contains("href=\"/packages/Contoso.Json/1.2.0\"", html);
         Assert.Contains("1.5k total downloads", html);
         Assert.Contains("Reads &lt;json&gt; &amp; writes it.", html);
@@ -120,9 +120,9 @@ public class WebsitePageTests : IDisposable
     {
         _packages
             .Setup(p => p.GetPackageMetadataAsync("Contoso.Json", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<NuGetFeedPackageMetadata>
+            .ReturnsAsync(new List<NuDepotPackageMetadata>
             {
-                new NuGetFeedPackageMetadata
+                new NuDepotPackageMetadata
                 {
                     PackageId = "Contoso.Json",
                     Version = "1.2.0",
@@ -144,7 +144,7 @@ public class WebsitePageTests : IDisposable
 
         var html = await GetPageAsync("/packages/Contoso.Json/1.2.0");
 
-        Assert.Contains("<title>Contoso.Json 1.2.0 - NuGetFeed</title>", html);
+        Assert.Contains("<title>Contoso.Json 1.2.0 - NuDepot</title>", html);
         Assert.Contains("This package is no longer maintained.", html);
         Assert.Contains("href=\"/packages/Contoso.Text.Json\"", html);
         Assert.Contains("href=\"https://feed.test/v3/package/contoso.json/1.2.0/contoso.json.1.2.0.nupkg\"", html);
@@ -160,7 +160,7 @@ public class WebsitePageTests : IDisposable
     {
         _packages
             .Setup(p => p.GetPackageMetadataAsync("Missing", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<NuGetFeedPackageMetadata>());
+            .ReturnsAsync(new List<NuDepotPackageMetadata>());
 
         var html = await GetPageAsync("/packages/Missing");
 
@@ -205,9 +205,9 @@ public class WebsitePageTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/_content/NuGet.Gallery/css/site.css", "text/css")]
-    [InlineData("/_content/NuGet.Gallery/lib/bootstrap/dist/js/bootstrap.min.js", "text/javascript")]
-    [InlineData("/_content/NuGet.Gallery/images/github-32x32.png", "image/png")]
+    [InlineData("/_content/NuDepot.Gallery/css/site.css", "text/css")]
+    [InlineData("/_content/NuDepot.Gallery/lib/bootstrap/dist/js/bootstrap.min.js", "text/javascript")]
+    [InlineData("/_content/NuDepot.Gallery/images/github-32x32.png", "image/png")]
     public async Task ServesEmbeddedFiles(string url, string contentType)
     {
         using var client = _app.GetTestClient();
@@ -223,9 +223,9 @@ public class WebsitePageTests : IDisposable
     public async Task EmbeddedFilesAreNotModifiedForTheSameETag()
     {
         using var client = _app.GetTestClient();
-        var first = await client.GetAsync("/_content/NuGet.Gallery/css/site.css");
+        var first = await client.GetAsync("/_content/NuDepot.Gallery/css/site.css");
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/_content/NuGet.Gallery/css/site.css");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/_content/NuDepot.Gallery/css/site.css");
         request.Headers.IfNoneMatch.Add(first.Headers.ETag!);
         var second = await client.SendAsync(request);
 
@@ -233,8 +233,8 @@ public class WebsitePageTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/_content/NuGet.Gallery/css/missing.css")]
-    [InlineData("/_content/NuGet.Gallery/css")]
+    [InlineData("/_content/NuDepot.Gallery/css/missing.css")]
+    [InlineData("/_content/NuDepot.Gallery/css")]
     public async Task MissingEmbeddedFilesAreNotFound(string url)
     {
         using var client = _app.GetTestClient();

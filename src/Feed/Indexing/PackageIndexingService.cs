@@ -1,19 +1,19 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuGet.Packaging;
-using NuGet.Feed.Catalog;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Extensions;
-using NuGet.Feed.Search;
-using NuGet.Feed.Signing;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Search;
+using NuDepot.Feed.Signing;
+using NuDepot.Feed.Storage;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Indexing;
+namespace NuDepot.Feed.Indexing;
 
 public class PackageIndexingService : IPackageIndexingService
 {
@@ -24,7 +24,7 @@ public class PackageIndexingService : IPackageIndexingService
     private readonly IRepositorySigningService _signing;
     private readonly IUrlGenerator _url;
     private readonly SystemTime _time;
-    private readonly IOptionsSnapshot<NuGetFeedOptions> _options;
+    private readonly IOptionsSnapshot<NuDepotOptions> _options;
     private readonly ILogger<PackageIndexingService> _logger;
 
     public PackageIndexingService(
@@ -35,7 +35,7 @@ public class PackageIndexingService : IPackageIndexingService
         IRepositorySigningService signing,
         IUrlGenerator url,
         SystemTime time,
-        IOptionsSnapshot<NuGetFeedOptions> options,
+        IOptionsSnapshot<NuDepotOptions> options,
         ILogger<PackageIndexingService> logger)
     {
         _packages = packages ?? throw new ArgumentNullException(nameof(packages));

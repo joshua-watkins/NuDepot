@@ -1,27 +1,27 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using NuGet.Core;
+using NuDepot.Core;
 
-namespace NuGet.Feed.Authentication;
+namespace NuDepot.Feed.Authentication;
 
 /// <summary>
 /// The authorization policies that give API keys and users their roles. Add them with
-/// <c>AddAuthorizationBuilder().AddNuGetFeedPolicies()</c>.
+/// <c>AddAuthorizationBuilder().AddNuDepotPolicies()</c>.
 /// </summary>
 public static class FeedPolicies
 {
-    public const string Read = "NuGetFeed.Read";
-    public const string Push = "NuGetFeed.Push";
-    public const string Unlist = "NuGetFeed.Unlist";
-    public const string Deprecate = "NuGetFeed.Deprecate";
-    public const string ManageVulnerabilities = "NuGetFeed.ManageVulnerabilities";
+    public const string Read = "NuDepot.Read";
+    public const string Push = "NuDepot.Push";
+    public const string Unlist = "NuDepot.Unlist";
+    public const string Deprecate = "NuDepot.Deprecate";
+    public const string ManageVulnerabilities = "NuDepot.ManageVulnerabilities";
 
     /// <summary>
     /// Deleting a package needs <see cref="FeedPermissions.Unlist"/> or <see cref="FeedPermissions.HardDelete"/>,
     /// depending on what deleting does.
     /// </summary>
-    public const string DeletePackage = "NuGetFeed.DeletePackage";
+    public const string DeletePackage = "NuDepot.DeletePackage";
 
     /// <summary>
     /// The policy for a permission, or for deleting a package if <paramref name="permission"/> is null.
@@ -50,7 +50,7 @@ public static class FeedPolicies
         })
         {
             builder.AddPolicy(For(permission), policy => policy
-                .AddAuthenticationSchemes(NuGetFeedAuthenticationSchemes.Feed)
+                .AddAuthenticationSchemes(NuDepotAuthenticationSchemes.Feed)
                 .AddRequirements(new FeedPermissionRequirement(permission)));
         }
 

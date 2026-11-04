@@ -1,9 +1,9 @@
 using System.Threading.Tasks;
-using NuGet.Core.PackageMetadata;
-using NuGet.Core.Tests.Support;
+using NuDepot.Core.PackageMetadata;
+using NuDepot.Core.Tests.Support;
 using Xunit;
 
-namespace NuGet.Core.Tests;
+namespace NuDepot.Core.Tests;
 
 public class RawPackageMetadataClientTests : IClassFixture<ProtocolFixture>
 {

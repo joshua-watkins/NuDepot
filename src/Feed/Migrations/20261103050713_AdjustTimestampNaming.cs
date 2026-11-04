@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace NuGet.Feed.Migrations
+namespace NuDepot.Feed.Migrations
 {
     /// <inheritdoc />
     public partial class AdjustTimestampNaming : Migration

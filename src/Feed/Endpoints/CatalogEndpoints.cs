@@ -1,11 +1,11 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using NuGet.Core.Models;
-using NuGet.Core.Serialization;
-using NuGet.Feed.Catalog;
+using NuDepot.Core.Models;
+using NuDepot.Core.Serialization;
+using NuDepot.Feed.Catalog;
 
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// The Catalog resource, a record of every change to the feed's packages.

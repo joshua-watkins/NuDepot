@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
-using NuGet.Core.Catalog;
+using NuDepot.Core.Catalog;
 
-namespace NuGet.Core.Extensions;
+namespace NuDepot.Core.Extensions;
 
 public static class NuGetClientFactoryExtensions
 {

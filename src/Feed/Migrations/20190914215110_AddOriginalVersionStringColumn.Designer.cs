@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 
-namespace NuGet.Feed.Migrations
+namespace NuDepot.Feed.Migrations
 {
-    [DbContext(typeof(NuGetFeedContext))]
+    [DbContext(typeof(NuDepotContext))]
     [Migration("20190914215110_AddOriginalVersionStringColumn")]
     partial class AddOriginalVersionStringColumn
     {
@@ -18,7 +18,7 @@ namespace NuGet.Feed.Migrations
             modelBuilder
                 .HasAnnotation("ProductVersion", "2.2.6-servicing-10079");
 
-            modelBuilder.Entity("NuGet.Feed.Entities.Package", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.Package", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd();
@@ -101,7 +101,7 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("Packages");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.PackageDependency", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.PackageDependency", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd();
@@ -127,7 +127,7 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("PackageDependencies");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.PackageType", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.PackageType", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd();
@@ -150,7 +150,7 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("PackageTypes");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.TargetFramework", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.TargetFramework", b =>
                 {
                     b.Property<int>("Key")
                         .ValueGeneratedOnAdd();
@@ -170,24 +170,24 @@ namespace NuGet.Feed.Migrations
                     b.ToTable("TargetFrameworks");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.PackageDependency", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.PackageDependency", b =>
                 {
-                    b.HasOne("NuGet.Feed.Entities.Package", "Package")
+                    b.HasOne("NuDepot.Feed.Entities.Package", "Package")
                         .WithMany("Dependencies")
                         .HasForeignKey("PackageKey");
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.PackageType", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.PackageType", b =>
                 {
-                    b.HasOne("NuGet.Feed.Entities.Package", "Package")
+                    b.HasOne("NuDepot.Feed.Entities.Package", "Package")
                         .WithMany("PackageTypes")
                         .HasForeignKey("PackageKey")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
-            modelBuilder.Entity("NuGet.Feed.Entities.TargetFramework", b =>
+            modelBuilder.Entity("NuDepot.Feed.Entities.TargetFramework", b =>
                 {
-                    b.HasOne("NuGet.Feed.Entities.Package", "Package")
+                    b.HasOne("NuDepot.Feed.Entities.Package", "Package")
                         .WithMany("TargetFrameworks")
                         .HasForeignKey("PackageKey")
                         .OnDelete(DeleteBehavior.Cascade);

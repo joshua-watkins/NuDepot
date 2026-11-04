@@ -5,20 +5,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 
-namespace NuGet.Feed.Upstream;
+namespace NuDepot.Feed.Upstream;
 
 public class DownloadsImporter
 {
     private const int BatchSize = 200;
 
-    private readonly NuGetFeedContext _context;
+    private readonly NuDepotContext _context;
     private readonly IPackageDownloadsSource _downloadsSource;
     private readonly ILogger<DownloadsImporter> _logger;
 
     public DownloadsImporter(
-        NuGetFeedContext context,
+        NuDepotContext context,
         IPackageDownloadsSource downloadsSource,
         ILogger<DownloadsImporter> logger)
     {

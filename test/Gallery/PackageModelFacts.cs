@@ -5,13 +5,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
-using NuGet.Core.Models;
-using NuGet.Core.PackageDetails;
-using NuGet.Gallery.Pages;
+using NuDepot.Core.Models;
+using NuDepot.Core.PackageDetails;
+using NuDepot.Gallery.Pages;
 using NuGet.Versioning;
 using Xunit;
 
-namespace NuGet.Gallery.Tests;
+namespace NuDepot.Gallery.Tests;
 
 public class PackageModelFacts
 {
@@ -309,14 +309,14 @@ public class PackageModelFacts
         }
     }
 
-    private void SetupPackages(params NuGetFeedPackageMetadata[] packages)
+    private void SetupPackages(params NuDepotPackageMetadata[] packages)
     {
         _packages
             .Setup(p => p.GetPackageMetadataAsync("testpackage", _cancellation))
             .ReturnsAsync(packages.ToList());
     }
 
-    private NuGetFeedPackageMetadata CreatePackage(
+    private NuDepotPackageMetadata CreatePackage(
         string version,
         long downloads = 0,
         bool hasReadme = false,
@@ -325,7 +325,7 @@ public class PackageModelFacts
         IEnumerable<DependencyGroupItem>? dependencyGroups = null,
         IEnumerable<string>? packageTypes = null)
     {
-        return new NuGetFeedPackageMetadata
+        return new NuDepotPackageMetadata
         {
             PackageId = "testpackage",
             Version = version,

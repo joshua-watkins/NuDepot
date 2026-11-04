@@ -1,6 +1,6 @@
 using System;
 
-namespace NuGet.Feed.Extensions;
+namespace NuDepot.Feed.Extensions;
 
 /// <summary>
 /// A wrapper that allows for unit tests related to system time.

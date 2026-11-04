@@ -4,12 +4,12 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using NuGet.Core.Models;
-using NuGet.Core.Serialization;
-using NuGet.Feed.ServiceIndex;
-using NuGet.Feed.Signing;
+using NuDepot.Core.Models;
+using NuDepot.Core.Serialization;
+using NuDepot.Feed.ServiceIndex;
+using NuDepot.Feed.Signing;
 
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// The NuGet Service Index, which helps NuGet clients discover this server's resources,
@@ -92,7 +92,7 @@ internal static class ServiceIndexEndpoints
     }
 
     // GET api/v2/{**path}
-    // NuGetFeed only serves the NuGet V3 protocol. This answers NuGet V2 (OData) feed
+    // NuDepot only serves the NuGet V3 protocol. This answers NuGet V2 (OData) feed
     // requests with a message that points clients to the V3 service index.
     public static IResult V2FeedNotSupported(IUrlGenerator url)
     {

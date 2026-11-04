@@ -5,14 +5,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NuGet.Feed.Upstream;
+using NuDepot.Feed.Upstream;
 
-namespace NuGet.Feed;
+namespace NuDepot.Feed;
 
 /// <summary>
 /// The command line commands that hosts of the server support, besides running the server.
 /// </summary>
-public static class NuGetFeedCommands
+public static class NuDepotCommands
 {
     /// <summary>
     /// Writes the command line help if the arguments ask for it. Call this before building the host,
@@ -26,14 +26,14 @@ public static class NuGetFeedCommands
         Console.WriteLine("""
             A light-weight NuGet service
 
-            Usage: nugetfeed [command] [options]
+            Usage: nudepot [command] [options]
 
             Commands:
               import downloads    Import package downloads from nuget.org.
 
             Options:
-              --urls <urls>       The URLs that NuGetFeed should bind to.
-              --<key>=<value>     Set a configuration value, like --Database:ConnectionString="Data Source=nugetfeed.db".
+              --urls <urls>       The URLs that NuDepot should bind to.
+              --<key>=<value>     Set a configuration value, like --Database:ConnectionString="Data Source=nudepot.db".
               -h|--help           Show help information.
 
             With no command, runs the server.

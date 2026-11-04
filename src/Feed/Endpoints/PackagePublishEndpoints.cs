@@ -3,13 +3,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using NuGet.Feed.Authentication;
-using NuGet.Feed.Extensions;
-using NuGet.Feed.Indexing;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Indexing;
+using NuDepot.Feed.Storage;
 using NuGet.Versioning;
 
-namespace NuGet.Feed.Endpoints;
+namespace NuDepot.Feed.Endpoints;
 
 /// <summary>
 /// The Package Publish and Symbol Package Publish resources, used to push, delete and relist packages.
@@ -17,7 +17,7 @@ namespace NuGet.Feed.Endpoints;
 /// </summary>
 internal static class PackagePublishEndpoints
 {
-    private const string LoggerCategory = "NuGet.Feed.Endpoints.PackagePublish";
+    private const string LoggerCategory = "NuDepot.Feed.Endpoints.PackagePublish";
 
     // PUT api/v2/package
     // See: https://docs.microsoft.com/en-us/nuget/api/package-publish-resource#push-a-package

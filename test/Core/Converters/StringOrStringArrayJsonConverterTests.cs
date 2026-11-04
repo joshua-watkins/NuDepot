@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Text.Json;
-using NuGet.Core.Converters;
+using NuDepot.Core.Converters;
 using Xunit;
 
-namespace NuGet.Core.Tests
+namespace NuDepot.Core.Tests
 {
     public class StringOrStringArrayJsonConverterTests
     {

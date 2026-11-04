@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using Moq;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Storage;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Storage;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace NuGet.Feed.Tests.Services
+namespace NuDepot.Feed.Tests.Services
 {
     public class FileStorageServiceTests
     {

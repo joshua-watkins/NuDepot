@@ -2,11 +2,11 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Core.Serialization;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Core.Serialization;
 
-namespace NuGet.Core.Search;
+namespace NuDepot.Core.Search;
 
 /// <summary>
 /// The client used to search for packages.

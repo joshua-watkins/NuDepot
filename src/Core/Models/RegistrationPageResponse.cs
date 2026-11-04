@@ -1,4 +1,4 @@
-namespace NuGet.Core.Models;
+namespace NuDepot.Core.Models;
 
 /// <summary>
 /// A page of package metadata entries.

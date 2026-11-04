@@ -11,18 +11,18 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Authentication;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Extensions;
+using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 
-namespace NuGet.Feed.Users;
+namespace NuDepot.Feed.Users;
 
 /// <summary>
 /// The feed's users, their passkeys and their API keys.
 /// </summary>
 public partial class UserService(
-    NuGetFeedContext context,
+    NuDepotContext context,
     SystemTime time,
     IOptionsMonitor<FeedAuthorizationOptions> options,
     ILogger<UserService> logger)
@@ -30,7 +30,7 @@ public partial class UserService(
     /// <summary>
     /// The start of every user API key, which tells them apart from configured keys.
     /// </summary>
-    public const string ApiKeyPrefix = "nf_";
+    public const string ApiKeyPrefix = "nd_";
 
     // Key prefixes are shown to users so they can tell their keys apart.
     private const int ShownApiKeyLength = 10;
@@ -49,7 +49,7 @@ public partial class UserService(
     // How long a session's previous token is still accepted after it's replaced.
     private static readonly TimeSpan PreviousTokenLifetime = TimeSpan.FromMinutes(1);
 
-    private readonly NuGetFeedContext _context = context ?? throw new ArgumentNullException(nameof(context));
+    private readonly NuDepotContext _context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly SystemTime _time = time ?? throw new ArgumentNullException(nameof(time));
     private readonly IOptionsMonitor<FeedAuthorizationOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly ILogger<UserService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));

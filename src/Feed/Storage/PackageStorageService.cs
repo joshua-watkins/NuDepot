@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Logging;
 using NuGet.Versioning;
-using NuGet.Feed.Entities;
+using NuDepot.Feed.Entities;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Storage;
+namespace NuDepot.Feed.Storage;
 
 public class PackageStorageService : IPackageStorageService
 {
@@ -239,10 +239,10 @@ public class PackageStorageService : IPackageStorageService
         {
             // The "packages" prefix was lowercased, which was a breaking change
             // on filesystems that are case sensitive. Handle this case to help
-            // users migrate to the latest version of NuGetFeed.
+            // users migrate to the latest version of NuDepot.
             _logger.LogError(
                 $"Unable to find the '{PackagesPathPrefix}' folder. " +
-                "If you've recently upgraded NuGetFeed, please make sure this folder starts with a lowercased letter.");
+                "If you've recently upgraded NuDepot, please make sure this folder starts with a lowercased letter.");
             throw;
         }
     }
@@ -257,10 +257,10 @@ public class PackageStorageService : IPackageStorageService
         {
             // The "packages" prefix was lowercased, which was a breaking change
             // on filesystems that are case sensitive. Handle this case to help
-            // users migrate to the latest version of NuGetFeed.
+            // users migrate to the latest version of NuDepot.
             _logger.LogError(
                 $"Unable to find the '{PackagesPathPrefix}' folder. " +
-                "If you've recently upgraded NuGetFeed, please make sure this folder starts with a lowercased letter.");
+                "If you've recently upgraded NuDepot, please make sure this folder starts with a lowercased letter.");
             throw;
         }
     }

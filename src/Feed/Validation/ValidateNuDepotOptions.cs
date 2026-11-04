@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Configuration;
+using NuDepot.Feed.Configuration;
 
-namespace NuGet.Feed.Validation;
+namespace NuDepot.Feed.Validation;
 
 /// <summary>
-/// Validates the options NuGetFeed reads from its configuration.
+/// Validates the options NuDepot reads from its configuration.
 /// </summary>
-public class ValidateNuGetFeedOptions
+public class ValidateNuDepotOptions
     : IValidateOptions<DatabaseOptions>
     , IValidateOptions<MirrorOptions>
     , IValidateOptions<FeedAuthorizationOptions>
@@ -19,7 +19,7 @@ public class ValidateNuGetFeedOptions
 
         if (string.IsNullOrWhiteSpace(options.ConnectionString))
         {
-            failures.Add(Invalid(nameof(NuGetFeedOptions.Database), $"The {nameof(DatabaseOptions.ConnectionString)} field is required."));
+            failures.Add(Invalid(nameof(NuDepotOptions.Database), $"The {nameof(DatabaseOptions.ConnectionString)} field is required."));
         }
 
         return Result(failures);
@@ -32,14 +32,14 @@ public class ValidateNuGetFeedOptions
         if (options.PackageDownloadTimeoutSeconds < 0)
         {
             failures.Add(Invalid(
-                nameof(NuGetFeedOptions.Mirror),
+                nameof(NuDepotOptions.Mirror),
                 $"The field {nameof(MirrorOptions.PackageDownloadTimeoutSeconds)} must be between 0 and {int.MaxValue}."));
         }
 
         if (options.Enabled && options.PackageSource == null)
         {
             failures.Add(Invalid(
-                nameof(NuGetFeedOptions.Mirror),
+                nameof(NuDepotOptions.Mirror),
                 $"The {nameof(MirrorOptions.PackageSource)} configuration is required if mirroring is enabled"));
         }
 
@@ -58,11 +58,11 @@ public class ValidateNuGetFeedOptions
 
             if (string.IsNullOrWhiteSpace(apiKey.Key))
             {
-                failures.Add(Invalid(nameof(NuGetFeedOptions.Authorization), $"The {field}:{nameof(ApiKeyOptions.Key)} field is required."));
+                failures.Add(Invalid(nameof(NuDepotOptions.Authorization), $"The {field}:{nameof(ApiKeyOptions.Key)} field is required."));
             }
             else if (!keys.Add(apiKey.Key))
             {
-                failures.Add(Invalid(nameof(NuGetFeedOptions.Authorization), $"The {field}:{nameof(ApiKeyOptions.Key)} field is the same as another API key."));
+                failures.Add(Invalid(nameof(NuDepotOptions.Authorization), $"The {field}:{nameof(ApiKeyOptions.Key)} field is the same as another API key."));
             }
         }
 

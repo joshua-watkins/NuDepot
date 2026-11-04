@@ -4,11 +4,11 @@ using System.Net.Http;
 using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Extensions;
-using NuGet.Core.Models;
-using NuGet.Core.Serialization;
+using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
+using NuDepot.Core.Serialization;
 
-namespace NuGet.Core.Catalog;
+namespace NuDepot.Core.Catalog;
 
 public class RawCatalogClient : ICatalogClient
 {

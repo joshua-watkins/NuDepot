@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core.ServiceIndex;
+namespace NuDepot.Core.ServiceIndex;
 
 /// <summary>
 /// The NuGet Service Index client, used to discover other resources.

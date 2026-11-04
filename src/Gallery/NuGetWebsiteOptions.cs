@@ -1,4 +1,4 @@
-﻿namespace NuGet.Gallery;
+﻿namespace NuDepot.Gallery;
 
 public class NuGetWebsiteOptions
 {

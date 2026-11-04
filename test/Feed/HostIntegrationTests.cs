@@ -6,12 +6,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using NuGet.Feed.Configuration;
-using NuGet.Feed.Entities;
-using NuGet.Feed.Extensions;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 using Xunit;
 
-namespace NuGet.Feed.Tests
+namespace NuDepot.Feed.Tests
 {
     public class HostIntegrationTests
     {
@@ -27,7 +27,7 @@ namespace NuGet.Feed.Tests
             });
 
             Assert.Throws<InvalidOperationException>(
-                () => provider.GetRequiredService<NuGetFeedContext>());
+                () => provider.GetRequiredService<NuDepotContext>());
         }
 
         [Fact]
@@ -39,7 +39,7 @@ namespace NuGet.Feed.Tests
                 { ConnectionStringKey, "..." }
             });
 
-            Assert.NotNull(provider.GetRequiredService<NuGetFeedContext>());
+            Assert.NotNull(provider.GetRequiredService<NuDepotContext>());
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace NuGet.Feed.Tests
                 { ConnectionStringKey, "..." }
             });
 
-            Assert.True(provider.GetRequiredService<NuGetFeedContext>().Database.IsSqlite());
+            Assert.True(provider.GetRequiredService<NuDepotContext>().Database.IsSqlite());
         }
 
         [Fact]
@@ -65,7 +65,7 @@ namespace NuGet.Feed.Tests
 
             using (var scope = provider.CreateScope())
             {
-                var context = scope.ServiceProvider.GetRequiredService<NuGetFeedContext>();
+                var context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
                 await context.RunMigrationsAsync(default);
                 context.VulnerabilityAdvisories.Add(new VulnerabilityAdvisory
                 {
@@ -78,7 +78,7 @@ namespace NuGet.Feed.Tests
 
             using (var scope = provider.CreateScope())
             {
-                var context = scope.ServiceProvider.GetRequiredService<NuGetFeedContext>();
+                var context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
                 Assert.Equal(1, await context.VulnerabilityAdvisories.CountAsync());
             }
         }
@@ -135,7 +135,7 @@ namespace NuGet.Feed.Tests
 
             services.AddSingleton<IConfiguration>(configuration);
             services.AddLogging();
-            services.AddNuGetFeed(feed =>
+            services.AddNuDepot(feed =>
             {
                 feed.AddSqliteDatabase();
                 feed.AddFileStorage();

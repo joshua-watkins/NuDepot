@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuGet.Feed.Tests.Support;
+namespace NuDepot.Feed.Tests.Support;
 
 /// <summary>
 /// Keeps cookies between requests, like a browser. The test server's handler doesn't.

@@ -1,19 +1,19 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace NuGet.Core.Models;
+namespace NuDepot.Core.Models;
 
 /// <summary>
-/// NuGetFeed's extensions to a registration index response.
+/// NuDepot's extensions to a registration index response.
 /// Extends <see cref="RegistrationIndexResponse"/>.
 /// </summary>
 /// <remarks>
-/// TODO: After this project is updated to .NET 5, make <see cref="NuGetFeedRegistrationIndexResponse"/>
+/// TODO: After this project is updated to .NET 5, make <see cref="NuDepotRegistrationIndexResponse"/>
 /// extend <see cref="RegistrationIndexResponse"/> and remove identical properties.
 /// Properties that are modified should be marked with the "new" modified.
 /// See: https://github.com/dotnet/runtime/pull/32107
 /// </remarks>
-public class NuGetFeedRegistrationIndexResponse
+public class NuDepotRegistrationIndexResponse
 {
 #region Original properties from RegistrationIndexResponse.
     [JsonPropertyName("@id")]
@@ -28,11 +28,11 @@ public class NuGetFeedRegistrationIndexResponse
 
     /// <summary>
     /// The pages that contain all of the versions of the package, ordered
-    /// by the package's version. This was modified to use NuGetFeed's extended
+    /// by the package's version. This was modified to use NuDepot's extended
     /// registration index page model.
     /// </summary>
     [JsonPropertyName("items")]
-    public IReadOnlyList<NuGetFeedRegistrationIndexPage> Pages { get; set; } = null!;
+    public IReadOnlyList<NuDepotRegistrationIndexPage> Pages { get; set; } = null!;
 
     /// <summary>
     /// The package's total downloads across all versions.

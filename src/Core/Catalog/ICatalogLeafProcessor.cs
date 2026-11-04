@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Core.Models;
+using NuDepot.Core.Models;
 
-namespace NuGet.Core.Catalog;
+namespace NuDepot.Core.Catalog;
 
 /// <summary>
 /// An interface which allows custom processing of catalog leaves. This interface should be implemented when the
