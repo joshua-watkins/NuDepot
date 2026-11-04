@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 
 namespace NuDepot.Core.Search;
@@ -12,7 +9,7 @@ public class NullAutocompleteClient : IAutocompleteClient
         return Task.FromResult(new AutocompleteResponse
         {
             TotalHits = 0,
-            Data = new List<string>()
+            Data = []
         });
     }
 
@@ -21,7 +18,7 @@ public class NullAutocompleteClient : IAutocompleteClient
         return Task.FromResult(new AutocompleteResponse
         {
             TotalHits = 0,
-            Data = new List<string>()
+            Data = []
         });
     }
 }

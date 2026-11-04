@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using NuDepot.Core;
 
@@ -38,7 +36,7 @@ public static class FeedPolicies
 
     internal static AuthorizationBuilder AddFeedPolicies(this AuthorizationBuilder builder)
     {
-        foreach (var permission in new FeedPermissions?[]
+        foreach (FeedPermissions? permission in new FeedPermissions?[]
         {
             FeedPermissions.Read,
             FeedPermissions.Push,
@@ -68,21 +66,14 @@ internal sealed class FeedPermissionRequirement : IAuthorizationRequirement
     public FeedPermissions? Permission { get; }
 }
 
-internal sealed class FeedPermissionHandler : AuthorizationHandler<FeedPermissionRequirement>
+internal sealed class FeedPermissionHandler(FeedAccess access) : AuthorizationHandler<FeedPermissionRequirement>
 {
-    private readonly FeedAccess _access;
-
-    public FeedPermissionHandler(FeedAccess access)
-    {
-        _access = access ?? throw new ArgumentNullException(nameof(access));
-    }
+    private FeedAccess Access { get; } = access;
 
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, FeedPermissionRequirement requirement)
     {
-        if (_access.HasPermission(context.User, requirement.Permission ?? _access.PackageDeletionPermission))
-        {
+        if (Access.HasPermission(context.User, requirement.Permission ?? Access.PackageDeletionPermission))
             context.Succeed(requirement);
-        }
 
         return Task.CompletedTask;
     }

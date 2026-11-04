@@ -1,8 +1,3 @@
-using System;
-using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Reflection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -34,6 +29,8 @@ using NuDepot.Feed.Upstream.Clients;
 using NuDepot.Feed.Users;
 using NuDepot.Feed.Validation;
 using NuDepot.Feed.Vulnerabilities;
+using System.Net;
+using System.Reflection;
 
 // In the namespace of IServiceCollection, so applications see AddNuDepotFeed() without a using.
 namespace Microsoft.Extensions.DependencyInjection;
@@ -49,9 +46,7 @@ public static class FeedServiceCollectionExtensions
     /// </summary>
     public static NuDepotBuilder AddFeed(this NuDepotBuilder builder, Action<FeedOptions>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(builder);
-
-        var services = builder.Services;
+        IServiceCollection services = builder.Services;
 
         AddOptions(services, configure);
         AddAccess(services);
@@ -68,34 +63,28 @@ public static class FeedServiceCollectionExtensions
     /// </summary>
     public static NuDepotBuilder AddNuDepotFeed(this IServiceCollection services, Action<FeedOptions>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(services);
-
-        return services.AddNuDepot().AddFeed(configure);
+        return services
+            .AddNuDepot()
+            .AddFeed(configure);
     }
 
     private static void AddOptions(IServiceCollection services, Action<FeedOptions>? configure)
     {
         // The configuration binding source generator turns this binding into code, so it doesn't need reflection.
-        var options = services.AddOptions<FeedOptions>().BindConfiguration(FeedOptions.Section);
+        OptionsBuilder<FeedOptions> options = services
+            .AddOptions<FeedOptions>()
+            .BindConfiguration(FeedOptions.Section);
         if (configure != null)
-        {
             options.Configure(configure);
-        }
 
         services.TryAddSingleton<TemporaryStorageFolder>();
         options
             .PostConfigure<TemporaryStorageFolder>((options, temporaryFolder) =>
             {
                 if (options.Storage.Temporary)
-                {
                     options.Storage.Path = temporaryFolder.Path;
-                }
-
-                // Store content in the current working directory by default.
                 else if (string.IsNullOrEmpty(options.Storage.Path))
-                {
                     options.Storage.Path = Directory.GetCurrentDirectory();
-                }
             })
             .ValidateOnStart();
 
@@ -110,7 +99,9 @@ public static class FeedServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<FormOptions>, ConfigureFeedOptions>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<ForwardedHeadersOptions>, ConfigureFeedOptions>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<IISServerOptions>, ConfigureFeedOptions>());
-        services.AddOptions<IISServerOptions>().BindConfiguration(nameof(IISServerOptions));
+        services
+            .AddOptions<IISServerOptions>()
+            .BindConfiguration(nameof(IISServerOptions));
     }
 
     private static void AddAccess(IServiceCollection services)
@@ -124,7 +115,8 @@ public static class FeedServiceCollectionExtensions
         // Authenticate requests as the feed does, unless the application authenticates them another way.
         services.Configure<AuthenticationOptions>(options => options.DefaultScheme ??= NuDepotAuthenticationSchemes.Feed);
 
-        services.AddAuthentication()
+        services
+            .AddAuthentication()
             // Requests with an API key use it. Otherwise, a signed-in user's cookie is used, if users are enabled.
             .AddPolicyScheme(NuDepotAuthenticationSchemes.Feed, displayName: null, options =>
             {
@@ -150,7 +142,9 @@ public static class FeedServiceCollectionExtensions
             });
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IAuthorizationHandler, FeedPermissionHandler>());
-        services.AddAuthorizationBuilder().AddFeedPolicies();
+        services
+            .AddAuthorizationBuilder()
+            .AddFeedPolicies();
     }
 
     private static void AddDatabase(IServiceCollection services)
@@ -158,9 +152,11 @@ public static class FeedServiceCollectionExtensions
         services.TryAddSingleton<SqliteInMemoryDatabases>();
         services.AddDbContext<NuDepotContext>((provider, options) =>
         {
-            var connectionString = provider.GetRequiredService<IOptionsSnapshot<FeedOptions>>().Value.Database.ConnectionString;
+            string? connectionString = provider.GetRequiredService<IOptionsSnapshot<FeedOptions>>().Value.Database.ConnectionString;
 
-            provider.GetRequiredService<SqliteInMemoryDatabases>().KeepAlive(connectionString);
+            provider
+                .GetRequiredService<SqliteInMemoryDatabases>()
+                .KeepAlive(connectionString);
             options.UseSqlite(connectionString);
         });
 
@@ -234,13 +230,13 @@ public static class FeedServiceCollectionExtensions
 
     private static HttpClient HttpClientFactory(IServiceProvider provider)
     {
-        var options = GetOptions(provider).Mirror;
+        MirrorOptions options = GetOptions(provider).Mirror;
 
-        var assembly = Assembly.GetEntryAssembly() ?? typeof(FeedServiceCollectionExtensions).Assembly;
-        var assemblyName = assembly.GetName().Name;
-        var assemblyVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
+        Assembly assembly = Assembly.GetEntryAssembly() ?? typeof(FeedServiceCollectionExtensions).Assembly;
+        string? assemblyName = assembly.GetName().Name;
+        string assemblyVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 
-        var client = new HttpClient(new HttpClientHandler
+        HttpClient client = new(new HttpClientHandler
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
         });
@@ -253,8 +249,8 @@ public static class FeedServiceCollectionExtensions
 
     private static NuGetClientFactory NuGetClientFactoryFactory(IServiceProvider provider)
     {
-        var httpClient = provider.GetRequiredService<HttpClient>();
-        var packageSource = GetOptions(provider).Mirror.PackageSource
+        HttpClient httpClient = provider.GetRequiredService<HttpClient>();
+        Uri packageSource = GetOptions(provider).Mirror.PackageSource
             ?? throw new InvalidOperationException(
                 $"The '{FeedOptions.Section}:{nameof(FeedOptions.Mirror)}:{nameof(MirrorOptions.PackageSource)}' config is required to mirror packages.");
 
@@ -263,7 +259,8 @@ public static class FeedServiceCollectionExtensions
 
     private static IUpstreamClient UpstreamClientFactory(IServiceProvider provider)
     {
-        if (!GetOptions(provider).Mirror.Enabled) return provider.GetRequiredService<DisabledUpstreamClient>();
+        if (!GetOptions(provider).Mirror.Enabled)
+            return provider.GetRequiredService<DisabledUpstreamClient>();
 
         return provider.GetRequiredService<V3UpstreamClient>();
     }

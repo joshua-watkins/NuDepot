@@ -1,16 +1,11 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NuDepot.Core.Tests.Support;
 
 // Based off https://github.com/NuGet/NuGet.Services.Metadata/blob/0c69b9dd47e01125c22f72c1e27cf3cdafc65233/tests/NuGet.Protocol.Catalog.Tests/TestDataHttpMessageHandler.cs
 public class TestDataHttpMessageHandler : HttpMessageHandler
 {
-    private static readonly Dictionary<string, Func<string>> UrlToGetContent = new Dictionary<string, Func<string>>
+    private static readonly Dictionary<string, Func<string>> UrlToGetContent = new()
     {
         { TestData.ServiceIndexUrl, () => TestData.ServiceIndex },
 
@@ -41,7 +36,7 @@ public class TestDataHttpMessageHandler : HttpMessageHandler
     {
         if (request.Method != HttpMethod.Get
             || request.RequestUri == null
-            || !UrlToGetContent.TryGetValue(request.RequestUri.AbsoluteUri, out var getContent))
+            || !UrlToGetContent.TryGetValue(request.RequestUri.AbsoluteUri, out Func<string>? getContent))
         {
             return new HttpResponseMessage
             {

@@ -1,4 +1,3 @@
-using System;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NuDepot.Core.Hosting;
@@ -12,7 +11,7 @@ public sealed class NuDepotBuilder
 {
     internal NuDepotBuilder(IServiceCollection services)
     {
-        Services = services ?? throw new ArgumentNullException(nameof(services));
+        Services = services;
     }
 
     public IServiceCollection Services { get; }

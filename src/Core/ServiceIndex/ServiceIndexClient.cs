@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 using NuDepot.Core.ServiceIndex;
 
@@ -8,18 +5,13 @@ namespace NuDepot.Core;
 
 public partial class NuGetClientFactory
 {
-    private class ServiceIndexClient : IServiceIndexClient
+    private class ServiceIndexClient(NuGetClientFactory clientFactory) : IServiceIndexClient
     {
-        private readonly NuGetClientFactory _clientFactory;
-
-        public ServiceIndexClient(NuGetClientFactory clientFactory)
-        {
-            _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-        }
+        private NuGetClientFactory ClientFactory { get; } = clientFactory;
 
         public async Task<ServiceIndexResponse> GetAsync(CancellationToken cancellationToken = default)
         {
-            return await _clientFactory.GetServiceIndexAsync(cancellationToken);
+            return await ClientFactory.GetServiceIndexAsync(cancellationToken);
         }
     }
 }

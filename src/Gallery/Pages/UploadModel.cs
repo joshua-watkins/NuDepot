@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
 using NuDepot.Core.ServiceIndex;
 
 namespace NuDepot.Gallery.Pages;
@@ -10,16 +7,10 @@ namespace NuDepot.Gallery.Pages;
 /// <summary>
 /// The page that explains how to push packages.
 /// </summary>
-public class UploadModel
+public class UploadModel(IServiceIndexClient serviceIndex, FeedConnection feed)
 {
-    private readonly IServiceIndexClient _serviceIndex;
-    private readonly FeedConnection _feed;
-
-    public UploadModel(IServiceIndexClient serviceIndex, FeedConnection feed)
-    {
-        _serviceIndex = serviceIndex ?? throw new ArgumentNullException(nameof(serviceIndex));
-        _feed = feed ?? throw new ArgumentNullException(nameof(feed));
-    }
+    private IServiceIndexClient ServiceIndex { get; } = serviceIndex;
+    private FeedConnection Feed { get; } = feed;
 
     /// <summary>
     /// The application's path base, which links start with.
@@ -37,10 +28,10 @@ public class UploadModel
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
-        var serviceIndex = await _serviceIndex.GetAsync(cancellationToken);
+        ServiceIndexResponse serviceIndex = await ServiceIndex.GetAsync(cancellationToken);
 
-        ServiceIndexUrl = _feed.ToPublicUrl(_feed.ServiceIndexUrl);
-        PublishUrl = _feed.ToPublicUrl(serviceIndex.GetPackagePublishResourceUrl());
+        ServiceIndexUrl = Feed.ToPublicUrl(Feed.ServiceIndexUrl);
+        PublishUrl = Feed.ToPublicUrl(serviceIndex.GetPackagePublishResourceUrl());
     }
 
     /// <summary>
@@ -48,34 +39,33 @@ public class UploadModel
     /// </summary>
     public IReadOnlyList<PushInstructions> GetPushInstructions()
     {
-        return new[]
-        {
+        return
+        [
             new PushInstructions(
                 ".NET CLI",
-                new[] { $"dotnet nuget push -s {ServiceIndexUrl} package.nupkg" },
+                [$"dotnet nuget push -s {ServiceIndexUrl} package.nupkg"],
                 "https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-nuget-push"),
 
             new PushInstructions(
                 "NuGet",
-                new[] { $"nuget push -Source {ServiceIndexUrl} package.nupkg" },
+                [$"nuget push -Source {ServiceIndexUrl} package.nupkg"],
                 "https://docs.microsoft.com/en-us/nuget/tools/cli-ref-push"),
 
             new PushInstructions(
                 "Paket",
-                new[] { $"paket push --url {BaseUrl} package.nupkg" },
+                [$"paket push --url {BaseUrl} package.nupkg"],
                 "https://fsprojects.github.io/Paket/paket-push.html"),
 
             // TODO: This is broken...
             new PushInstructions(
                 "PowerShellGet",
-                new[]
-                {
+                [
                     $"Register-PSRepository -Name \"NuDepot\" -SourceLocation \"{ServiceIndexUrl}\" "
                         + $"-PublishLocation \"{PublishUrl}\" -InstallationPolicy \"Trusted\"",
                     "Publish-Module -Name PS-Module -Repository NuDepot",
-                },
+                ],
                 "https://docs.microsoft.com/en-us/powershell/module/powershellget/publish-module"),
-        };
+        ];
     }
 }
 

@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using NuDepot.Core.Models;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Metadata;
@@ -44,7 +41,7 @@ public class CatalogPackageSnapshot
     {
         return new CatalogPackageSnapshot
         {
-            Authors = string.Join(", ", package.Authors ?? Array.Empty<string>()),
+            Authors = string.Join(", ", package.Authors ?? []),
             Description = package.Description,
             IconUrl = NullIfEmpty(package.IconUrlString),
             HasEmbeddedIcon = package.HasEmbeddedIcon,
@@ -66,8 +63,8 @@ public class CatalogPackageSnapshot
             Tags = package.Tags?.ToList(),
             Title = NullIfEmpty(package.Title),
             VerbatimVersion = package.OriginalVersionString,
-            DependencyGroups = package.ToDependencyGroups().ToList(),
-            PackageTypes = package.PackageTypes
+            DependencyGroups = [.. package.ToDependencyGroups()],
+            PackageTypes = [.. package.PackageTypes
                 .Where(t => t.Name != null)
                 .Select(t => new CatalogPackageType
                 {
@@ -75,8 +72,7 @@ public class CatalogPackageSnapshot
 
                     // Package types without an explicit version are stored as version 0.0.
                     Version = string.IsNullOrEmpty(t.Version) || t.Version == "0.0" ? null : t.Version,
-                })
-                .ToList(),
+                })],
             Deprecation = package.ToDeprecationOrNull(),
             Vulnerabilities = package.ToVulnerabilitiesOrNull(advisories),
         };

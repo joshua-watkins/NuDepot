@@ -10,6 +10,7 @@ namespace NuDepot.Feed.Authentication;
 /// </summary>
 internal static class FeedPermissionFilter
 {
+    /// <param name="builder">The endpoint, or group of endpoints, that requires the permission.</param>
     /// <param name="permission">The permission, or null for the permission to delete a package.</param>
     public static TBuilder RequireFeedPermission<TBuilder>(this TBuilder builder, FeedPermissions? permission)
         where TBuilder : IEndpointConventionBuilder

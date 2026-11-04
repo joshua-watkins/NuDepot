@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Net.Http.Headers;
-using System.Security.Claims;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +6,10 @@ using Microsoft.Extensions.Options;
 using NuDepot.Core;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Users;
+using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Encodings.Web;
 
 namespace NuDepot.Feed.Authentication;
 
@@ -24,12 +21,7 @@ namespace NuDepot.Feed.Authentication;
 /// The key is a configured key, or one a user created if users are enabled. Keys are only accepted
 /// if the application calls <c>UseApiKeys()</c>.
 /// </summary>
-internal sealed class ApiKeyAuthenticationHandler(
-    IOptionsMonitor<AuthenticationSchemeOptions> options,
-    ILoggerFactory logger,
-    UrlEncoder encoder,
-    FeedAccess access,
-    FeedPipeline pipeline) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, FeedAccess access, FeedPipeline pipeline) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = NuDepotAuthenticationSchemes.ApiKey;
 
@@ -38,29 +30,23 @@ internal sealed class ApiKeyAuthenticationHandler(
     /// </summary>
     public const string Issuer = "NuDepot";
 
-    private readonly FeedAccess _access = access ?? throw new ArgumentNullException(nameof(access));
-    private readonly FeedPipeline _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+    private FeedAccess Access { get; } = access;
+    private FeedPipeline Pipeline { get; } = pipeline;
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var presentedKeys = GetPresentedKeys(Request);
-        if (presentedKeys.Count == 0 || !_pipeline.UsesApiKeys)
-        {
+        List<string> presentedKeys = GetPresentedKeys(Request);
+        if (presentedKeys.Count == 0 || !Pipeline.UsesApiKeys)
             return AuthenticateResult.NoResult();
-        }
 
-        foreach (var presentedKey in presentedKeys)
+        foreach (string presentedKey in presentedKeys)
         {
-            if (_access.FindApiKey(presentedKey) is { } apiKey)
-            {
+            if (Access.FindApiKey(presentedKey) is { } apiKey)
                 return Success(FeedClaims.CreateIdentity(apiKey.Name, apiKey.Role, Scheme.Name));
-            }
 
-            if (_access.UsersEnabled &&
+            if (Access.UsersEnabled &&
                 await Context.RequestServices.GetRequiredService<UserService>().FindByApiKeyAsync(presentedKey, Context.RequestAborted) is { } user)
-            {
                 return Success(FeedClaims.CreateIdentity(user, Scheme.Name));
-            }
         }
 
         // The request continues as anonymous, so an unknown key can still do what anyone may.
@@ -82,20 +68,16 @@ internal sealed class ApiKeyAuthenticationHandler(
 
     private static List<string> GetPresentedKeys(HttpRequest request)
     {
-        var keys = new List<string>();
+        List<string> keys = [];
 
-        var headerKey = request.GetApiKey();
+        string? headerKey = request.GetApiKey();
         if (!string.IsNullOrEmpty(headerKey))
-        {
             keys.Add(headerKey);
-        }
 
-        if (AuthenticationHeaderValue.TryParse(request.Headers.Authorization, out var authorization) &&
+        if (AuthenticationHeaderValue.TryParse(request.Headers.Authorization, out AuthenticationHeaderValue? authorization) &&
             string.Equals(authorization.Scheme, "Basic", StringComparison.OrdinalIgnoreCase) &&
-            TryGetBasicPassword(authorization.Parameter, out var password))
-        {
+            TryGetBasicPassword(authorization.Parameter, out string? password))
             keys.Add(password);
-        }
 
         return keys;
     }
@@ -103,7 +85,8 @@ internal sealed class ApiKeyAuthenticationHandler(
     private static bool TryGetBasicPassword(string? parameter, out string password)
     {
         password = string.Empty;
-        if (string.IsNullOrEmpty(parameter)) return false;
+        if (string.IsNullOrEmpty(parameter))
+            return false;
 
         string credentials;
         try
@@ -116,8 +99,9 @@ internal sealed class ApiKeyAuthenticationHandler(
         }
 
         // The credentials are "user:password". Passwords may contain colons, user names may not.
-        var separator = credentials.IndexOf(':');
-        if (separator < 0) return false;
+        int separator = credentials.IndexOf(':');
+        if (separator < 0)
+            return false;
 
         password = credentials[(separator + 1)..];
         return password.Length > 0;

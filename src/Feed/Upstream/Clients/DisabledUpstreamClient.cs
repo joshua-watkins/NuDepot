@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
@@ -12,23 +8,20 @@ namespace NuDepot.Feed.Upstream.Clients;
 /// </summary>
 public class DisabledUpstreamClient : IUpstreamClient
 {
-    private readonly IReadOnlyList<NuGetVersion> _emptyVersionList = new List<NuGetVersion>();
-    private readonly IReadOnlyList<Package> _emptyPackageList = new List<Package>();
+    private IReadOnlyList<NuGetVersion> EmptyVersionList { get; } = [];
+    private IReadOnlyList<Package> EmptyPackageList { get; } = [];
 
     public Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(string id, CancellationToken cancellationToken)
     {
-        return Task.FromResult(_emptyVersionList);
+        return Task.FromResult(EmptyVersionList);
     }
 
     public Task<IReadOnlyList<Package>> ListPackagesAsync(string id, CancellationToken cancellationToken)
     {
-        return Task.FromResult(_emptyPackageList);
+        return Task.FromResult(EmptyPackageList);
     }
 
-    public Task<Stream?> DownloadPackageOrNullAsync(
-        string id,
-        NuGetVersion version,
-        CancellationToken cancellationToken)
+    public Task<Stream?> DownloadPackageOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         return Task.FromResult<Stream?>(null);
     }

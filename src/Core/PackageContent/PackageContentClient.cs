@@ -1,7 +1,3 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 using NuDepot.Core.PackageContent;
 using NuGet.Versioning;
@@ -10,40 +6,27 @@ namespace NuDepot.Core;
 
 public partial class NuGetClientFactory
 {
-    private class PackageContentClient : IPackageContentClient
+    private class PackageContentClient(NuGetClientFactory clientFactory) : IPackageContentClient
     {
-        private readonly NuGetClientFactory _clientfactory;
+        private NuGetClientFactory Clientfactory { get; } = clientFactory;
 
-        public PackageContentClient(NuGetClientFactory clientFactory)
+        public async Task<Stream?> DownloadPackageOrNullAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default)
         {
-            _clientfactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-        }
-
-        public async Task<Stream?> DownloadPackageOrNullAsync(
-            string packageId,
-            NuGetVersion packageVersion,
-            CancellationToken cancellationToken = default)
-        {
-            var client = await _clientfactory.GetPackageContentClientAsync(cancellationToken);
+            IPackageContentClient client = await Clientfactory.GetPackageContentClientAsync(cancellationToken);
 
             return await client.DownloadPackageOrNullAsync(packageId, packageVersion, cancellationToken);
         }
 
-        public async Task<Stream?> DownloadPackageManifestOrNullAsync(
-            string packageId,
-            NuGetVersion packageVersion,
-            CancellationToken cancellationToken = default)
+        public async Task<Stream?> DownloadPackageManifestOrNullAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default)
         {
-            var client = await _clientfactory.GetPackageContentClientAsync(cancellationToken);
+            IPackageContentClient client = await Clientfactory.GetPackageContentClientAsync(cancellationToken);
 
             return await client.DownloadPackageManifestOrNullAsync(packageId, packageVersion, cancellationToken);
         }
 
-        public async Task<PackageVersionsResponse?> GetPackageVersionsOrNullAsync(
-            string packageId,
-            CancellationToken cancellationToken = default)
+        public async Task<PackageVersionsResponse?> GetPackageVersionsOrNullAsync(string packageId, CancellationToken cancellationToken = default)
         {
-            var client = await _clientfactory.GetPackageContentClientAsync(cancellationToken);
+            IPackageContentClient client = await Clientfactory.GetPackageContentClientAsync(cancellationToken);
 
             return await client.GetPackageVersionsOrNullAsync(packageId, cancellationToken);
         }

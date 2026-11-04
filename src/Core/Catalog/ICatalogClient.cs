@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 
 namespace NuDepot.Core.Catalog;
@@ -27,9 +25,7 @@ public interface ICatalogClient
     /// <param name="pageUrl">The URL of the page, from the <see cref="CatalogIndex"/>.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>A catalog page.</returns>
-    Task<CatalogPage> GetPageAsync(
-        string pageUrl,
-        CancellationToken cancellationToken = default);
+    Task<CatalogPage> GetPageAsync(string pageUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get a single catalog leaf, representing a package deletion event.
@@ -38,9 +34,7 @@ public interface ICatalogClient
     /// <param name="leafUrl">The URL of the leaf, from a <see cref="CatalogPage"/>.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>A catalog leaf.</returns>
-    Task<PackageDeleteCatalogLeaf> GetPackageDeleteLeafAsync(
-        string leafUrl,
-        CancellationToken cancellationToken = default);
+    Task<PackageDeleteCatalogLeaf> GetPackageDeleteLeafAsync(string leafUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get a single catalog leaf, representing a package creation or update event.
@@ -49,7 +43,5 @@ public interface ICatalogClient
     /// <param name="leafUrl">The URL of the leaf, from a <see cref="CatalogPage"/>.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>A catalog leaf.</returns>
-    Task<PackageDetailsCatalogLeaf> GetPackageDetailsLeafAsync(
-        string leafUrl,
-        CancellationToken cancellationToken = default);
+    Task<PackageDetailsCatalogLeaf> GetPackageDetailsLeafAsync(string leafUrl, CancellationToken cancellationToken = default);
 }

@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 
 namespace NuDepot.Core.Search;
@@ -22,13 +20,7 @@ public interface IAutocompleteClient
     /// <param name="includeSemVer2">Whether packages that require SemVer 2.0.0 compatibility should be returned.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The autocomplete response.</returns>
-    Task<AutocompleteResponse> AutocompleteAsync(
-        string? query = null,
-        int skip = 0,
-        int take = 20,
-        bool includePrerelease = true,
-        bool includeSemVer2 = true,
-        CancellationToken cancellationToken = default);
+    Task<AutocompleteResponse> AutocompleteAsync(string? query = null, int skip = 0, int take = 20, bool includePrerelease = true, bool includeSemVer2 = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Enumerate listed package versions.
@@ -39,9 +31,5 @@ public interface IAutocompleteClient
     /// <param name="includeSemVer2">Whether packages that require SemVer 2.0.0 compatibility should be returned.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package versions that matched the request.</returns>
-    Task<AutocompleteResponse> ListPackageVersionsAsync(
-        string packageId,
-        bool includePrerelease = true,
-        bool includeSemVer2 = true,
-        CancellationToken cancellationToken = default);
+    Task<AutocompleteResponse> ListPackageVersionsAsync(string packageId, bool includePrerelease = true, bool includeSemVer2 = true, CancellationToken cancellationToken = default);
 }

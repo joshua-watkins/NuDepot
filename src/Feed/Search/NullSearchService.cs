@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 
 namespace NuDepot.Feed.Search;
@@ -10,7 +7,7 @@ namespace NuDepot.Feed.Search;
 /// </summary>
 public class NullSearchService : ISearchService
 {
-    private static readonly IReadOnlyList<string> EmptyStringList = new List<string>();
+    private static readonly IReadOnlyList<string> EmptyStringList = [];
 
     private static readonly Task<AutocompleteResponse> EmptyAutocompleteResponseTask =
         Task.FromResult(new AutocompleteResponse
@@ -24,26 +21,22 @@ public class NullSearchService : ISearchService
         Task.FromResult(new DependentsResponse
         {
             TotalHits = 0,
-            Data = new List<PackageDependent>()
+            Data = []
         });
 
     private static readonly Task<SearchResponse> EmptySearchResponseTask =
         Task.FromResult(new SearchResponse
         {
             TotalHits = 0,
-            Data = new List<SearchResult>()
+            Data = []
         });
 
-    public Task<AutocompleteResponse> AutocompleteAsync(
-        AutocompleteRequest request,
-        CancellationToken cancellationToken)
+    public Task<AutocompleteResponse> AutocompleteAsync(AutocompleteRequest request, CancellationToken cancellationToken)
     {
         return EmptyAutocompleteResponseTask;
     }
 
-    public Task<AutocompleteResponse> ListPackageVersionsAsync(
-        VersionsRequest request,
-        CancellationToken cancellationToken)
+    public Task<AutocompleteResponse> ListPackageVersionsAsync(VersionsRequest request, CancellationToken cancellationToken)
     {
         return EmptyAutocompleteResponseTask;
     }
@@ -53,9 +46,7 @@ public class NullSearchService : ISearchService
         return EmptyDependentsResponseTask;
     }
 
-    public Task<SearchResponse> SearchAsync(
-        SearchRequest request,
-        CancellationToken cancellationToken)
+    public Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
     {
         return EmptySearchResponseTask;
     }

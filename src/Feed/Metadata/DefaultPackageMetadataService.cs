@@ -1,56 +1,34 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Entities;
 using NuDepot.Feed.Vulnerabilities;
 using NuGet.Versioning;
 
 namespace NuDepot.Feed.Metadata;
 
 /// <inheritdoc />
-public class DefaultPackageMetadataService : IPackageMetadataService
+public class DefaultPackageMetadataService(IPackageService packages, ICatalogService catalog, IVulnerabilityService vulnerabilities, RegistrationBuilder builder) : IPackageMetadataService
 {
-    private readonly IPackageService _packages;
-    private readonly ICatalogService _catalog;
-    private readonly IVulnerabilityService _vulnerabilities;
-    private readonly RegistrationBuilder _builder;
+    private IPackageService Packages { get; } = packages;
+    private ICatalogService Catalog { get; } = catalog;
+    private IVulnerabilityService Vulnerabilities { get; } = vulnerabilities;
+    private RegistrationBuilder Builder { get; } = builder;
 
-    public DefaultPackageMetadataService(
-        IPackageService packages,
-        ICatalogService catalog,
-        IVulnerabilityService vulnerabilities,
-        RegistrationBuilder builder)
+    public async Task<NuDepotRegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(string packageId, bool semVer2 = false, CancellationToken cancellationToken = default)
     {
-        _packages = packages ?? throw new ArgumentNullException(nameof(packages));
-        _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-        _vulnerabilities = vulnerabilities ?? throw new ArgumentNullException(nameof(vulnerabilities));
-        _builder = builder ?? throw new ArgumentNullException(nameof(builder));
-    }
-
-    public async Task<NuDepotRegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(
-        string packageId,
-        bool semVer2 = false,
-        CancellationToken cancellationToken = default)
-    {
-        var packages = await _packages.FindPackagesAsync(packageId, cancellationToken);
+        IReadOnlyList<Package> packages = await Packages.FindPackagesAsync(packageId, cancellationToken);
 
         // Only RegistrationsBaseUrl/3.6.0 may show SemVer 2.0.0 packages to clients.
         if (!semVer2)
-        {
-            packages = packages.Where(p => !p.IsSemVer2()).ToList();
-        }
+            packages = [.. packages.Where(p => !p.IsSemVer2())];
 
         if (!packages.Any())
-        {
             return null;
-        }
 
-        var catalogLeafUrls = await _catalog.FindLatestLeafUrlsAsync(packageId, cancellationToken);
-        var vulnerabilities = await _vulnerabilities.FindAsync(new[] { packageId }, cancellationToken);
+        IReadOnlyDictionary<string, string> catalogLeafUrls = await Catalog.FindLatestLeafUrlsAsync(packageId, cancellationToken);
+        IReadOnlyList<VulnerabilityAdvisory> vulnerabilities = await Vulnerabilities.FindAsync([packageId], cancellationToken);
 
-        return _builder.BuildIndex(
+        return Builder.BuildIndex(
             new PackageRegistration(
                 packageId,
                 packages,
@@ -59,21 +37,15 @@ public class DefaultPackageMetadataService : IPackageMetadataService
                 vulnerabilities));
     }
 
-    public async Task<RegistrationLeafResponse?> GetRegistrationLeafOrNullAsync(
-        string id,
-        NuGetVersion version,
-        bool semVer2 = false,
-        CancellationToken cancellationToken = default)
+    public async Task<RegistrationLeafResponse?> GetRegistrationLeafOrNullAsync(string id, NuGetVersion version, bool semVer2 = false, CancellationToken cancellationToken = default)
     {
-        var package = await _packages.FindPackageOrNullAsync(id, version, cancellationToken);
+        Package? package = await Packages.FindPackageOrNullAsync(id, version, cancellationToken);
         if (package == null || (!semVer2 && package.IsSemVer2()))
-        {
             return null;
-        }
 
-        var catalogLeafUrls = await _catalog.FindLatestLeafUrlsAsync(id, cancellationToken);
-        catalogLeafUrls.TryGetValue(package.Version.ToFullString().ToLowerInvariant(), out var catalogLeafUrl);
+        IReadOnlyDictionary<string, string> catalogLeafUrls = await Catalog.FindLatestLeafUrlsAsync(id, cancellationToken);
+        catalogLeafUrls.TryGetValue(package.Version.ToFullString().ToLowerInvariant(), out string? catalogLeafUrl);
 
-        return _builder.BuildLeaf(package, semVer2, catalogLeafUrl);
+        return Builder.BuildLeaf(package, semVer2, catalogLeafUrl);
     }
 }

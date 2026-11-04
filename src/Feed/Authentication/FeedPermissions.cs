@@ -1,5 +1,3 @@
-using System;
-
 namespace NuDepot.Feed.Authentication;
 
 /// <summary>
@@ -23,7 +21,7 @@ public enum FeedPermissions
 
     /// <summary>
     /// Unlist and relist packages. Deleting a package unlists it when
-    /// <see cref="FeedOptions.PackageDeletionBehavior"/> is <see cref="PackageDeletionBehavior.Unlist"/>.
+    /// <see cref="Configuration.FeedOptions.PackageDeletionBehavior"/> is <see cref="Configuration.PackageDeletionBehavior.Unlist"/>.
     /// </summary>
     Unlist = 1 << 2,
 
@@ -33,9 +31,9 @@ public enum FeedPermissions
     Deprecate = 1 << 3,
 
     /// <summary>
-    /// Permanently remove packages: deleting a package when <see cref="FeedOptions.PackageDeletionBehavior"/>
-    /// is <see cref="PackageDeletionBehavior.HardDelete"/>, and pushing a package that replaces an existing one
-    /// when <see cref="FeedOptions.AllowPackageOverwrites"/> is enabled.
+    /// Permanently remove packages: deleting a package when <see cref="Configuration.FeedOptions.PackageDeletionBehavior"/>
+    /// is <see cref="Configuration.PackageDeletionBehavior.HardDelete"/>, and pushing a package that replaces an existing one
+    /// when <see cref="Configuration.FeedOptions.AllowPackageOverwrites"/> is enabled.
     /// </summary>
     HardDelete = 1 << 4,
 

@@ -1,4 +1,3 @@
-using System;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -18,9 +17,9 @@ public static class GalleryApplicationBuilderExtensions
     public static NuDepotApplicationBuilder UseNuDepotGallery<TApplication>(this TApplication application)
         where TApplication : IApplicationBuilder, IEndpointRouteBuilder
     {
-        ArgumentNullException.ThrowIfNull(application);
-
-        return application.UseNuDepot().UseGallery();
+        return application
+            .UseNuDepot()
+            .UseGallery();
     }
 
     /// <summary>
@@ -28,15 +27,23 @@ public static class GalleryApplicationBuilderExtensions
     /// </summary>
     public static NuDepotApplicationBuilder UseGallery(this NuDepotApplicationBuilder app)
     {
-        ArgumentNullException.ThrowIfNull(app);
+        IEndpointRouteBuilder endpoints = app.Endpoints;
 
-        var endpoints = app.Endpoints;
-
-        endpoints.MapGet("/", WebsiteEndpoints.IndexAsync).WithSignedInUser();
-        endpoints.MapGet("/packages/{id}/{version?}", WebsiteEndpoints.PackageAsync).WithSignedInUser();
-        endpoints.MapGet("/upload", WebsiteEndpoints.UploadAsync).WithSignedInUser();
-        endpoints.MapGet("/account/signin", WebsiteEndpoints.SignIn).WithSignedInUser();
-        endpoints.MapGet("/account", WebsiteEndpoints.Account).WithSignedInUser();
+        endpoints
+            .MapGet("/", WebsiteEndpoints.IndexAsync)
+            .WithSignedInUser();
+        endpoints
+            .MapGet("/packages/{id}/{version?}", WebsiteEndpoints.PackageAsync)
+            .WithSignedInUser();
+        endpoints
+            .MapGet("/upload", WebsiteEndpoints.UploadAsync)
+            .WithSignedInUser();
+        endpoints
+            .MapGet("/account/signin", WebsiteEndpoints.SignIn)
+            .WithSignedInUser();
+        endpoints
+            .MapGet("/account", WebsiteEndpoints.Account)
+            .WithSignedInUser();
         endpoints.MapGet(WebsiteFiles.RequestPath + "/{**path}", WebsiteFiles.GetFile);
 
         return app;
@@ -49,14 +56,12 @@ public static class GalleryApplicationBuilderExtensions
     {
         return builder.AddEndpointFilter(async (context, next) =>
         {
-            var httpContext = context.HttpContext;
+            HttpContext httpContext = context.HttpContext;
             if (httpContext.RequestServices.GetRequiredService<FeedConnection>().SignInAvailable)
             {
-                var result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
+                AuthenticateResult result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
                 if (result.Succeeded)
-                {
                     httpContext.User = result.Principal;
-                }
             }
 
             return await next(context);

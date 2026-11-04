@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 using NuDepot.Core.PackageMetadata;
 
@@ -8,38 +5,27 @@ namespace NuDepot.Core;
 
 public partial class NuGetClientFactory
 {
-    private class PackageMetadataClient : IPackageMetadataClient
+    private class PackageMetadataClient(NuGetClientFactory clientFactory) : IPackageMetadataClient
     {
-        private readonly NuGetClientFactory _clientfactory;
+        private NuGetClientFactory Clientfactory { get; } = clientFactory;
 
-        public PackageMetadataClient(NuGetClientFactory clientFactory)
+        public async Task<RegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(string packageId, CancellationToken cancellationToken = default)
         {
-            _clientfactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-        }
-
-        public async Task<RegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(
-            string packageId,
-            CancellationToken cancellationToken = default)
-        {
-            var client = await _clientfactory.GetPackageMetadataClientAsync(cancellationToken);
+            IPackageMetadataClient client = await Clientfactory.GetPackageMetadataClientAsync(cancellationToken);
 
             return await client.GetRegistrationIndexOrNullAsync(packageId, cancellationToken);
         }
 
-        public async Task<RegistrationPageResponse> GetRegistrationPageAsync(
-            string pageUrl,
-            CancellationToken cancellationToken = default)
+        public async Task<RegistrationPageResponse> GetRegistrationPageAsync(string pageUrl, CancellationToken cancellationToken = default)
         {
-            var client = await _clientfactory.GetPackageMetadataClientAsync(cancellationToken);
+            IPackageMetadataClient client = await Clientfactory.GetPackageMetadataClientAsync(cancellationToken);
 
             return await client.GetRegistrationPageAsync(pageUrl, cancellationToken);
         }
 
-        public async Task<RegistrationLeafResponse> GetRegistrationLeafAsync(
-            string leafUrl,
-            CancellationToken cancellationToken = default)
+        public async Task<RegistrationLeafResponse> GetRegistrationLeafAsync(string leafUrl, CancellationToken cancellationToken = default)
         {
-            var client = await _clientfactory.GetPackageMetadataClientAsync(cancellationToken);
+            IPackageMetadataClient client = await Clientfactory.GetPackageMetadataClientAsync(cancellationToken);
 
             return await client.GetRegistrationLeafAsync(leafUrl, cancellationToken);
         }

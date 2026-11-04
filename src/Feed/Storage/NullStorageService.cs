@@ -1,8 +1,3 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace NuDepot.Feed.Storage;
 
 /// <summary>
@@ -25,11 +20,7 @@ public class NullStorageService : IStorageService
         return Task.FromResult<Uri?>(null);
     }
 
-    public Task<StoragePutResult> PutAsync(
-        string path,
-        Stream content,
-        string contentType,
-        CancellationToken cancellationToken = default)
+    public Task<StoragePutResult> PutAsync(string path, Stream content, string contentType, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(StoragePutResult.Success);
     }

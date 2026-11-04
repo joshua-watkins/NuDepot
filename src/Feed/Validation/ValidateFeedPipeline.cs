@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Authentication;
@@ -20,13 +17,12 @@ internal sealed class ValidateFeedPipeline(IOptions<FeedOptions> options, FeedPi
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // An application that doesn't map the feed's endpoints, like a command, doesn't serve it.
-        if (!pipeline.UsesFeed) return Task.CompletedTask;
+        if (!pipeline.UsesFeed)
+            return Task.CompletedTask;
 
-        var failures = Validate(options.Value, pipeline);
+        List<string> failures = Validate(options.Value, pipeline);
         if (failures.Count > 0)
-        {
             throw new OptionsValidationException(Options.DefaultName, typeof(FeedOptions), failures);
-        }
 
         return Task.CompletedTask;
     }
@@ -35,8 +31,8 @@ internal sealed class ValidateFeedPipeline(IOptions<FeedOptions> options, FeedPi
 
     internal static List<string> Validate(FeedOptions options, FeedPipeline pipeline)
     {
-        var failures = new List<string>();
-        var users = options.Authorization.Users.Enabled;
+        List<string> failures = [];
+        bool users = options.Authorization.Users.Enabled;
 
         if (FeedAccess.HasApiKeys(options) && !pipeline.UsesApiKeys)
         {

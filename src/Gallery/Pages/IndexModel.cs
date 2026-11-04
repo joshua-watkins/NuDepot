@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using NuDepot.Core.Models;
 using NuDepot.Core.Search;
@@ -11,16 +7,10 @@ namespace NuDepot.Gallery.Pages;
 /// <summary>
 /// The search page.
 /// </summary>
-public class IndexModel
+public class IndexModel(ISearchClient search, FeedConnection feed)
 {
-    private readonly ISearchClient _search;
-    private readonly FeedConnection _feed;
-
-    public IndexModel(ISearchClient search, FeedConnection feed)
-    {
-        _search = search ?? throw new ArgumentNullException(nameof(search));
-        _feed = feed ?? throw new ArgumentNullException(nameof(feed));
-    }
+    private ISearchClient Search { get; } = search;
+    private FeedConnection Feed { get; } = feed;
 
     public const int ResultsPerPage = 20;
 
@@ -110,14 +100,14 @@ public class IndexModel
     /// </summary>
     public string PathBase { get; set; } = string.Empty;
 
-    public IReadOnlyList<SearchResult> Packages { get; private set; } = Array.Empty<SearchResult>();
+    public IReadOnlyList<SearchResult> Packages { get; private set; } = [];
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
-        var packageType = PackageType == "any" ? null : PackageType;
-        var framework = Framework == "any" ? null : Framework;
+        string? packageType = PackageType == "any" ? null : PackageType;
+        string? framework = Framework == "any" ? null : Framework;
 
-        var search = await _search.SearchAsync(
+        SearchResponse search = await Search.SearchAsync(
             Query,
             skip: (PageIndex - 1) * ResultsPerPage,
             take: ResultsPerPage,
@@ -127,22 +117,18 @@ public class IndexModel
             framework,
             cancellationToken);
 
-        Packages = search.Data ?? Array.Empty<SearchResult>();
+        Packages = search.Data ?? [];
 
-        foreach (var package in Packages)
+        foreach (SearchResult package in Packages)
         {
-            package.IconUrl = _feed.ToPublicUrl(package.IconUrl);
+            package.IconUrl = Feed.ToPublicUrl(package.IconUrl);
         }
     }
 
     /// <summary>
     /// A link to this page with the current search, changing the given parameters.
     /// </summary>
-    public string SearchLink(
-        string? packageType = null,
-        string? framework = null,
-        bool? prerelease = null,
-        int? page = null)
+    public string SearchLink(string? packageType = null, string? framework = null, bool? prerelease = null, int? page = null)
     {
         // Use model's value if the argument was skipped.
         packageType ??= PackageType;
@@ -151,12 +137,17 @@ public class IndexModel
         page ??= PageIndex;
 
         // Leave out query parameters that have their default value.
-        var parameters = new List<KeyValuePair<string, string?>>();
-        if (!string.IsNullOrEmpty(Query)) parameters.Add(new("q", Query));
-        if (page != 1) parameters.Add(new("p", page.Value.ToString()));
-        if (packageType != "any") parameters.Add(new("packageType", packageType));
-        if (framework != "any") parameters.Add(new("framework", framework));
-        if (prerelease != true) parameters.Add(new("prerelease", "False"));
+        List<KeyValuePair<string, string?>> parameters = [];
+        if (!string.IsNullOrEmpty(Query))
+            parameters.Add(new("q", Query));
+        if (page != 1)
+            parameters.Add(new("p", page.Value.ToString()));
+        if (packageType != "any")
+            parameters.Add(new("packageType", packageType));
+        if (framework != "any")
+            parameters.Add(new("framework", framework));
+        if (prerelease != true)
+            parameters.Add(new("prerelease", "False"));
 
         return PathBase + "/" + QueryString.Create(parameters).ToUriComponent();
     }

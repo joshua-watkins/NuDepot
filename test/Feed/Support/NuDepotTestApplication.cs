@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,17 +7,11 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NuDepot.Core;
+using NuDepot.Core.Hosting;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests.Support;
@@ -29,32 +22,27 @@ namespace NuDepot.Feed.Tests.Support;
 /// </summary>
 internal sealed class NuDepotTestApplication : IDisposable
 {
-    private readonly ITestOutputHelper _output;
-    private readonly HttpClient? _upstreamClient;
-    private readonly IReadOnlyDictionary<string, string?> _configuration;
-    private readonly bool _useApiKeys;
-    private readonly bool _usePasskeys;
-    private readonly Lazy<WebApplication> _app;
+    private ITestOutputHelper Output { get; }
+    private HttpClient? UpstreamClient { get; }
+    private IReadOnlyDictionary<string, string?> Configuration { get; }
+    private bool UseApiKeys { get; }
+    private bool UsePasskeys { get; }
+    private Lazy<WebApplication> App { get; }
 
     /// <param name="output">Receives the server's logs.</param>
     /// <param name="upstreamClient">If set, the server mirrors the upstream feed this client reaches.</param>
     /// <param name="configuration">The feed's configuration, which overrides the test defaults. Keys are in the "Feed" section, like "Authorization:ApiKeys:0:Key".</param>
     /// <param name="useApiKeys">Whether the application calls UseApiKeys(), like the hosts.</param>
     /// <param name="usePasskeys">Whether the application calls UsePasskeys(), like the hosts.</param>
-    public NuDepotTestApplication(
-        ITestOutputHelper output,
-        HttpClient? upstreamClient = null,
-        IReadOnlyDictionary<string, string>? configuration = null,
-        bool useApiKeys = true,
-        bool usePasskeys = true)
+    public NuDepotTestApplication(ITestOutputHelper output, HttpClient? upstreamClient = null, IReadOnlyDictionary<string, string>? configuration = null, bool useApiKeys = true, bool usePasskeys = true)
     {
-        _output = output ?? throw new ArgumentNullException(nameof(output));
-        _upstreamClient = upstreamClient;
-        _useApiKeys = useApiKeys;
-        _usePasskeys = usePasskeys;
-        _configuration = (configuration ?? new Dictionary<string, string>())
+        Output = output;
+        UpstreamClient = upstreamClient;
+        UseApiKeys = useApiKeys;
+        UsePasskeys = usePasskeys;
+        Configuration = (configuration ?? new Dictionary<string, string>())
             .ToDictionary(setting => $"{FeedOptions.Section}:{setting.Key}", setting => (string?)setting.Value);
-        _app = new Lazy<WebApplication>(Start);
+        App = new Lazy<WebApplication>(Start);
     }
 
     /// <summary>
@@ -62,9 +50,9 @@ internal sealed class NuDepotTestApplication : IDisposable
     /// </summary>
     public TestClock Clock { get; } = new();
 
-    public IServiceProvider Services => _app.Value.Services;
+    public IServiceProvider Services => App.Value.Services;
 
-    public TestServer Server => _app.Value.GetTestServer();
+    public TestServer Server => App.Value.GetTestServer();
 
     public HttpClient CreateClient() => Server.CreateClient();
 
@@ -85,27 +73,31 @@ internal sealed class NuDepotTestApplication : IDisposable
     /// </summary>
     public HttpClient CreateHttpsClient()
     {
-        var client = Server.CreateClient();
+        HttpClient client = Server.CreateClient();
         client.BaseAddress = new Uri("https://localhost");
         return client;
     }
 
     public void Dispose()
     {
-        if (_app.IsValueCreated)
-        {
-            _app.Value.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        }
+        if (App.IsValueCreated)
+            App.Value
+                .DisposeAsync()
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
     }
 
     private WebApplication Start()
     {
         // Each test application gets its own in-memory database, which the server migrates at startup,
         // and a temporary storage path.
-        var testId = Guid.NewGuid().ToString("N");
-        var storagePath = Path.Combine(Path.GetTempPath(), "NuDepotTests", testId, "Packages");
+        string testId = Guid
+            .NewGuid()
+            .ToString("N");
+        string storagePath = Path.Combine(Path.GetTempPath(), "NuDepotTests", testId, "Packages");
 
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = Environments.Production,
             ContentRootPath = AppContext.BaseDirectory,
@@ -119,7 +111,7 @@ internal sealed class NuDepotTestApplication : IDisposable
         builder.Logging.ClearProviders();
 
         // Pipe logs to the xunit output.
-        builder.Logging.AddProvider(new XunitLoggerProvider(_output));
+        builder.Logging.AddProvider(new XunitLoggerProvider(Output));
 
         // Setup the integration test configuration.
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -131,16 +123,18 @@ internal sealed class NuDepotTestApplication : IDisposable
             { "Feed:Storage:Type", "FileSystem" },
             { "Feed:Storage:Path", storagePath },
             { "Feed:Search:Type", "Database" },
-            { "Feed:Mirror:Enabled", _upstreamClient != null ? "true": "false" },
+            { "Feed:Mirror:Enabled", UpstreamClient != null ? "true": "false" },
             { "Feed:Mirror:PackageSource", "http://localhost/v3/index.json" },
         });
 
-        builder.Configuration.AddInMemoryCollection(_configuration);
+        builder.Configuration.AddInMemoryCollection(Configuration);
 
-        builder.Services.AddNuDepot().AddFeed();
+        builder.Services
+            .AddNuDepot()
+            .AddFeed();
 
         // Make time deterministic for testing purposes. Tests can move it forward with the clock.
-        var time = new Mock<SystemTime>();
+        Mock<SystemTime> time = new();
         time
             .Setup(t => t.UtcNow)
             .Returns(() => new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc) + Clock.Advanced);
@@ -150,25 +144,37 @@ internal sealed class NuDepotTestApplication : IDisposable
             NuDepotAuthenticationSchemes.User,
             options => options.TimeProvider = Clock);
 
-        if (_upstreamClient != null)
-        {
-            builder.Services.AddSingleton(_upstreamClient);
-        }
+        if (UpstreamClient != null)
+            builder.Services.AddSingleton(UpstreamClient);
 
-        var app = builder.Build();
+        WebApplication app = builder.Build();
 
-        var nuDepot = app.UseNuDepot().UseFeed();
-        if (_useApiKeys) nuDepot.UseApiKeys();
-        if (_usePasskeys) nuDepot.UsePasskeys();
+        NuDepotApplicationBuilder nuDepot = app
+            .UseNuDepot()
+            .UseFeed();
+        if (UseApiKeys)
+            nuDepot.UseApiKeys();
+        if (UsePasskeys)
+            nuDepot.UsePasskeys();
 
         try
         {
-            app.RunMigrationsAsync().GetAwaiter().GetResult();
-            app.StartAsync().GetAwaiter().GetResult();
+            app
+                .RunMigrationsAsync()
+                .GetAwaiter()
+                .GetResult();
+            app
+                .StartAsync()
+                .GetAwaiter()
+                .GetResult();
         }
         catch
         {
-            app.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            app
+                .DisposeAsync()
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
             throw;
         }
 
@@ -178,37 +184,27 @@ internal sealed class NuDepotTestApplication : IDisposable
 
 internal static class NuDepotTestApplicationExtensions
 {
-    public static async Task AddPackageAsync(
-        this NuDepotTestApplication app,
-        Stream package,
-        CancellationToken cancellationToken = default)
+    public static async Task AddPackageAsync(this NuDepotTestApplication app, Stream package, CancellationToken cancellationToken = default)
     {
-        var scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
+        IServiceScopeFactory scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
 
-        using var scope = scopeFactory.CreateScope();
-        var indexer = scope.ServiceProvider.GetRequiredService<IPackageIndexingService>();
+        using IServiceScope scope = scopeFactory.CreateScope();
+        IPackageIndexingService indexer = scope.ServiceProvider.GetRequiredService<IPackageIndexingService>();
 
-        var result = await indexer.IndexAsync(package, cancellationToken);
+        PackageIndexingResult result = await indexer.IndexAsync(package, cancellationToken);
         if (result != PackageIndexingResult.Success)
-        {
             throw new InvalidOperationException($"Unexpected indexing result {result}");
-        }
     }
 
-    public static async Task AddSymbolPackageAsync(
-        this NuDepotTestApplication app,
-        Stream symbolPackage,
-        CancellationToken cancellationToken = default)
+    public static async Task AddSymbolPackageAsync(this NuDepotTestApplication app, Stream symbolPackage, CancellationToken cancellationToken = default)
     {
-        var scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
+        IServiceScopeFactory scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
 
-        using var scope = scopeFactory.CreateScope();
-        var indexer = scope.ServiceProvider.GetRequiredService<ISymbolIndexingService>();
+        using IServiceScope scope = scopeFactory.CreateScope();
+        ISymbolIndexingService indexer = scope.ServiceProvider.GetRequiredService<ISymbolIndexingService>();
 
-        var result = await indexer.IndexAsync(symbolPackage, cancellationToken);
+        SymbolIndexingResult result = await indexer.IndexAsync(symbolPackage, cancellationToken);
         if (result != SymbolIndexingResult.Success)
-        {
             throw new InvalidOperationException($"Unexpected indexing result {result}");
-        }
     }
 }

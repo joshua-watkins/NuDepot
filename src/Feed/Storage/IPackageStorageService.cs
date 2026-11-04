@@ -1,8 +1,5 @@
-using NuGet.Versioning;
 using NuDepot.Feed.Entities;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using NuGet.Versioning;
 
 namespace NuDepot.Feed.Storage;
 
@@ -24,14 +21,7 @@ public interface IPackageStorageService
     /// <param name="licenseStream">The package's license stream, or null if none</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    Task SavePackageContentAsync(
-        Package package,
-        Stream packageStream,
-        Stream nuspecStream,
-        Stream? readmeStream,
-        Stream? iconStream,
-        Stream? licenseStream,
-        CancellationToken cancellationToken);
+    Task SavePackageContentAsync(Package package, Stream packageStream, Stream nuspecStream, Stream? readmeStream, Stream? iconStream, Stream? licenseStream, CancellationToken cancellationToken);
 
     /// <summary>
     /// Retrieve a package's nupkg stream.

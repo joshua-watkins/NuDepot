@@ -1,5 +1,3 @@
-using System;
-
 namespace NuDepot.Feed.Endpoints;
 
 /// <summary>

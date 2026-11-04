@@ -1,13 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using NuDepot.Core.Models;
 using NuDepot.Core.Serialization;
 using NuDepot.Feed.ServiceIndex;
 using NuDepot.Feed.Signing;
+using System.Security.Cryptography.X509Certificates;
 
 namespace NuDepot.Feed.Endpoints;
 
@@ -22,22 +18,18 @@ internal static class ServiceIndexEndpoints
     // GET v3/index.json
     public static async Task<IResult> ServiceIndexAsync(IServiceIndexService serviceIndex, CancellationToken cancellationToken)
     {
-        var response = await serviceIndex.GetAsync(cancellationToken);
+        ServiceIndexResponse response = await serviceIndex.GetAsync(cancellationToken);
 
         return Results.Json(response, NuGetJsonContext.Default.ServiceIndexResponse);
     }
 
     // GET v3/repository-signatures/{resourceVersion}/index.json
-    public static async Task<IResult> RepositorySignaturesAsync(
-        string resourceVersion,
-        IRepositorySigningService signing,
-        IPackageDatabase packages,
-        IUrlGenerator url,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> RepositorySignaturesAsync(string resourceVersion, IRepositorySigningService signing, IPackageDatabase packages, IUrlGenerator url, CancellationToken cancellationToken)
     {
-        var certificate = signing.Certificate;
-        var fingerprint = signing.CertificateFingerprint;
-        if (certificate == null || fingerprint == null) return Results.NotFound();
+        X509Certificate2? certificate = signing.Certificate;
+        string? fingerprint = signing.CertificateFingerprint;
+        if (certificate == null || fingerprint == null)
+            return Results.NotFound();
 
         bool allRepositorySigned;
         switch (resourceVersion)
@@ -56,11 +48,11 @@ internal static class ServiceIndexEndpoints
                 return Results.NotFound();
         }
 
-        var response = new RepositorySignaturesResponse
+        RepositorySignaturesResponse response = new()
         {
             AllRepositorySigned = allRepositorySigned,
-            SigningCertificates = new[]
-            {
+            SigningCertificates =
+            [
                 new Core.Models.RepositorySigningCertificate
                 {
                     ContentUrl = url.GetRepositorySigningCertificateUrl(fingerprint),
@@ -73,7 +65,7 @@ internal static class ServiceIndexEndpoints
                     NotBefore = certificate.NotBefore.ToUniversalTime(),
                     NotAfter = certificate.NotAfter.ToUniversalTime(),
                 }
-            },
+            ],
         };
 
         return Results.Json(response, NuGetJsonContext.Default.RepositorySignaturesResponse);
@@ -84,9 +76,7 @@ internal static class ServiceIndexEndpoints
     {
         if (signing.Certificate == null ||
             !string.Equals(fingerprint, signing.CertificateFingerprint, StringComparison.OrdinalIgnoreCase))
-        {
             return Results.NotFound();
-        }
 
         return Results.Bytes(signing.Certificate.Export(X509ContentType.Cert), "application/pkix-cert");
     }

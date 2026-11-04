@@ -1,104 +1,74 @@
-using NuGet.Versioning;
 using NuDepot.Core.Models;
+using NuDepot.Feed.Entities;
 using NuDepot.Feed.Storage;
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using NuGet.Versioning;
 
 namespace NuDepot.Feed.Content;
 
 /// <summary>
 /// Implements the NuGet Package Content resource in NuGet's V3 protocol.
 /// </summary>
-public class DefaultPackageContentService : IPackageContentService
+public class DefaultPackageContentService(IPackageService packages, IPackageStorageService storage) : IPackageContentService
 {
-    private readonly IPackageService _packages;
-    private readonly IPackageStorageService _storage;
+    private IPackageService Packages { get; } = packages;
+    private IPackageStorageService Storage { get; } = storage;
 
-    public DefaultPackageContentService(
-        IPackageService packages,
-        IPackageStorageService storage)
+    public async Task<PackageVersionsResponse?> GetPackageVersionsOrNullAsync(string id, CancellationToken cancellationToken = default)
     {
-        _packages = packages ?? throw new ArgumentNullException(nameof(packages));
-        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-    }
-
-    public async Task<PackageVersionsResponse?> GetPackageVersionsOrNullAsync(
-        string id,
-        CancellationToken cancellationToken = default)
-    {
-        var versions = await _packages.FindPackageVersionsAsync(id, cancellationToken);
+        IReadOnlyList<NuGetVersion> versions = await Packages.FindPackageVersionsAsync(id, cancellationToken);
         if (!versions.Any())
-        {
             return null;
-        }
 
         return new PackageVersionsResponse
         {
-            Versions = versions
+            Versions = [.. versions
                 .Select(v => v.ToNormalizedString())
-                .Select(v => v.ToLowerInvariant())
-                .ToList()
+                .Select(v => v.ToLowerInvariant())]
         };
     }
 
-    public async Task<Stream?> GetPackageContentStreamOrNullAsync(
-        string id,
-        NuGetVersion version,
-        CancellationToken cancellationToken = default)
+    public async Task<Stream?> GetPackageContentStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
-        if (!await _packages.ExistsAsync(id, version, cancellationToken))
-        {
+        if (!await Packages.ExistsAsync(id, version, cancellationToken))
             return null;
-        }
 
-        await _packages.AddDownloadAsync(id, version, cancellationToken);
-        return await _storage.GetPackageStreamAsync(id, version, cancellationToken);
+        await Packages.AddDownloadAsync(id, version, cancellationToken);
+        return await Storage.GetPackageStreamAsync(id, version, cancellationToken);
     }
 
     public async Task<Stream?> GetPackageManifestStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
-        if (!await _packages.ExistsAsync(id, version, cancellationToken))
-        {
+        if (!await Packages.ExistsAsync(id, version, cancellationToken))
             return null;
-        }
 
-        return await _storage.GetNuspecStreamAsync(id, version, cancellationToken);
+        return await Storage.GetNuspecStreamAsync(id, version, cancellationToken);
     }
 
     public async Task<Stream?> GetPackageReadmeStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
-        var package = await _packages.FindPackageOrNullAsync(id, version, cancellationToken);
+        Package? package = await Packages.FindPackageOrNullAsync(id, version, cancellationToken);
         if (package == null || !package.HasReadme)
-        {
             return null;
-        }
 
-        return await _storage.GetReadmeStreamAsync(id, version, cancellationToken);
+        return await Storage.GetReadmeStreamAsync(id, version, cancellationToken);
     }
 
     public async Task<Stream?> GetPackageIconStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
-        var package = await _packages.FindPackageOrNullAsync(id, version, cancellationToken);
+        Package? package = await Packages.FindPackageOrNullAsync(id, version, cancellationToken);
         if (package == null || !package.HasEmbeddedIcon)
-        {
             return null;
-        }
 
-        return await _storage.GetIconStreamAsync(id, version, cancellationToken);
+        return await Storage.GetIconStreamAsync(id, version, cancellationToken);
     }
 
     public async Task<Stream?> GetPackageLicenseStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken = default)
     {
-        var package = await _packages.FindPackageOrNullAsync(id, version, cancellationToken);
+        Package? package = await Packages.FindPackageOrNullAsync(id, version, cancellationToken);
         if (package == null || !package.HasEmbeddedLicense)
-        {
             return null;
-        }
 
-        return await _storage.GetLicenseStreamAsync(id, version, package.LicenseIsMarkDown, cancellationToken);
+        return await Storage.GetLicenseStreamAsync(id, version, package.LicenseIsMarkDown, cancellationToken);
     }
 
 }

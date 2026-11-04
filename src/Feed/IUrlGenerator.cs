@@ -54,6 +54,7 @@ public interface IUrlGenerator
     /// See: https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource#registration-index
     /// </summary>
     /// <param name="id">The package's ID.</param>
+    /// <param name="semVer2">Whether the metadata includes SemVer 2.0.0 versions.</param>
     string GetRegistrationIndexUrl(string id, bool semVer2 = false);
 
     /// <summary>
@@ -71,6 +72,7 @@ public interface IUrlGenerator
     /// </summary>
     /// <param name="id">The package's ID</param>
     /// <param name="version">The package's version</param>
+    /// <param name="semVer2">Whether the metadata includes SemVer 2.0.0 versions.</param>
     string GetRegistrationLeafUrl(string id, NuGetVersion version, bool semVer2 = false);
 
     /// <summary>

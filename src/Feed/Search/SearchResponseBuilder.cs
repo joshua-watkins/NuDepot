@@ -1,34 +1,26 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using NuDepot.Core.Models;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Metadata;
 
 namespace NuDepot.Feed.Search;
 
-public class SearchResponseBuilder : ISearchResponseBuilder
+public class SearchResponseBuilder(IUrlGenerator url) : ISearchResponseBuilder
 {
-    private readonly IUrlGenerator _url;
-
-    public SearchResponseBuilder(IUrlGenerator url)
-    {
-        _url = url ?? throw new ArgumentNullException(nameof(url));
-    }
+    private IUrlGenerator Url { get; } = url;
 
     public SearchResponse BuildSearch(IReadOnlyList<PackageRegistration> packageRegistrations, long totalHits, bool includeSemVer2)
     {
-        var result = new List<SearchResult>();
+        List<SearchResult> result = [];
 
-        foreach (var packageRegistration in packageRegistrations)
+        foreach (PackageRegistration packageRegistration in packageRegistrations)
         {
-            var versions = packageRegistration.Packages.OrderByDescending(p => p.Version).ToList();
-            var latest = versions.First();
-            var iconUrl = latest.HasEmbeddedIcon
-                ? _url.GetPackageIconDownloadUrl(latest.Id, latest.Version)
+            List<Package> versions = [.. packageRegistration.Packages.OrderByDescending(p => p.Version)];
+            Package latest = versions.First();
+            string iconUrl = latest.HasEmbeddedIcon
+                ? Url.GetPackageIconDownloadUrl(latest.Id, latest.Version)
                 : latest.IconUrlString;
-            var licenseUrl = latest.HasEmbeddedLicense
-                ? _url.GetPackageLicenseDownloadUrl(latest.Id, latest.Version, latest.LicenseIsMarkDown)
+            string licenseUrl = latest.HasEmbeddedLicense
+                ? Url.GetPackageLicenseDownloadUrl(latest.Id, latest.Version, latest.LicenseIsMarkDown)
                 : latest.LicenseUrlString;
 
             result.Add(new SearchResult
@@ -39,24 +31,22 @@ public class SearchResponseBuilder : ISearchResponseBuilder
                 Authors = latest.Authors,
                 IconUrl = iconUrl,
                 LicenseUrl = licenseUrl,
-                PackageTypes = (latest.PackageTypes ?? new List<PackageType>())
+                PackageTypes = [.. (latest.PackageTypes ?? [])
                     .Where(t => t.Name != null)
-                    .Select(t => new SearchResultPackageType { Name = t.Name! })
-                    .ToList(),
+                    .Select(t => new SearchResultPackageType { Name = t.Name! })],
                 ProjectUrl = latest.ProjectUrlString,
-                RegistrationIndexUrl = _url.GetRegistrationIndexUrl(latest.Id, includeSemVer2),
+                RegistrationIndexUrl = Url.GetRegistrationIndexUrl(latest.Id, includeSemVer2),
                 Summary = latest.Summary,
                 Tags = latest.Tags,
                 Title = latest.Title,
                 TotalDownloads = versions.Sum(p => p.Downloads),
-                Versions = versions
+                Versions = [.. versions
                     .Select(p => new SearchResultVersion
                     {
-                        RegistrationLeafUrl = _url.GetRegistrationLeafUrl(p.Id, p.Version, includeSemVer2),
+                        RegistrationLeafUrl = Url.GetRegistrationLeafUrl(p.Id, p.Version, includeSemVer2),
                         Version = p.Version.ToFullString(),
                         Downloads = p.Downloads,
-                    })
-                    .ToList(),
+                    })],
                 Deprecation = latest.ToDeprecationOrNull(),
                 Vulnerabilities = latest.ToVulnerabilitiesOrNull(packageRegistration.Vulnerabilities),
             });
@@ -66,7 +56,7 @@ public class SearchResponseBuilder : ISearchResponseBuilder
         {
             TotalHits = totalHits,
             Data = result,
-            Context = SearchContext.Default(_url.GetPackageMetadataResourceUrl(includeSemVer2)),
+            Context = SearchContext.Default(Url.GetPackageMetadataResourceUrl(includeSemVer2)),
         };
     }
 

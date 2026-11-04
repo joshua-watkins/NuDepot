@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -10,110 +8,111 @@ using NuDepot.Feed.Storage;
 using NuGet.Versioning;
 using Xunit;
 
-namespace NuDepot.Feed.Tests.Services
+namespace NuDepot.Feed.Tests.Services;
+
+public class PackageDeletionServiceTests
 {
-    public class PackageDeletionServiceTests
+    private static readonly string PackageId = "Package";
+    private static readonly NuGetVersion PackageVersion = new("1.0.0");
+
+    private Mock<IPackageDatabase> Packages { get; }
+    private Mock<IPackageStorageService> Storage { get; }
+
+    private FeedOptions Options { get; }
+    private PackageDeletionService Target { get; }
+
+    public PackageDeletionServiceTests()
     {
-        private static readonly string PackageId = "Package";
-        private static readonly NuGetVersion PackageVersion = new NuGetVersion("1.0.0");
+        Packages = new Mock<IPackageDatabase>();
+        Storage = new Mock<IPackageStorageService>();
+        Options = new FeedOptions();
 
-        private readonly Mock<IPackageDatabase> _packages;
-        private readonly Mock<IPackageStorageService> _storage;
+        Mock<IOptionsSnapshot<FeedOptions>> optionsSnapshot = new();
+        optionsSnapshot
+            .Setup(o => o.Value)
+            .Returns(Options);
 
-        private readonly FeedOptions _options;
-        private readonly PackageDeletionService _target;
+        Target = new PackageDeletionService(
+            Packages.Object,
+            Storage.Object,
+            Mock.Of<ICatalogService>(),
+            optionsSnapshot.Object,
+            Mock.Of<ILogger<PackageDeletionService>>());
+    }
 
-        public PackageDeletionServiceTests()
-        {
-            _packages = new Mock<IPackageDatabase>();
-            _storage = new Mock<IPackageStorageService>();
-            _options = new FeedOptions();
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WhenUnlist_ReturnsTrueOnlyIfPackageExists(bool packageExists)
+    {
+        // Arrange
+        CancellationToken cancellationToken = CancellationToken.None;
+        Options.PackageDeletionBehavior = PackageDeletionBehavior.Unlist;
 
-            var optionsSnapshot = new Mock<IOptionsSnapshot<FeedOptions>>();
-            optionsSnapshot.Setup(o => o.Value).Returns(_options);
+        Packages
+            .Setup(p => p.UnlistPackageAsync(PackageId, PackageVersion, cancellationToken))
+            .ReturnsAsync(packageExists);
 
-            _target = new PackageDeletionService(
-                _packages.Object,
-                _storage.Object,
-                Mock.Of<ICatalogService>(),
-                optionsSnapshot.Object,
-                Mock.Of<ILogger<PackageDeletionService>>());
-        }
+        // Act
+        bool result = await Target.TryDeletePackageAsync(PackageId, PackageVersion, cancellationToken);
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task WhenUnlist_ReturnsTrueOnlyIfPackageExists(bool packageExists)
-        {
-            // Arrange
-            var cancellationToken = CancellationToken.None;
-            _options.PackageDeletionBehavior = PackageDeletionBehavior.Unlist;
+        // Assert
+        Assert.Equal(packageExists, result);
 
-            _packages
-                .Setup(p => p.UnlistPackageAsync(PackageId, PackageVersion, cancellationToken))
-                .ReturnsAsync(packageExists);
+        Packages.Verify(
+            p => p.UnlistPackageAsync(PackageId, PackageVersion, cancellationToken),
+            Times.Once);
 
-            // Act
-            var result = await _target.TryDeletePackageAsync(PackageId, PackageVersion, cancellationToken);
+        Packages.Verify(
+            p => p.HardDeletePackageAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        Storage.Verify(
+            s => s.DeleteAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 
-            // Assert
-            Assert.Equal(packageExists, result);
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WhenHardDelete_ReturnsTrueOnlyIfPackageExists(bool packageExists)
+    {
+        // Arrange
+        Options.PackageDeletionBehavior = PackageDeletionBehavior.HardDelete;
 
-            _packages.Verify(
-                p => p.UnlistPackageAsync(PackageId, PackageVersion, cancellationToken),
-                Times.Once);
+        int step = 0;
+        int databaseStep = -1;
+        int storageStep = -1;
+        CancellationToken cancellationToken = CancellationToken.None;
 
-            _packages.Verify(
-                p => p.HardDeletePackageAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<CancellationToken>()),
-                Times.Never);
-            _storage.Verify(
-                s => s.DeleteAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<CancellationToken>()),
-                Times.Never);
-        }
+        Packages
+            .Setup(p => p.HardDeletePackageAsync(PackageId, PackageVersion, cancellationToken))
+            .Callback(() => databaseStep = step++)
+            .ReturnsAsync(packageExists);
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task WhenHardDelete_ReturnsTrueOnlyIfPackageExists(bool packageExists)
-        {
-            // Arrange
-            _options.PackageDeletionBehavior = PackageDeletionBehavior.HardDelete;
+        Storage
+            .Setup(s => s.DeleteAsync(PackageId, PackageVersion, cancellationToken))
+            .Callback(() => storageStep = step++)
+            .Returns(Task.CompletedTask);
 
-            var step = 0;
-            var databaseStep = -1;
-            var storageStep = -1;
-            var cancellationToken = CancellationToken.None;
+        // Act
+        bool result = await Target.TryDeletePackageAsync(PackageId, PackageVersion, cancellationToken);
 
-            _packages
-                .Setup(p => p.HardDeletePackageAsync(PackageId, PackageVersion, cancellationToken))
-                .Callback(() => databaseStep = step++)
-                .ReturnsAsync(packageExists);
+        // Assert - The database step MUST happen before the storage step.
+        Assert.Equal(packageExists, result);
+        Assert.Equal(0, databaseStep);
+        Assert.Equal(1, storageStep);
 
-            _storage
-                .Setup(s => s.DeleteAsync(PackageId, PackageVersion, cancellationToken))
-                .Callback(() => storageStep = step++)
-                .Returns(Task.CompletedTask);
+        // The storage deletion should happen even if the package couldn't
+        // be found in the database. This ensures consistency.
+        Packages.Verify(
+            p => p.HardDeletePackageAsync(PackageId, PackageVersion, cancellationToken),
+            Times.Once);
+        Storage.Verify(
+            s => s.DeleteAsync(PackageId, PackageVersion, cancellationToken),
+            Times.Once);
 
-            // Act
-            var result = await _target.TryDeletePackageAsync(PackageId, PackageVersion, cancellationToken);
-
-            // Assert - The database step MUST happen before the storage step.
-            Assert.Equal(packageExists, result);
-            Assert.Equal(0, databaseStep);
-            Assert.Equal(1, storageStep);
-
-            // The storage deletion should happen even if the package couldn't
-            // be found in the database. This ensures consistency.
-            _packages.Verify(
-                p => p.HardDeletePackageAsync(PackageId, PackageVersion, cancellationToken),
-                Times.Once);
-            _storage.Verify(
-                s => s.DeleteAsync(PackageId, PackageVersion, cancellationToken),
-                Times.Once);
-
-            _packages.Verify(
-                p => p.UnlistPackageAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<CancellationToken>()),
-                Times.Never);
-        }
+        Packages.Verify(
+            p => p.UnlistPackageAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

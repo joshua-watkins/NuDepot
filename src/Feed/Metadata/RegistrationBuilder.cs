@@ -1,23 +1,17 @@
-using System;
-using System.Linq;
 using NuDepot.Core.Models;
 using NuDepot.Feed.Entities;
+using NuGet.Versioning;
 
 namespace NuDepot.Feed.Metadata;
 
-public class RegistrationBuilder
+public class RegistrationBuilder(IUrlGenerator url)
 {
-    private readonly IUrlGenerator _url;
-
-    public RegistrationBuilder(IUrlGenerator url)
-    {
-        _url = url ?? throw new ArgumentNullException(nameof(url));
-    }
+    private IUrlGenerator Url { get; } = url;
 
     public virtual NuDepotRegistrationIndexResponse BuildIndex(PackageRegistration registration)
     {
-        var sortedPackages = registration.Packages.OrderBy(p => p.Version).ToList();
-        var indexUrl = _url.GetRegistrationIndexUrl(registration.PackageId, registration.SemVer2);
+        List<Package> sortedPackages = [.. registration.Packages.OrderBy(p => p.Version)];
+        string indexUrl = Url.GetRegistrationIndexUrl(registration.PackageId, registration.SemVer2);
 
         // TODO: Paging of registration items.
         // "Un-paged" example: https://api.nuget.org/v3/registration3/newtonsoft.json/index.json
@@ -28,66 +22,66 @@ public class RegistrationBuilder
             Type = RegistrationIndexResponse.DefaultType,
             Count = 1,
             TotalDownloads = registration.Packages.Sum(p => p.Downloads),
-            Pages = new[]
-            {
+            Pages =
+            [
                 new NuDepotRegistrationIndexPage
                 {
                     RegistrationPageUrl = indexUrl,
                     Count = registration.Packages.Count,
                     Lower = sortedPackages.First().Version.ToNormalizedString().ToLowerInvariant(),
                     Upper = sortedPackages.Last().Version.ToNormalizedString().ToLowerInvariant(),
-                    ItemsOrNull = sortedPackages.Select(p => ToRegistrationIndexPageItem(p, registration)).ToList(),
+                    ItemsOrNull = [.. sortedPackages.Select(p => ToRegistrationIndexPageItem(p, registration))],
                 }
-            }
+            ]
         };
     }
 
     public virtual RegistrationLeafResponse BuildLeaf(Package package, bool semVer2 = false, string? catalogLeafUrl = null)
     {
-        var id = package.Id;
-        var version = package.Version;
+        string id = package.Id;
+        NuGetVersion version = package.Version;
 
         return new RegistrationLeafResponse
         {
             Type = RegistrationLeafResponse.DefaultType,
             Listed = package.Listed,
             Published = ToUtc(package.PublishedAt),
-            RegistrationLeafUrl = _url.GetRegistrationLeafUrl(id, version, semVer2),
-            PackageContentUrl = _url.GetPackageDownloadUrl(id, version),
-            RegistrationIndexUrl = _url.GetRegistrationIndexUrl(id, semVer2),
+            RegistrationLeafUrl = Url.GetRegistrationLeafUrl(id, version, semVer2),
+            PackageContentUrl = Url.GetPackageDownloadUrl(id, version),
+            RegistrationIndexUrl = Url.GetRegistrationIndexUrl(id, semVer2),
             CatalogEntryUrl = catalogLeafUrl,
         };
     }
 
     private NuDepotRegistrationIndexPageItem ToRegistrationIndexPageItem(Package package, PackageRegistration registration) =>
-        new NuDepotRegistrationIndexPageItem
+        new()
         {
-            RegistrationLeafUrl = _url.GetRegistrationLeafUrl(package.Id, package.Version, registration.SemVer2),
-            PackageContentUrl = _url.GetPackageDownloadUrl(package.Id, package.Version),
+            RegistrationLeafUrl = Url.GetRegistrationLeafUrl(package.Id, package.Version, registration.SemVer2),
+            PackageContentUrl = Url.GetPackageDownloadUrl(package.Id, package.Version),
             PackageMetadata = new NuDepotPackageMetadata
             {
                 CatalogLeafUrl = registration.GetCatalogLeafUrlOrNull(package),
                 PackageId = package.Id,
                 Version = package.Version.ToFullString(),
-                Authors = string.Join(", ", package.Authors ?? Array.Empty<string>()),
+                Authors = string.Join(", ", package.Authors ?? []),
                 Description = package.Description,
                 Deprecation = package.ToDeprecationOrNull(),
                 Downloads = package.Downloads,
                 HasReadme = package.HasReadme,
                 IconUrl = package.HasEmbeddedIcon
-                    ? _url.GetPackageIconDownloadUrl(package.Id, package.Version)
+                    ? Url.GetPackageIconDownloadUrl(package.Id, package.Version)
                     : package.IconUrlString,
                 Language = package.Language,
                 LicenseUrl = package.HasEmbeddedLicense
-                    ? _url.GetPackageLicenseDownloadUrl(package.Id, package.Version, package.LicenseIsMarkDown)
+                    ? Url.GetPackageLicenseDownloadUrl(package.Id, package.Version, package.LicenseIsMarkDown)
                     : package.LicenseUrlString,
                 LicenseExpression = package.LicenseExpression,
                 Listed = package.Listed,
                 MinClientVersion = package.MinClientVersion,
-                ReadmeUrl = package.HasReadme ? _url.GetPackageReadmeDownloadUrl(package.Id, package.Version) : null,
+                ReadmeUrl = package.HasReadme ? Url.GetPackageReadmeDownloadUrl(package.Id, package.Version) : null,
                 ReleaseNotes = package.ReleaseNotes,
-                PackageContentUrl = _url.GetPackageDownloadUrl(package.Id, package.Version),
-                PackageTypes = package.PackageTypes.Select(t => t.Name).OfType<string>().ToList(),
+                PackageContentUrl = Url.GetPackageDownloadUrl(package.Id, package.Version),
+                PackageTypes = [.. package.PackageTypes.Select(t => t.Name).OfType<string>()],
                 ProjectUrl = package.ProjectUrlString,
                 RepositoryUrl = package.RepositoryUrlString,
                 RepositoryType = package.RepositoryType,

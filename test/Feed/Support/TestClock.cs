@@ -1,5 +1,3 @@
-using System;
-
 namespace NuDepot.Feed.Tests.Support;
 
 /// <summary>
@@ -7,14 +5,14 @@ namespace NuDepot.Feed.Tests.Support;
 /// </summary>
 internal sealed class TestClock : TimeProvider
 {
-    private readonly DateTimeOffset _start = DateTimeOffset.UtcNow;
+    private DateTimeOffset Start { get; } = DateTimeOffset.UtcNow;
 
     /// <summary>
     /// How far the clock has been moved forward.
     /// </summary>
     public TimeSpan Advanced { get; private set; }
 
-    public override DateTimeOffset GetUtcNow() => _start + Advanced;
+    public override DateTimeOffset GetUtcNow() => Start + Advanced;
 
     public void Advance(TimeSpan time) => Advanced += time;
 }

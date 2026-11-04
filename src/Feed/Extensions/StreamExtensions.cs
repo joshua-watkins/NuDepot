@@ -1,9 +1,4 @@
-using System;
-using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NuDepot.Feed.Extensions;
 
@@ -19,11 +14,9 @@ public static class StreamExtensions
     /// <param name="original">The stream to be copied, at its current position.</param>
     /// <param name="cancellationToken"></param>
     /// <returns>The copied stream, with its position reset to the beginning.</returns>
-    public static async Task<FileStream> AsTemporaryFileStreamAsync(
-        this Stream original,
-        CancellationToken cancellationToken = default)
+    public static async Task<FileStream> AsTemporaryFileStreamAsync(this Stream original, CancellationToken cancellationToken = default)
     {
-        var result = new FileStream(
+        FileStream result = new(
             Path.GetTempFileName(),
             FileMode.Create,
             FileAccess.ReadWrite,
@@ -48,13 +41,11 @@ public static class StreamExtensions
     /// <summary>
     /// Computes the stream's base64-encoded SHA-512 hash and its length, reading from its current position.
     /// </summary>
-    public static async Task<(string Hash, long Size)> ComputeSha512Async(
-        this Stream content,
-        CancellationToken cancellationToken = default)
+    public static async Task<(string Hash, long Size)> ComputeSha512Async(this Stream content, CancellationToken cancellationToken = default)
     {
-        using var sha512 = SHA512.Create();
+        using SHA512 sha512 = SHA512.Create();
 
-        var buffer = new byte[DefaultCopyBufferSize];
+        byte[] buffer = new byte[DefaultCopyBufferSize];
         long size = 0;
         int read;
         while ((read = await content.ReadAsync(buffer, cancellationToken)) > 0)
@@ -63,17 +54,17 @@ public static class StreamExtensions
             size += read;
         }
 
-        sha512.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        sha512.TransformFinalBlock([], 0, 0);
 
         return (Convert.ToBase64String(sha512.Hash!), size);
     }
 
     public static bool Matches(this Stream content, Stream target)
     {
-        using (var sha256 = SHA256.Create())
+        using (SHA256 sha256 = SHA256.Create())
         {
-            var contentHash = sha256.ComputeHash(content);
-            var targetHash = sha256.ComputeHash(target);
+            byte[] contentHash = sha256.ComputeHash(content);
+            byte[] targetHash = sha256.ComputeHash(target);
 
             return contentHash.SequenceEqual(targetHash);
         }

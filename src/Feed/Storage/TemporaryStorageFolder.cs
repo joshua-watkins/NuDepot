@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-
 namespace NuDepot.Feed.Storage;
 
 /// <summary>
@@ -9,22 +6,23 @@ namespace NuDepot.Feed.Storage;
 /// </summary>
 public sealed class TemporaryStorageFolder : IDisposable
 {
-    private readonly Lazy<string> _path = new(() =>
+    private Lazy<string> LazyPath { get; } = new(() =>
     {
-        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "NuDepot", Guid.NewGuid().ToString("N"));
+        string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "NuDepot", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
     });
 
-    public string Path => _path.Value;
+    public string Path => LazyPath.Value;
 
     public void Dispose()
     {
-        if (!_path.IsValueCreated) return;
+        if (!LazyPath.IsValueCreated)
+            return;
 
         try
         {
-            Directory.Delete(_path.Value, recursive: true);
+            Directory.Delete(LazyPath.Value, recursive: true);
         }
         catch (IOException)
         {

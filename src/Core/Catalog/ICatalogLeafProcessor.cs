@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 
 namespace NuDepot.Core.Catalog;

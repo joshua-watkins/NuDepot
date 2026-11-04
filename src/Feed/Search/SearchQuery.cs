@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace NuDepot.Feed.Search;
@@ -49,20 +47,22 @@ public class SearchQuery
 
     public static SearchQuery Parse(string query)
     {
-        var terms = new List<string>();
-        var filters = new List<SearchFilter>();
+        List<string> terms = [];
+        List<SearchFilter> filters = [];
 
-        foreach (var token in Tokenize(query ?? string.Empty))
+        foreach ((string? Field, string Value) token in Tokenize(query ?? string.Empty))
         {
-            var separator = token.Field;
-            if (separator != null && Fields.TryGetValue(separator, out var field))
+            string? separator = token.Field;
+            if (separator != null && Fields.TryGetValue(separator, out string? field))
             {
-                if (token.Value.Length > 0) filters.Add(new SearchFilter(field, token.Value));
+                if (token.Value.Length > 0)
+                    filters.Add(new SearchFilter(field, token.Value));
             }
             else
             {
-                var term = separator == null ? token.Value : $"{separator}:{token.Value}";
-                if (term.Length > 0) terms.Add(term);
+                string term = separator == null ? token.Value : $"{separator}:{token.Value}";
+                if (term.Length > 0)
+                    terms.Add(term);
             }
         }
 
@@ -71,7 +71,7 @@ public class SearchQuery
 
     private static IEnumerable<(string? Field, string Value)> Tokenize(string query)
     {
-        var position = 0;
+        int position = 0;
         while (position < query.Length)
         {
             if (char.IsWhiteSpace(query[position]))
@@ -82,7 +82,7 @@ public class SearchQuery
 
             // A token is either "value", field:value or field:"quoted value".
             string? field = null;
-            var start = position;
+            int start = position;
             while (position < query.Length && !char.IsWhiteSpace(query[position]) && query[position] != ':' && query[position] != '"')
             {
                 position++;
@@ -104,7 +104,7 @@ public class SearchQuery
 
     private static string ReadValue(string query, ref int position)
     {
-        var value = new StringBuilder();
+        StringBuilder value = new();
 
         if (position < query.Length && query[position] == '"')
         {
@@ -124,7 +124,9 @@ public class SearchQuery
             }
         }
 
-        return value.ToString().Trim();
+        return value
+            .ToString()
+            .Trim();
     }
 }
 

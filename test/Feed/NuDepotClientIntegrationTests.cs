@@ -1,12 +1,11 @@
 using NuDepot.Core;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
+using NuDepot.Core.PackageDetails;
+using NuDepot.Core.Search;
+using NuDepot.Core.ServiceIndex;
 using NuDepot.Feed.Tests.Support;
 using NuGet.Versioning;
-using System;
-using System.IO;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -17,41 +16,41 @@ namespace NuDepot.Feed.Tests;
 /// </summary>
 public class NuDepotClientIntegrationTests : IDisposable
 {
-    private readonly Support.NuDepotTestApplication _app;
-    private readonly HttpClient _httpClient;
-    private readonly NuGetClientFactory _clientFactory;
-    private readonly NuGetClient _client;
+    private Support.NuDepotTestApplication App { get; }
+    private HttpClient HttpClient { get; }
+    private NuGetClientFactory ClientFactory { get; }
+    private NuGetClient Client { get; }
 
-    private readonly Stream _packageStream;
+    private Stream PackageStream { get; }
 
     public NuDepotClientIntegrationTests(ITestOutputHelper output)
     {
-        _app = new Support.NuDepotTestApplication(output);
+        App = new Support.NuDepotTestApplication(output);
 
-        var serviceIndexUrl = new Uri(_app.Server.BaseAddress, "v3/index.json");
+        Uri serviceIndexUrl = new(App.Server.BaseAddress, "v3/index.json");
 
-        _httpClient = _app.CreateClient();
-        _clientFactory = new NuGetClientFactory(_httpClient, serviceIndexUrl.AbsoluteUri);
-        _client = new NuGetClient(_clientFactory);
+        HttpClient = App.CreateClient();
+        ClientFactory = new NuGetClientFactory(HttpClient, serviceIndexUrl.AbsoluteUri);
+        Client = new NuGetClient(ClientFactory);
 
-        _packageStream = TestResources.GetResourceStream(TestResources.Package);
+        PackageStream = TestResources.GetResourceStream(TestResources.Package);
     }
 
     [Fact]
     public async Task ValidIndex()
     {
-        var client = _clientFactory.CreateServiceIndexClient();
-        var index = await client.GetAsync();
+        IServiceIndexClient client = ClientFactory.CreateServiceIndexClient();
+        ServiceIndexResponse index = await client.GetAsync();
 
         Assert.Equal("3.0.0", index.Version);
         Assert.Equal(17, index.Resources.Count);
 
-        Assert.NotEmpty(index.GetResourceUrl(new[] { "PackageBaseAddress/3.0.0" })!);
-        Assert.NotEmpty(index.GetResourceUrl(new[] { "PackagePublish/2.0.0" })!);
-        Assert.NotEmpty(index.GetResourceUrl(new[] { "RegistrationsBaseUrl" })!);
-        Assert.NotEmpty(index.GetResourceUrl(new[] { "SearchAutocompleteService" })!);
-        Assert.NotEmpty(index.GetResourceUrl(new[] { "SearchQueryService" })!);
-        Assert.NotEmpty(index.GetResourceUrl(new[] { "SymbolPackagePublish/4.9.0" })!);
+        Assert.NotEmpty(index.GetResourceUrl(["PackageBaseAddress/3.0.0"])!);
+        Assert.NotEmpty(index.GetResourceUrl(["PackagePublish/2.0.0"])!);
+        Assert.NotEmpty(index.GetResourceUrl(["RegistrationsBaseUrl"])!);
+        Assert.NotEmpty(index.GetResourceUrl(["SearchAutocompleteService"])!);
+        Assert.NotEmpty(index.GetResourceUrl(["SearchQueryService"])!);
+        Assert.NotEmpty(index.GetResourceUrl(["SymbolPackagePublish/4.9.0"])!);
         Assert.NotEmpty(index.GetPackagePublishResourceUrl()!);
         Assert.NotEmpty(index.GetReadmeUriTemplate()!);
         Assert.NotEmpty(index.GetPackageDependentsResourceUrl()!);
@@ -63,10 +62,10 @@ public class NuDepotClientIntegrationTests : IDisposable
     [InlineData("DotnetTool", 0)]
     public async Task SearchFiltersByPackageType(string? packageType, int expectedResults)
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
-        var client = _clientFactory.CreateSearchClient();
-        var response = await client.SearchAsync(packageType: packageType);
+        ISearchClient client = ClientFactory.CreateSearchClient();
+        SearchResponse response = await client.SearchAsync(packageType: packageType);
 
         Assert.Equal(expectedResults, response.Data.Count);
     }
@@ -74,12 +73,12 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageDetailsReturnsExtendedMetadata()
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
-        var client = _clientFactory.CreatePackageDetailsClient();
-        var packages = await client.GetPackageMetadataAsync("TestData");
+        IPackageDetailsClient client = ClientFactory.CreatePackageDetailsClient();
+        IReadOnlyList<NuDepotPackageMetadata> packages = await client.GetPackageMetadataAsync("TestData");
 
-        var package = Assert.Single(packages);
+        NuDepotPackageMetadata package = Assert.Single(packages);
 
         Assert.Equal("TestData", package.PackageId);
         Assert.Equal("1.2.3", package.Version);
@@ -91,8 +90,8 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageDetailsReturnsEmpty()
     {
-        var client = _clientFactory.CreatePackageDetailsClient();
-        var packages = await client.GetPackageMetadataAsync("PackageDoesNotExist");
+        IPackageDetailsClient client = ClientFactory.CreatePackageDetailsClient();
+        IReadOnlyList<NuDepotPackageMetadata> packages = await client.GetPackageMetadataAsync("PackageDoesNotExist");
 
         Assert.Empty(packages);
     }
@@ -100,8 +99,8 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageDetailsReadmeReturnsNullIfMissing()
     {
-        var client = _clientFactory.CreatePackageDetailsClient();
-        var readme = await client.GetPackageReadmeStreamOrNullAsync("PackageDoesNotExist", NuGetVersion.Parse("1.0.0"));
+        IPackageDetailsClient client = ClientFactory.CreatePackageDetailsClient();
+        Stream? readme = await client.GetPackageReadmeStreamOrNullAsync("PackageDoesNotExist", NuGetVersion.Parse("1.0.0"));
 
         Assert.Null(readme);
     }
@@ -109,10 +108,10 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageDetailsDependentsReturnsEmpty()
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
-        var client = _clientFactory.CreatePackageDetailsClient();
-        var dependents = await client.GetPackageDependentsAsync("TestData");
+        IPackageDetailsClient client = ClientFactory.CreatePackageDetailsClient();
+        DependentsResponse dependents = await client.GetPackageDependentsAsync("TestData");
 
         Assert.Empty(dependents.Data);
         Assert.Equal(0, dependents.TotalHits);
@@ -121,13 +120,13 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task SearchReturnsResults()
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
-        var results = await _client.SearchAsync();
+        IReadOnlyList<SearchResult> results = await Client.SearchAsync();
 
-        var result = Assert.Single(results);
-        var author = Assert.Single(result.Authors!);
-        var version = Assert.Single(result.Versions);
+        SearchResult result = Assert.Single(results);
+        string author = Assert.Single(result.Authors!);
+        SearchResultVersion version = Assert.Single(result.Versions);
 
         Assert.Equal("TestData", result.PackageId);
         Assert.Equal("1.2.3", result.Version);
@@ -142,7 +141,7 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task SearchReturnsEmpty()
     {
-        var results = await _client.SearchAsync("PackageDoesNotExist");
+        IReadOnlyList<SearchResult> results = await Client.SearchAsync("PackageDoesNotExist");
 
         Assert.Empty(results);
     }
@@ -150,11 +149,11 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task AutocompleteReturnsResults()
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
-        var results = await _client.AutocompleteAsync();
+        IReadOnlyList<string> results = await Client.AutocompleteAsync();
 
-        var result = Assert.Single(results);
+        string result = Assert.Single(results);
 
         Assert.Equal("TestData", result);
     }
@@ -162,7 +161,7 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task AutocompleteReturnsEmpty()
     {
-        var results = await _client.AutocompleteAsync("PackageDoesNotExist");
+        IReadOnlyList<string> results = await Client.AutocompleteAsync("PackageDoesNotExist");
 
         Assert.Empty(results);
     }
@@ -170,12 +169,12 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task AutocompleteVersions()
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
-        var client = _clientFactory.CreateAutocompleteClient();
-        var results = await client.ListPackageVersionsAsync("TestData");
+        IAutocompleteClient client = ClientFactory.CreateAutocompleteClient();
+        AutocompleteResponse results = await client.ListPackageVersionsAsync("TestData");
 
-        var result = Assert.Single(results.Data);
+        string result = Assert.Single(results.Data);
 
         Assert.Equal(1, results.TotalHits);
         Assert.Equal("1.2.3", result);
@@ -184,8 +183,8 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task AutocompleteVersionsReturnsEmpty()
     {
-        var client = _clientFactory.CreateAutocompleteClient();
-        var results = await client.ListPackageVersionsAsync("PackageDoesNotExist");
+        IAutocompleteClient client = ClientFactory.CreateAutocompleteClient();
+        AutocompleteResponse results = await client.ListPackageVersionsAsync("PackageDoesNotExist");
 
         Assert.Empty(results.Data);
         Assert.Equal(0, results.TotalHits);
@@ -194,11 +193,11 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task VersionListReturnsResults()
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
-        var versions = await _client.ListPackageVersionsAsync("TestData");
+        IReadOnlyList<NuGetVersion> versions = await Client.ListPackageVersionsAsync("TestData");
 
-        var version = Assert.Single(versions);
+        NuGetVersion version = Assert.Single(versions);
 
         Assert.Equal("1.2.3", version.ToNormalizedString());
     }
@@ -206,7 +205,7 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task VersionListReturnsEmpty()
     {
-        var versions = await _client.ListPackageVersionsAsync("PackageDoesNotExist");
+        IReadOnlyList<NuGetVersion> versions = await Client.ListPackageVersionsAsync("PackageDoesNotExist");
 
         Assert.Empty(versions);
     }
@@ -217,14 +216,14 @@ public class NuDepotClientIntegrationTests : IDisposable
     [InlineData("PackageDoesNotExists", "1.0.0", false)]
     public async Task PackageDownloadWorks(string packageId, string packageVersion, bool exists)
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
         try
         {
-            var version = NuGetVersion.Parse(packageVersion);
+            NuGetVersion version = NuGetVersion.Parse(packageVersion);
 
-            using var memoryStream = new MemoryStream();
-            using var packageStream = await _client.DownloadPackageAsync(packageId, version);
+            using MemoryStream memoryStream = new();
+            using Stream packageStream = await Client.DownloadPackageAsync(packageId, version);
 
             await packageStream.CopyToAsync(memoryStream);
             memoryStream.Position = 0;
@@ -244,14 +243,14 @@ public class NuDepotClientIntegrationTests : IDisposable
     [InlineData("PackageDoesNotExists", "1.0.0", false)]
     public async Task ManifestDownloadWorks(string packageId, string packageVersion, bool exists)
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
         try
         {
-            var version = NuGetVersion.Parse(packageVersion);
+            NuGetVersion version = NuGetVersion.Parse(packageVersion);
 
-            using var memoryStream = new MemoryStream();
-            using var packageStream = await _client.DownloadPackageManifestAsync(packageId, version);
+            using MemoryStream memoryStream = new();
+            using Stream packageStream = await Client.DownloadPackageManifestAsync(packageId, version);
 
             await packageStream.CopyToAsync(memoryStream);
             memoryStream.Position = 0;
@@ -268,11 +267,11 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageMetadataReturnsOk()
     {
-        await _app.AddPackageAsync(_packageStream);
+        await App.AddPackageAsync(PackageStream);
 
-        var packages = await _client.GetPackageMetadataAsync("TestData");
+        IReadOnlyList<PackageMetadata> packages = await Client.GetPackageMetadataAsync("TestData");
 
-        var package = Assert.Single(packages);
+        PackageMetadata package = Assert.Single(packages);
 
         Assert.Equal("TestData", package.PackageId);
         Assert.Equal("1.2.3", package.Version);
@@ -284,14 +283,14 @@ public class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageMetadataReturnsEmty()
     {
-        var packages = await _client.GetPackageMetadataAsync("PackageDoesNotExist");
+        IReadOnlyList<PackageMetadata> packages = await Client.GetPackageMetadataAsync("PackageDoesNotExist");
 
         Assert.Empty(packages);
     }
 
     public void Dispose()
     {
-        _app.Dispose();
-        _httpClient.Dispose();
+        App.Dispose();
+        HttpClient.Dispose();
     }
 }

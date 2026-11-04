@@ -1,8 +1,6 @@
-using System;
-using System.Net;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace NuDepot.Feed;
 
@@ -12,8 +10,8 @@ namespace NuDepot.Feed;
 /// </summary>
 public class OperationCancelledMiddleware(RequestDelegate next, ILogger<OperationCancelledMiddleware> logger)
 {
-    private RequestDelegate Next { get; } = next ?? throw new ArgumentNullException(nameof(next));
-    private ILogger Logger { get; } = logger ?? throw new ArgumentNullException(nameof(logger));
+    private RequestDelegate Next { get; } = next;
+    private ILogger Logger { get; } = logger;
 
     public async Task Invoke(HttpContext context)
     {

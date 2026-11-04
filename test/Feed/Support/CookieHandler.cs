@@ -1,7 +1,4 @@
 using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NuDepot.Feed.Tests.Support;
 
@@ -14,16 +11,14 @@ internal sealed class CookieHandler(CookieContainer cookies) : DelegatingHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var cookies = Cookies.GetCookieHeader(request.RequestUri!);
+        string cookies = Cookies.GetCookieHeader(request.RequestUri!);
         if (!string.IsNullOrEmpty(cookies))
-        {
             request.Headers.Add("Cookie", cookies);
-        }
 
-        var response = await base.SendAsync(request, cancellationToken);
-        if (response.Headers.TryGetValues("Set-Cookie", out var setCookies))
+        HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
+        if (response.Headers.TryGetValues("Set-Cookie", out IEnumerable<string>? setCookies))
         {
-            foreach (var setCookie in setCookies)
+            foreach (string setCookie in setCookies)
             {
                 Cookies.SetCookies(request.RequestUri!, setCookie);
             }

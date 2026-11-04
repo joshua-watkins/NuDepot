@@ -1,23 +1,18 @@
-using System.Threading.Tasks;
+using NuDepot.Core.Models;
 using NuDepot.Core.PackageMetadata;
 using NuDepot.Core.Tests.Support;
 using Xunit;
 
 namespace NuDepot.Core.Tests;
 
-public class RawPackageMetadataClientTests : IClassFixture<ProtocolFixture>
+public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixture<ProtocolFixture>
 {
-    private readonly RawPackageMetadataClient _target;
-
-    public RawPackageMetadataClientTests(ProtocolFixture fixture)
-    {
-        _target = fixture.MetadataClient;
-    }
+    private RawPackageMetadataClient Target { get; } = fixture.MetadataClient;
 
     [Fact]
     public async Task GetRegistrationIndexInlinedItems()
     {
-        var result = await _target.GetRegistrationIndexOrNullAsync("Test.Package");
+        RegistrationIndexResponse? result = await Target.GetRegistrationIndexOrNullAsync("Test.Package");
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Pages.Count);
@@ -38,7 +33,7 @@ public class RawPackageMetadataClientTests : IClassFixture<ProtocolFixture>
     [Fact]
     public async Task GetRegistrationIndexPagedItems()
     {
-        var result = await _target.GetRegistrationIndexOrNullAsync("Paged.Package");
+        RegistrationIndexResponse? result = await Target.GetRegistrationIndexOrNullAsync("Paged.Package");
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Pages.Count);
@@ -57,7 +52,7 @@ public class RawPackageMetadataClientTests : IClassFixture<ProtocolFixture>
     [Fact]
     public async Task GetRegistrationPage()
     {
-        var result = await _target.GetRegistrationPageAsync(TestData.RegistrationPageUrl);
+        RegistrationPageResponse result = await Target.GetRegistrationPageAsync(TestData.RegistrationPageUrl);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
@@ -66,7 +61,7 @@ public class RawPackageMetadataClientTests : IClassFixture<ProtocolFixture>
         Assert.Equal("2.0.0", result.Lower);
         Assert.Equal("3.0.0", result.Upper);
 
-        var firstMetadata = result.ItemsOrNull[0].PackageMetadata;
+        Models.PackageMetadata firstMetadata = result.ItemsOrNull[0].PackageMetadata;
 
         Assert.Equal("Paged.Package", firstMetadata.PackageId);
         Assert.Equal("2.0.0+build", firstMetadata.Version);
@@ -82,7 +77,7 @@ public class RawPackageMetadataClientTests : IClassFixture<ProtocolFixture>
     [Fact]
     public async Task GetsRegistrationLeaf()
     {
-        var result = await _target.GetRegistrationLeafAsync(TestData.RegistrationLeafListedUrl);
+        RegistrationLeafResponse result = await Target.GetRegistrationLeafAsync(TestData.RegistrationLeafListedUrl);
 
         Assert.NotNull(result);
         Assert.True(result.Listed);
@@ -102,7 +97,7 @@ public class RawPackageMetadataClientTests : IClassFixture<ProtocolFixture>
     [Fact]
     public async Task GetsRegistrationLeafUnlisted()
     {
-        var result = await _target.GetRegistrationLeafAsync(TestData.RegistrationLeafUnlistedUrl);
+        RegistrationLeafResponse result = await Target.GetRegistrationLeafAsync(TestData.RegistrationLeafUnlistedUrl);
 
         Assert.NotNull(result);
         Assert.False(result.Listed);

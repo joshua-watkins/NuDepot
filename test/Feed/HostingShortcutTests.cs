@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -10,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
+using System.Net;
 using Xunit;
 
 namespace NuDepot.Feed.Tests;
@@ -22,11 +19,11 @@ public class HostingShortcutTests
     [Fact]
     public async Task ShortcutsHostTheFeed()
     {
-        await using var app = await StartAsync(new Dictionary<string, string?>());
-        using var client = app.GetTestClient();
+        await using WebApplication app = await StartAsync(new Dictionary<string, string?>());
+        using HttpClient client = app.GetTestClient();
 
-        using var index = await client.GetAsync("v3/index.json");
-        using var account = await client.GetAsync("api/account");
+        using HttpResponseMessage index = await client.GetAsync("v3/index.json");
+        using HttpResponseMessage account = await client.GetAsync("api/account");
 
         Assert.Equal(HttpStatusCode.OK, index.StatusCode);
 
@@ -37,18 +34,18 @@ public class HostingShortcutTests
     [Fact]
     public async Task ShortcutsUseApiKeysAndPasskeysWhenTheOptionsTurnThemOn()
     {
-        await using var app = await StartAsync(new Dictionary<string, string?>
+        await using WebApplication app = await StartAsync(new Dictionary<string, string?>
         {
             { "Feed:ApiKey", "secret" },
             { "Feed:Authorization:AnonymousRole", "None" },
             { "Feed:Authorization:Users:Enabled", "true" },
         });
-        using var client = app.GetTestClient();
+        using HttpClient client = app.GetTestClient();
 
-        using var anonymous = await client.GetAsync("v3/index.json");
+        using HttpResponseMessage anonymous = await client.GetAsync("v3/index.json");
         client.DefaultRequestHeaders.Add("X-NuGet-ApiKey", "secret");
-        using var withKey = await client.GetAsync("v3/index.json");
-        using var account = await client.GetAsync("api/account");
+        using HttpResponseMessage withKey = await client.GetAsync("v3/index.json");
+        using HttpResponseMessage account = await client.GetAsync("api/account");
 
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
         Assert.Equal(HttpStatusCode.OK, withKey.StatusCode);
@@ -58,7 +55,7 @@ public class HostingShortcutTests
     [Fact]
     public async Task ConfigureChangesTheBoundOptions()
     {
-        await using var app = await StartAsync(
+        await using WebApplication app = await StartAsync(
             new Dictionary<string, string?>(),
             options => options.IsReadOnlyMode = true);
 
@@ -68,18 +65,18 @@ public class HostingShortcutTests
     [Fact]
     public async Task TheSharedPipelineIsOnlyAddedOnce()
     {
-        await using var app = await StartAsync(new Dictionary<string, string?>());
+        await using WebApplication app = await StartAsync(new Dictionary<string, string?>());
 
         // UseNuDepotGallery() calls UseNuDepot() too, which returns the same pipeline.
         Assert.Same(app.UseNuDepot(), app.UseNuDepot());
     }
 
-    private static async Task<WebApplication> StartAsync(
-        Dictionary<string, string?> configuration,
-        Action<FeedOptions>? configure = null)
+    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> configuration, Action<FeedOptions>? configure = null)
     {
-        var testId = Guid.NewGuid().ToString("N");
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        string testId = Guid
+            .NewGuid()
+            .ToString("N");
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = Environments.Production,
             ContentRootPath = AppContext.BaseDirectory,
@@ -96,7 +93,7 @@ public class HostingShortcutTests
 
         builder.Services.AddNuDepotFeed(configure);
 
-        var app = builder.Build();
+        WebApplication app = builder.Build();
         app.UseNuDepotFeed();
 
         await app.RunMigrationsAsync();

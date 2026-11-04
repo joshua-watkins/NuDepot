@@ -1,7 +1,3 @@
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace NuDepot.Feed.Storage;
 
 /// <summary>
@@ -18,11 +14,7 @@ public interface ISymbolStorageService
     /// <param name="pdbStream">The PDB's content stream.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    Task SavePortablePdbContentAsync(
-        string file,
-        string key,
-        Stream pdbStream,
-        CancellationToken cancellationToken);
+    Task SavePortablePdbContentAsync(string file, string key, Stream pdbStream, CancellationToken cancellationToken);
 
     /// <summary>
     /// Retrieve a portable PDB's content stream.

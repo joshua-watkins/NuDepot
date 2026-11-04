@@ -12,7 +12,7 @@ public class NuDepotContextDesignTimeFactory : IDesignTimeDbContextFactory<NuDep
 {
     public NuDepotContext CreateDbContext(string[] args)
     {
-        var options = new DbContextOptionsBuilder<NuDepotContext>()
+        DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()
             .UseSqlite("Data Source=nuget.db")
             .Options;
 

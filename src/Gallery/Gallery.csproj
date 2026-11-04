@@ -3,6 +3,7 @@
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
 		<AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
 		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
 		<Description>A nuget.org-style website for browsing a NuGet V3 feed, for ASP.NET Core applications. Add it with services.AddNuDepotGallery() and app.UseNuDepotGallery(), next to NuDepot.Feed or pointed at any V3 feed.</Description>
@@ -26,8 +27,8 @@
 		<PackageReference Include="Markdig" Version="1.5.0" />
 		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.14" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.403">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="RazorSlices" Version="0.12.2" />
 	</ItemGroup>

@@ -1,4 +1,3 @@
-﻿using System.Collections.Generic;
 using NuDepot.Core.Models;
 using NuDepot.Feed.Metadata;
 

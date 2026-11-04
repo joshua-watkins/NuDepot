@@ -15,14 +15,9 @@ public static class NuGetClientFactoryExtensions
     /// <param name="options">The options to configure catalog processing.</param>
     /// <param name="logger">The logger used for telemetry.</param>
     /// <returns>The catalog processor.</returns>
-    public static CatalogProcessor CreateCatalogProcessor(
-        this NuGetClientFactory clientFactory,
-        ICursor cursor,
-        ICatalogLeafProcessor leafProcessor,
-        CatalogProcessorOptions options,
-        ILogger<CatalogProcessor> logger)
+    public static CatalogProcessor CreateCatalogProcessor(this NuGetClientFactory clientFactory, ICursor cursor, ICatalogLeafProcessor leafProcessor, CatalogProcessorOptions options, ILogger<CatalogProcessor> logger)
     {
-        var catalogClient = clientFactory.CreateCatalogClient();
+        ICatalogClient catalogClient = clientFactory.CreateCatalogClient();
 
         return new CatalogProcessor(
             cursor,

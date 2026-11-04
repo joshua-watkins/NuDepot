@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace NuDepot.Core.Models;
@@ -15,7 +14,7 @@ namespace NuDepot.Core.Models;
 /// </remarks>
 public class NuDepotRegistrationIndexResponse
 {
-#region Original properties from RegistrationIndexResponse.
+    #region Original properties from RegistrationIndexResponse.
     [JsonPropertyName("@id")]
     public string RegistrationIndexUrl { get; set; } = null!;
 
@@ -24,7 +23,7 @@ public class NuDepotRegistrationIndexResponse
 
     [JsonPropertyName("count")]
     public int Count { get; set; }
-#endregion
+    #endregion
 
     /// <summary>
     /// The pages that contain all of the versions of the package, ordered

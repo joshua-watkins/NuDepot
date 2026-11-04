@@ -1,25 +1,18 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using NuDepot.Core.Catalog;
+using NuDepot.Core.Models;
 using NuDepot.Core.Tests.Support;
 using Xunit;
 
 namespace NuDepot.Core.Tests;
 
-public class RawCatalogClientTests : IClassFixture<ProtocolFixture>
+public class RawCatalogClientTests(ProtocolFixture fixture) : IClassFixture<ProtocolFixture>
 {
-    private readonly RawCatalogClient _target;
-
-    public RawCatalogClientTests(ProtocolFixture fixture)
-    {
-        _target = fixture.CatalogClient;
-    }
+    private RawCatalogClient Target { get; } = fixture.CatalogClient;
 
     [Fact]
     public async Task GetCatalogIndex()
     {
-        var result = await _target.GetIndexAsync();
+        CatalogIndex result = await Target.GetIndexAsync();
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
@@ -30,7 +23,7 @@ public class RawCatalogClientTests : IClassFixture<ProtocolFixture>
     [Fact]
     public async Task GetCatalogPage()
     {
-        var page = await _target.GetPageAsync(TestData.CatalogPageUrl);
+        CatalogPage page = await Target.GetPageAsync(TestData.CatalogPageUrl);
 
         Assert.Equal(2, page.Count);
         Assert.Equal(2, page.Items.Count);
@@ -42,7 +35,7 @@ public class RawCatalogClientTests : IClassFixture<ProtocolFixture>
     [Fact]
     public async Task GetPackageDetailsLeaf()
     {
-        var leaf = await _target.GetPackageDetailsLeafAsync(TestData.PackageDetailsCatalogLeafUrl);
+        PackageDetailsCatalogLeaf leaf = await Target.GetPackageDetailsLeafAsync(TestData.PackageDetailsCatalogLeafUrl);
 
         Assert.Equal(TestData.PackageDetailsCatalogLeafUrl, leaf.CatalogLeafUrl);
         Assert.Equal("PackageDetails", leaf.Type[0]);
@@ -55,7 +48,7 @@ public class RawCatalogClientTests : IClassFixture<ProtocolFixture>
     [Fact]
     public async Task GetPackageDeleteLeaf()
     {
-        var leaf = await _target.GetPackageDeleteLeafAsync(TestData.PackageDeleteCatalogLeafUrl);
+        PackageDeleteCatalogLeaf leaf = await Target.GetPackageDeleteLeafAsync(TestData.PackageDeleteCatalogLeafUrl);
 
         Assert.Equal(TestData.PackageDeleteCatalogLeafUrl, leaf.CatalogLeafUrl);
         Assert.Equal("PackageDelete", leaf.Type[0]);
@@ -68,7 +61,7 @@ public class RawCatalogClientTests : IClassFixture<ProtocolFixture>
     [Fact]
     public async Task ThrowsOnTypeMismatch()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => _target.GetPackageDetailsLeafAsync(TestData.PackageDeleteCatalogLeafUrl));
-        await Assert.ThrowsAsync<ArgumentException>(() => _target.GetPackageDeleteLeafAsync(TestData.PackageDetailsCatalogLeafUrl));
+        await Assert.ThrowsAsync<ArgumentException>(() => Target.GetPackageDetailsLeafAsync(TestData.PackageDeleteCatalogLeafUrl));
+        await Assert.ThrowsAsync<ArgumentException>(() => Target.GetPackageDeleteLeafAsync(TestData.PackageDetailsCatalogLeafUrl));
     }
 }

@@ -1,32 +1,28 @@
-using System;
-using System.IO;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Extensions;
 using NuGet.Packaging;
 using NuGet.Packaging.Signing;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace NuDepot.Feed.Signing;
 
 /// <inheritdoc />
 public sealed class RepositorySigningService : IRepositorySigningService, IDisposable
 {
-    private readonly RepositorySigningOptions _options;
-    private readonly ILogger<RepositorySigningService> _logger;
+    private RepositorySigningOptions Options { get; }
+    private ILogger<RepositorySigningService> Logger { get; }
 
     public RepositorySigningService(IOptions<FeedOptions> options, ILogger<RepositorySigningService> logger)
     {
-        _options = options?.Value?.RepositorySigning ?? new RepositorySigningOptions();
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        Options = options?.Value?.RepositorySigning ?? new RepositorySigningOptions();
+        Logger = logger;
 
-        if (_options.IsEnabled)
+        if (Options.IsEnabled)
         {
-            Certificate = LoadCertificate(_options);
+            Certificate = LoadCertificate(Options);
             CertificateFingerprint = Convert.ToHexStringLower(SHA256.HashData(Certificate.RawData));
         }
     }
@@ -35,27 +31,23 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
 
     public string? CertificateFingerprint { get; }
 
-    public async Task<RepositorySigningResult> SignAsync(
-        Stream package,
-        string serviceIndexUrl,
-        CancellationToken cancellationToken)
+    public async Task<RepositorySigningResult> SignAsync(Stream package, string serviceIndexUrl, CancellationToken cancellationToken)
     {
-        if (Certificate == null) return RepositorySigningResult.Unsigned;
+        if (Certificate == null)
+            return RepositorySigningResult.Unsigned;
 
         try
         {
             // A package can only have one repository signature. Keep the existing one, which
             // might be ours if the package was downloaded from this server and pushed again.
-            var existingSigner = await GetRepositorySignerOrNullAsync(package, cancellationToken);
+            X509Certificate2? existingSigner = await GetRepositorySignerOrNullAsync(package, cancellationToken);
             if (existingSigner != null)
-            {
                 return new RepositorySigningResult(null, IsOurCertificate(existingSigner));
-            }
 
-            if (!Uri.TryCreate(serviceIndexUrl, UriKind.Absolute, out var serviceIndexUri) ||
+            if (!Uri.TryCreate(serviceIndexUrl, UriKind.Absolute, out Uri? serviceIndexUri) ||
                 serviceIndexUri.Scheme != Uri.UriSchemeHttps)
             {
-                _logger.LogWarning(
+                Logger.LogWarning(
                     "Packages are only repository signed when pushed over HTTPS. The service index URL is {ServiceIndexUrl}",
                     serviceIndexUrl);
 
@@ -66,7 +58,7 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            _logger.LogError(e, "Failed to repository sign the package. It will be stored without this server's signature");
+            Logger.LogError(e, "Failed to repository sign the package. It will be stored without this server's signature");
 
             return RepositorySigningResult.Unsigned;
         }
@@ -80,31 +72,31 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
 
     private async Task<Stream> SignAsync(Stream package, Uri serviceIndexUrl, CancellationToken cancellationToken)
     {
-        var inputPath = Path.GetTempFileName();
-        var outputPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        string inputPath = Path.GetTempFileName();
+        string outputPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
 
         try
         {
             package.Position = 0;
-            using (var input = File.Create(inputPath))
+            using (FileStream input = File.Create(inputPath))
             {
                 await package.CopyToAsync(input, cancellationToken);
             }
 
-            var timestampProvider = string.IsNullOrEmpty(_options.TimestampServerUrl)
+            Rfc3161TimestampProvider? timestampProvider = string.IsNullOrEmpty(Options.TimestampServerUrl)
                 ? null
-                : new Rfc3161TimestampProvider(new Uri(_options.TimestampServerUrl));
+                : new Rfc3161TimestampProvider(new Uri(Options.TimestampServerUrl));
 
             // Disposing the request disposes its certificate, so give it a copy of ours.
-            using var certificate = new X509Certificate2(Certificate!);
-            using var request = new RepositorySignPackageRequest(
+            using X509Certificate2 certificate = new(Certificate!);
+            using RepositorySignPackageRequest request = new(
                 certificate,
                 NuGet.Common.HashAlgorithmName.SHA256,
                 NuGet.Common.HashAlgorithmName.SHA256,
                 serviceIndexUrl,
                 packageOwners: null);
 
-            using (var signingOptions = SigningOptions.CreateFromFilePaths(
+            using (SigningOptions signingOptions = SigningOptions.CreateFromFilePaths(
                 inputPath,
                 outputPath,
                 overwrite: false,
@@ -117,7 +109,7 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
             }
 
             // Hand the signed package over as a stream that deletes its file when disposed.
-            using var signed = File.OpenRead(outputPath);
+            using FileStream signed = File.OpenRead(outputPath);
             return await signed.AsTemporaryFileStreamAsync(cancellationToken);
         }
         finally
@@ -130,17 +122,17 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
     private static async Task<X509Certificate2?> GetRepositorySignerOrNullAsync(Stream package, CancellationToken cancellationToken)
     {
         package.Position = 0;
-        using var reader = new PackageArchiveReader(package, leaveStreamOpen: true);
+        using PackageArchiveReader reader = new(package, leaveStreamOpen: true);
 
-        if (!await reader.IsSignedAsync(cancellationToken)) return null;
+        if (!await reader.IsSignedAsync(cancellationToken))
+            return null;
 
-        var primary = await reader.GetPrimarySignatureAsync(cancellationToken);
-        if (primary == null) return null;
+        PrimarySignature? primary = await reader.GetPrimarySignatureAsync(cancellationToken);
+        if (primary == null)
+            return null;
 
         if (primary.Type == SignatureType.Repository)
-        {
             return primary.SignerInfo.Certificate;
-        }
 
         return RepositoryCountersignature.GetRepositoryCountersignature(primary)?.SignerInfo.Certificate;
     }
@@ -161,13 +153,13 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
                 X509KeyStorageFlags.EphemeralKeySet);
         }
 
-        var location = Enum.Parse<StoreLocation>(options.CertificateStoreLocation, ignoreCase: true);
-        var name = Enum.Parse<StoreName>(options.CertificateStoreName, ignoreCase: true);
+        StoreLocation location = Enum.Parse<StoreLocation>(options.CertificateStoreLocation, ignoreCase: true);
+        StoreName name = Enum.Parse<StoreName>(options.CertificateStoreName, ignoreCase: true);
 
-        using var store = new X509Store(name, location);
+        using X509Store store = new(name, location);
         store.Open(OpenFlags.ReadOnly);
 
-        var matches = store.Certificates.Find(X509FindType.FindByThumbprint, options.CertificateThumbprint ?? string.Empty, validOnly: false);
+        X509Certificate2Collection matches = store.Certificates.Find(X509FindType.FindByThumbprint, options.CertificateThumbprint ?? string.Empty, validOnly: false);
         if (matches.Count == 0)
         {
             throw new InvalidOperationException(

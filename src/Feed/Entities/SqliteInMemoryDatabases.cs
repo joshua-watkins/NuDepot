@@ -1,6 +1,5 @@
-using System;
-using System.Collections.Concurrent;
 using Microsoft.Data.Sqlite;
+using System.Collections.Concurrent;
 
 namespace NuDepot.Feed.Entities;
 
@@ -11,11 +10,12 @@ namespace NuDepot.Feed.Entities;
 /// </summary>
 internal sealed class SqliteInMemoryDatabases : IDisposable
 {
-    private readonly ConcurrentDictionary<string, SqliteConnection> _connections = new();
+    private ConcurrentDictionary<string, SqliteConnection> Connections { get; } = new();
 
     public void KeepAlive(string? connectionString)
     {
-        if (string.IsNullOrEmpty(connectionString)) return;
+        if (string.IsNullOrEmpty(connectionString))
+            return;
 
         // Leave invalid connection strings for SQLite to report when the context connects.
         SqliteConnectionStringBuilder builder;
@@ -28,11 +28,12 @@ internal sealed class SqliteInMemoryDatabases : IDisposable
             return;
         }
 
-        if (builder.Mode != SqliteOpenMode.Memory) return;
+        if (builder.Mode != SqliteOpenMode.Memory)
+            return;
 
-        _connections.GetOrAdd(connectionString, value =>
+        Connections.GetOrAdd(connectionString, value =>
         {
-            var connection = new SqliteConnection(value);
+            SqliteConnection connection = new(value);
             connection.Open();
             return connection;
         });
@@ -40,11 +41,11 @@ internal sealed class SqliteInMemoryDatabases : IDisposable
 
     public void Dispose()
     {
-        foreach (var connection in _connections.Values)
+        foreach (SqliteConnection connection in Connections.Values)
         {
             connection.Dispose();
         }
 
-        _connections.Clear();
+        Connections.Clear();
     }
 }

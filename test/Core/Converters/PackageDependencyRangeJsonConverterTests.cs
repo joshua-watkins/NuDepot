@@ -1,87 +1,86 @@
-using System.Text.Json;
 using NuDepot.Core.Converters;
+using System.Text.Json;
 using Xunit;
 
-namespace NuDepot.Core.Tests
+namespace NuDepot.Core.Tests;
+
+public class PackageDependencyRangeJsonConverterTests
 {
-    public class PackageDependencyRangeJsonConverterTests
+    [Fact]
+    public void DeserializesNull()
     {
-        [Fact]
-        public void DeserializesNull()
-        {
-            var json = @"null";
+        string json = @"null";
 
-            var options = new JsonSerializerOptions();
-            options.Converters.Add(new PackageDependencyRangeJsonConverter());
+        JsonSerializerOptions options = new();
+        options.Converters.Add(new PackageDependencyRangeJsonConverter());
 
-            var result = JsonSerializer.Deserialize<string>(json, options);
+        string? result = JsonSerializer.Deserialize<string>(json, options);
 
-            Assert.Null(result);
-        }
+        Assert.Null(result);
+    }
 
-        [Fact]
-        public void DeserializesString()
-        {
-            var json = @"""Hello""";
+    [Fact]
+    public void DeserializesString()
+    {
+        string json = @"""Hello""";
 
-            var options = new JsonSerializerOptions();
-            options.Converters.Add(new PackageDependencyRangeJsonConverter());
+        JsonSerializerOptions options = new();
+        options.Converters.Add(new PackageDependencyRangeJsonConverter());
 
-            var result = JsonSerializer.Deserialize<string>(json, options);
+        string? result = JsonSerializer.Deserialize<string>(json, options);
 
-            Assert.Equal("Hello", result);
-        }
+        Assert.Equal("Hello", result);
+    }
 
-        [Fact]
-        public void DeserializesStringArray()
-        {
-            var json = @"[""first"", ""second"", ""third""]";
+    [Fact]
+    public void DeserializesStringArray()
+    {
+        string json = @"[""first"", ""second"", ""third""]";
 
-            var options = new JsonSerializerOptions();
-            options.Converters.Add(new PackageDependencyRangeJsonConverter());
+        JsonSerializerOptions options = new();
+        options.Converters.Add(new PackageDependencyRangeJsonConverter());
 
-            var result = JsonSerializer.Deserialize<string>(json, options);
+        string? result = JsonSerializer.Deserialize<string>(json, options);
 
-            Assert.Equal("first", result);
-        }
+        Assert.Equal("first", result);
+    }
 
-        [Theory]
-        [InlineData(@"false")]
-        [InlineData(@"0")]
-        [InlineData(@"{")]
-        [InlineData(@"[")]
-        [InlineData(@"[""hello""")]
-        [InlineData(@"[""hello""}")]
-        [InlineData(@"[""hello"", 1")]
-        public void ThrowsOnInvalidJson(string json)
-        {
-            var options = new JsonSerializerOptions();
-            options.Converters.Add(new PackageDependencyRangeJsonConverter());
+    [Theory]
+    [InlineData(@"false")]
+    [InlineData(@"0")]
+    [InlineData(@"{")]
+    [InlineData(@"[")]
+    [InlineData(@"[""hello""")]
+    [InlineData(@"[""hello""}")]
+    [InlineData(@"[""hello"", 1")]
+    public void ThrowsOnInvalidJson(string json)
+    {
+        JsonSerializerOptions options = new();
+        options.Converters.Add(new PackageDependencyRangeJsonConverter());
 
-            Assert.Throws<JsonException>(
-                () => JsonSerializer.Deserialize<string>(json, options));
-        }
+        Assert.Throws<JsonException>(
+            () => JsonSerializer.Deserialize<string>(json, options));
+    }
 
-        [Fact]
-        public void SerializesNull()
-        {
-            var options = new JsonSerializerOptions();
-            options.Converters.Add(new StringOrStringArrayJsonConverter());
+    [Fact]
+    public void SerializesNull()
+    {
+        JsonSerializerOptions options = new();
+        options.Converters.Add(new StringOrStringArrayJsonConverter());
 
-            var json = JsonSerializer.Serialize<string?>(null, options);
+        string json = JsonSerializer.Serialize<string?>(null, options);
 
-            Assert.Equal("null", json);
-        }
+        Assert.Equal("null", json);
+    }
 
-        [Fact]
-        public void SerializesString()
-        {
-            var options = new JsonSerializerOptions();
-            options.Converters.Add(new StringOrStringArrayJsonConverter());
+    [Fact]
+    public void SerializesString()
+    {
+        JsonSerializerOptions options = new();
+        options.Converters.Add(new StringOrStringArrayJsonConverter());
 
-            var json = JsonSerializer.Serialize("foo", options);
+        string json = JsonSerializer.Serialize("foo", options);
 
-            Assert.Equal(@"""foo""", json);
-        }
+        Assert.Equal(@"""foo""", json);
     }
 }

@@ -1,11 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +8,7 @@ using NuDepot.Core.Models;
 using NuDepot.Core.PackageDetails;
 using NuDepot.Core.Search;
 using NuDepot.Core.ServiceIndex;
-using NuGet.Versioning;
+using System.Net;
 using Xunit;
 
 namespace NuDepot.Gallery.Tests;
@@ -27,15 +20,15 @@ public class WebsitePageTests : IDisposable
 {
     private const string ServiceIndexUrl = "https://feed.test/v3/index.json";
 
-    private readonly Mock<ISearchClient> _search = new();
-    private readonly Mock<IPackageDetailsClient> _packages = new();
-    private readonly Mock<IServiceIndexClient> _serviceIndex = new();
-    private readonly WebApplication _app;
+    private Mock<ISearchClient> Search { get; } = new();
+    private Mock<IPackageDetailsClient> Packages { get; } = new();
+    private Mock<IServiceIndexClient> ServiceIndex { get; } = new();
+    private WebApplication App { get; }
 
     public WebsitePageTests()
     {
         // Host the gallery in memory, the way the Windows and Linux hosts do, without the feed.
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = Environments.Production,
             ContentRootPath = AppContext.BaseDirectory,
@@ -48,44 +41,50 @@ public class WebsitePageTests : IDisposable
         });
 
         builder.Services.AddNuDepotGallery();
-        builder.Services.AddSingleton(_search.Object);
-        builder.Services.AddSingleton(_packages.Object);
-        builder.Services.AddSingleton(_serviceIndex.Object);
+        builder.Services.AddSingleton(Search.Object);
+        builder.Services.AddSingleton(Packages.Object);
+        builder.Services.AddSingleton(ServiceIndex.Object);
 
-        _app = builder.Build();
-        _app.UseNuDepotGallery();
-        _app.StartAsync().GetAwaiter().GetResult();
+        App = builder.Build();
+        App.UseNuDepotGallery();
+        App
+            .StartAsync()
+            .GetAwaiter()
+            .GetResult();
 
-        _search
+        Search
             .Setup(s => s.SearchAsync(It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SearchResponse { Data = new List<SearchResult>() });
+            .ReturnsAsync(new SearchResponse { Data = [] });
     }
 
-    public void Dispose() => _app.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    public void Dispose() => App
+        .DisposeAsync()
+        .AsTask()
+        .GetAwaiter()
+        .GetResult();
 
     [Fact]
     public async Task SearchPageListsPackages()
     {
-        _search
+        Search
             .Setup(s => s.SearchAsync("json", 0, 20, true, true, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SearchResponse
             {
-                Data = new List<SearchResult>
-                {
-                    new SearchResult
-                    {
+                Data =
+                [
+                    new() {
                         PackageId = "Contoso.Json",
                         Version = "1.2.0",
                         Description = "Reads <json> & writes it.",
-                        Authors = new[] { "Contoso" },
-                        Tags = new[] { "json", "serialization" },
+                        Authors = ["Contoso"],
+                        Tags = ["json", "serialization"],
                         TotalDownloads = 1500,
-                        Versions = new List<SearchResultVersion>(),
+                        Versions = [],
                     },
-                },
+                ],
             });
 
-        var html = await GetPageAsync("/?q=json");
+        string html = await GetPageAsync("/?q=json");
 
         Assert.Contains("<title>Packages - NuDepot</title>", html);
         Assert.Contains("href=\"/packages/Contoso.Json/1.2.0\"", html);
@@ -100,15 +99,15 @@ public class WebsitePageTests : IDisposable
     {
         await GetPageAsync("/?q=json&p=2&packageType=dotnettool&prerelease=False");
 
-        _search.Verify(s => s.SearchAsync("json", 20, 20, false, true, "dotnettool", null, It.IsAny<CancellationToken>()));
+        Search.Verify(s => s.SearchAsync("json", 20, 20, false, true, "dotnettool", null, It.IsAny<CancellationToken>()));
     }
 
     [Fact]
     public async Task SearchPageRejectsInvalidPage()
     {
-        using var client = _app.GetTestClient();
+        using HttpClient client = App.GetTestClient();
 
-        var response = await client.GetAsync("/?p=0");
+        HttpResponseMessage response = await client.GetAsync("/?p=0");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -116,12 +115,11 @@ public class WebsitePageTests : IDisposable
     [Fact]
     public async Task PackagePageShowsDetails()
     {
-        _packages
+        Packages
             .Setup(p => p.GetPackageMetadataAsync("Contoso.Json", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<NuDepotPackageMetadata>
-            {
-                new NuDepotPackageMetadata
-                {
+            .ReturnsAsync(
+            [
+                new() {
                     PackageId = "Contoso.Json",
                     Version = "1.2.0",
                     Description = "Reads JSON.",
@@ -131,16 +129,16 @@ public class WebsitePageTests : IDisposable
                     PackageContentUrl = "https://feed.test/v3/package/contoso.json/1.2.0/contoso.json.1.2.0.nupkg",
                     Deprecation = new PackageDeprecation
                     {
-                        Reasons = new[] { "Legacy" },
+                        Reasons = ["Legacy"],
                         AlternatePackage = new AlternatePackage { Id = "Contoso.Text.Json", Range = "*" },
                     },
                 },
-            });
-        _packages
+            ]);
+        Packages
             .Setup(p => p.GetPackageDependentsAsync("Contoso.Json", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DependentsResponse { Data = new List<PackageDependent>() });
+            .ReturnsAsync(new DependentsResponse { Data = [] });
 
-        var html = await GetPageAsync("/packages/Contoso.Json/1.2.0");
+        string html = await GetPageAsync("/packages/Contoso.Json/1.2.0");
 
         Assert.Contains("<title>Contoso.Json 1.2.0 - NuDepot</title>", html);
         Assert.Contains("This package is no longer maintained.", html);
@@ -156,11 +154,11 @@ public class WebsitePageTests : IDisposable
     [Fact]
     public async Task PackagePageShowsMissingPackage()
     {
-        _packages
+        Packages
             .Setup(p => p.GetPackageMetadataAsync("Missing", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<NuDepotPackageMetadata>());
+            .ReturnsAsync([]);
 
-        var html = await GetPageAsync("/packages/Missing");
+        string html = await GetPageAsync("/packages/Missing");
 
         Assert.Contains("Could not find package 'Missing'.", html);
     }
@@ -168,18 +166,18 @@ public class WebsitePageTests : IDisposable
     [Fact]
     public async Task UploadPageShowsPushCommands()
     {
-        _serviceIndex
+        ServiceIndex
             .Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ServiceIndexResponse
             {
                 Version = "3.0.0",
-                Resources = new List<ServiceIndexItem>
-                {
-                    new ServiceIndexItem { Type = "PackagePublish/2.0.0", ResourceUrl = "https://feed.test/api/v2/package" },
-                },
+                Resources =
+                [
+                    new() { Type = "PackagePublish/2.0.0", ResourceUrl = "https://feed.test/api/v2/package" },
+                ],
             });
 
-        var html = await GetPageAsync("/upload");
+        string html = await GetPageAsync("/upload");
 
         Assert.Contains($"<code>{ServiceIndexUrl}</code>", html);
         Assert.Contains($"\"dotnet nuget push -s {ServiceIndexUrl} package.nupkg\"", html);
@@ -189,13 +187,13 @@ public class WebsitePageTests : IDisposable
     [Fact]
     public async Task ExplainsWhenFeedIsUnreachable()
     {
-        _search
+        Search
             .Setup(s => s.SearchAsync(It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
-        using var client = _app.GetTestClient();
-        var response = await client.GetAsync("/");
-        var html = await response.Content.ReadAsStringAsync();
+        using HttpClient client = App.GetTestClient();
+        HttpResponseMessage response = await client.GetAsync("/");
+        string html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.Contains("the feed isn't responding", html);
@@ -208,9 +206,9 @@ public class WebsitePageTests : IDisposable
     [InlineData("/_content/NuDepot.Gallery/images/github-32x32.png", "image/png")]
     public async Task ServesEmbeddedFiles(string url, string contentType)
     {
-        using var client = _app.GetTestClient();
+        using HttpClient client = App.GetTestClient();
 
-        var response = await client.GetAsync(url);
+        HttpResponseMessage response = await client.GetAsync(url);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(contentType, response.Content.Headers.ContentType?.MediaType);
@@ -220,12 +218,12 @@ public class WebsitePageTests : IDisposable
     [Fact]
     public async Task EmbeddedFilesAreNotModifiedForTheSameETag()
     {
-        using var client = _app.GetTestClient();
-        var first = await client.GetAsync("/_content/NuDepot.Gallery/css/site.css");
+        using HttpClient client = App.GetTestClient();
+        HttpResponseMessage first = await client.GetAsync("/_content/NuDepot.Gallery/css/site.css");
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/_content/NuDepot.Gallery/css/site.css");
+        using HttpRequestMessage request = new(HttpMethod.Get, "/_content/NuDepot.Gallery/css/site.css");
         request.Headers.IfNoneMatch.Add(first.Headers.ETag!);
-        var second = await client.SendAsync(request);
+        HttpResponseMessage second = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.NotModified, second.StatusCode);
     }
@@ -235,9 +233,9 @@ public class WebsitePageTests : IDisposable
     [InlineData("/_content/NuDepot.Gallery/css")]
     public async Task MissingEmbeddedFilesAreNotFound(string url)
     {
-        using var client = _app.GetTestClient();
+        using HttpClient client = App.GetTestClient();
 
-        var response = await client.GetAsync(url);
+        HttpResponseMessage response = await client.GetAsync(url);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -247,9 +245,9 @@ public class WebsitePageTests : IDisposable
     [InlineData("/account/signin")]
     public async Task AccountPagesNeedAFeedWithUsers(string url)
     {
-        using var client = _app.GetTestClient();
+        using HttpClient client = App.GetTestClient();
 
-        var response = await client.GetAsync(url);
+        HttpResponseMessage response = await client.GetAsync(url);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -257,7 +255,7 @@ public class WebsitePageTests : IDisposable
     [Fact]
     public async Task NoSignInLinkWithoutUsers()
     {
-        var html = await GetPageAsync("/");
+        string html = await GetPageAsync("/");
 
         Assert.DoesNotContain("account/signin", html);
         Assert.DoesNotContain("account-nav", html);
@@ -265,8 +263,8 @@ public class WebsitePageTests : IDisposable
 
     private async Task<string> GetPageAsync(string url)
     {
-        using var client = _app.GetTestClient();
-        var response = await client.GetAsync(url);
+        using HttpClient client = App.GetTestClient();
+        HttpResponseMessage response = await client.GetAsync(url);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);

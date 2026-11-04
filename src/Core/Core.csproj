@@ -3,6 +3,7 @@
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
 		<AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
 		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
 		<Description>The NuGet V3 protocol's models and a client for NuGet feeds. Shared by NuDepot.Feed and NuDepot.Gallery, with the builders they add themselves to.</Description>
@@ -19,8 +20,8 @@
 		<!-- NuGet.Packaging references a vulnerable 8.0.1. -->
 		<PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.403">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
 

@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
@@ -9,7 +6,7 @@ namespace NuDepot.Feed;
 /// <summary>
 /// The service that combines the state of indexed packages and
 /// upstream packages.
-/// For upstream packages, see <see cref="IUpstreamClient"/>.
+/// For upstream packages, see <see cref="Upstream.IUpstreamClient"/>.
 /// For indexed packages, see <see cref="IPackageDatabase"/>.
 /// </summary>
 public interface IPackageService

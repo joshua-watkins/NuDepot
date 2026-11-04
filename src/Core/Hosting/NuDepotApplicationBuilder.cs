@@ -1,4 +1,3 @@
-using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,8 +13,8 @@ public sealed class NuDepotApplicationBuilder
 {
     internal NuDepotApplicationBuilder(IApplicationBuilder application, IEndpointRouteBuilder endpoints)
     {
-        Application = application ?? throw new ArgumentNullException(nameof(application));
-        Endpoints = endpoints ?? throw new ArgumentNullException(nameof(endpoints));
+        Application = application;
+        Endpoints = endpoints;
     }
 
     /// <summary>

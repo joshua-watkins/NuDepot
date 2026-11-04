@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using NuDepot.Core.Models;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Search;
@@ -26,7 +23,7 @@ public class DatabaseSearchServiceTests
             await AddAsync(CreatePackage("B", "1.0.0", downloads: 10, "B one", dependsOn: "Target"));
             await AddAsync(CreatePackage("Other", "1.0.0", downloads: 100, "Other", dependsOn: "Unrelated"));
 
-            var response = await _target.FindDependentsAsync("Target", default);
+            DependentsResponse response = await _target.FindDependentsAsync("Target", default);
 
             Assert.Equal(2, response.TotalHits);
             Assert.Collection(
@@ -52,7 +49,7 @@ public class DatabaseSearchServiceTests
             await AddAsync(CreatePackage("A", "2.0.0", downloads: 2, "A two", dependsOn: null));
             await AddAsync(CreatePackage("A", "3.0.0", downloads: 4, "A three", dependsOn: null, listed: false));
 
-            var dependent = Assert.Single((await _target.FindDependentsAsync("Target", default)).Data);
+            PackageDependent dependent = Assert.Single((await _target.FindDependentsAsync("Target", default)).Data);
 
             Assert.Equal(7, dependent.TotalDownloads);
             Assert.Equal("A two", dependent.Description);
@@ -77,14 +74,14 @@ public class DatabaseSearchServiceTests
         [Fact]
         public async Task ReturnsTheMostDownloadedDependents()
         {
-            for (var i = 0; i < DatabaseSearchService.MaxDependents + 5; i++)
+            for (int i = 0; i < DatabaseSearchService.MaxDependents + 5; i++)
             {
                 // Two versions each, so the limit has to count packages rather than versions.
                 await AddAsync(CreatePackage($"P{i:D2}", "1.0.0", downloads: i, $"P{i}", dependsOn: "Target"));
                 await AddAsync(CreatePackage($"P{i:D2}", "2.0.0", downloads: i, $"P{i}", dependsOn: "Target"));
             }
 
-            var data = (await _target.FindDependentsAsync("Target", default)).Data;
+            IReadOnlyList<PackageDependent> data = (await _target.FindDependentsAsync("Target", default)).Data;
 
             Assert.Equal(DatabaseSearchService.MaxDependents, data.Count);
             Assert.Equal(data.Count, data.Select(d => d.Id).Distinct().Count());
@@ -98,27 +95,30 @@ public class DatabaseSearchServiceTests
     /// </summary>
     public class FactsBase : IDisposable
     {
-        private readonly string _connectionString = $"Data Source=DatabaseSearchServiceTests-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
+        private string ConnectionString { get; } = $"Data Source=DatabaseSearchServiceTests-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
 
         // SQLite deletes an in-memory database when its last connection closes.
-        private readonly SqliteConnection _keepAlive;
-        private readonly NuDepotContext _context;
+        private SqliteConnection KeepAlive { get; }
+        private NuDepotContext Context { get; }
 
         protected readonly DatabaseSearchService _target;
 
         public FactsBase()
         {
-            _keepAlive = new SqliteConnection(_connectionString);
-            _keepAlive.Open();
+            KeepAlive = new SqliteConnection(ConnectionString);
+            KeepAlive.Open();
 
-            using (var context = CreateContext())
+            using (NuDepotContext context = CreateContext())
             {
-                context.RunMigrationsAsync(default).GetAwaiter().GetResult();
+                context
+                    .RunMigrationsAsync(default)
+                    .GetAwaiter()
+                    .GetResult();
             }
 
-            _context = CreateContext();
+            Context = CreateContext();
             _target = new DatabaseSearchService(
-                _context,
+                Context,
                 Mock.Of<IFrameworkCompatibilityService>(),
                 Mock.Of<IVulnerabilityService>(),
                 new SearchResponseBuilder(Mock.Of<IUrlGenerator>()));
@@ -126,14 +126,14 @@ public class DatabaseSearchServiceTests
 
         public void Dispose()
         {
-            _context.Dispose();
-            _keepAlive.Dispose();
+            Context.Dispose();
+            KeepAlive.Dispose();
         }
 
         protected NuDepotContext CreateContext()
         {
-            var options = new DbContextOptionsBuilder<NuDepotContext>()
-                .UseSqlite(_connectionString)
+            DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()
+                .UseSqlite(ConnectionString)
                 .Options;
 
             return new NuDepotContext(options);
@@ -141,19 +141,13 @@ public class DatabaseSearchServiceTests
 
         protected async Task AddAsync(Package package)
         {
-            using var context = CreateContext();
+            using NuDepotContext context = CreateContext();
 
             context.Packages.Add(package);
             await context.SaveChangesAsync();
         }
 
-        protected static Package CreatePackage(
-            string id,
-            string version,
-            long downloads,
-            string description,
-            string? dependsOn,
-            bool listed = true)
+        protected static Package CreatePackage(string id, string version, long downloads, string description, string? dependsOn, bool listed = true)
         {
             return new Package
             {
@@ -164,10 +158,10 @@ public class DatabaseSearchServiceTests
                 Listed = listed,
                 PublishedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 Dependencies = dependsOn == null
-                    ? new List<PackageDependency>()
-                    : new List<PackageDependency> { new PackageDependency { Id = dependsOn, VersionRange = "[1.0.0, )", TargetFramework = "net10.0" } },
-                PackageTypes = new List<PackageType> { new PackageType { Name = "Dependency", Version = "0.0" } },
-                TargetFrameworks = new List<TargetFramework> { new TargetFramework { Moniker = "net10.0" } },
+                    ? []
+                    : [new() { Id = dependsOn, VersionRange = "[1.0.0, )", TargetFramework = "net10.0" }],
+                PackageTypes = [new() { Name = "Dependency", Version = "0.0" }],
+                TargetFrameworks = [new() { Moniker = "net10.0" }],
             };
         }
     }

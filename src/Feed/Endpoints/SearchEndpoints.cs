@@ -1,7 +1,6 @@
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using NuDepot.Core.Models;
 using NuDepot.Core.Serialization;
 using NuDepot.Feed.Search;
 
@@ -27,7 +26,7 @@ internal static class SearchEndpoints
         string? packageType = null,
         string? framework = null)
     {
-        var request = new SearchRequest
+        SearchRequest request = new()
         {
             Skip = skip,
             Take = take,
@@ -38,7 +37,7 @@ internal static class SearchEndpoints
             Query = query ?? string.Empty,
         };
 
-        var response = await searchService.SearchAsync(request, cancellationToken);
+        SearchResponse response = await searchService.SearchAsync(request, cancellationToken);
 
         return Results.Json(response, NuGetJsonContext.Default.SearchResponse);
     }
@@ -60,19 +59,19 @@ internal static class SearchEndpoints
         // If only "id" is provided, find package versions. Otherwise, find package IDs.
         if (versionsQuery != null && autocompleteQuery == null)
         {
-            var versionsRequest = new VersionsRequest
+            VersionsRequest versionsRequest = new()
             {
                 IncludePrerelease = prerelease,
                 IncludeSemVer2 = semVerLevel == "2.0.0",
                 PackageId = versionsQuery,
             };
 
-            var versions = await searchService.ListPackageVersionsAsync(versionsRequest, cancellationToken);
+            AutocompleteResponse versions = await searchService.ListPackageVersionsAsync(versionsRequest, cancellationToken);
 
             return Results.Json(versions, NuGetJsonContext.Default.AutocompleteResponse);
         }
 
-        var request = new AutocompleteRequest
+        AutocompleteRequest request = new()
         {
             IncludePrerelease = prerelease,
             IncludeSemVer2 = semVerLevel == "2.0.0",
@@ -82,24 +81,19 @@ internal static class SearchEndpoints
             Query = autocompleteQuery,
         };
 
-        var response = await searchService.AutocompleteAsync(request, cancellationToken);
+        AutocompleteResponse response = await searchService.AutocompleteAsync(request, cancellationToken);
 
         return Results.Json(response, NuGetJsonContext.Default.AutocompleteResponse);
     }
 
     // GET v3/dependents
     // This is an unofficial API to find packages that depend on a given package.
-    public static async Task<IResult> DependentsAsync(
-        ISearchService searchService,
-        CancellationToken cancellationToken,
-        string? packageId = null)
+    public static async Task<IResult> DependentsAsync(ISearchService searchService, CancellationToken cancellationToken, string? packageId = null)
     {
         if (string.IsNullOrWhiteSpace(packageId))
-        {
             return Results.BadRequest();
-        }
 
-        var response = await searchService.FindDependentsAsync(packageId, cancellationToken);
+        DependentsResponse response = await searchService.FindDependentsAsync(packageId, cancellationToken);
 
         return Results.Json(response, NuGetJsonContext.Default.DependentsResponse);
     }

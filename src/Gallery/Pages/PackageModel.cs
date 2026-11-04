@@ -1,16 +1,10 @@
 using Markdig;
 using Microsoft.AspNetCore.Html;
-using NuGet.Frameworks;
-using NuGet.Versioning;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
 using NuDepot.Core.PackageDetails;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using NuGet.Frameworks;
+using NuGet.Versioning;
 
 namespace NuDepot.Gallery.Pages;
 
@@ -21,8 +15,8 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 {
     private static readonly MarkdownPipeline MarkdownPipeline;
 
-    private readonly IPackageDetailsClient _packages = packages ?? throw new ArgumentNullException(nameof(packages));
-    private readonly FeedConnection _feed = feed ?? throw new ArgumentNullException(nameof(feed));
+    private IPackageDetailsClient Packages { get; } = packages;
+    private FeedConnection Feed { get; } = feed;
 
     static PackageModel()
     {
@@ -95,10 +89,11 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     /// <summary>
     /// A link to a package's details page.
     /// </summary>
+    /// <param name="id">The package's ID.</param>
     /// <param name="version">The version to show, or null to show the latest version.</param>
     public string PackageLink(string id, NuGetVersion? version = null)
     {
-        var link = $"{PathBase}/packages/{Uri.EscapeDataString(id)}";
+        string link = $"{PathBase}/packages/{Uri.EscapeDataString(id)}";
 
         return version == null ? link : $"{link}/{Uri.EscapeDataString(version.ToNormalizedString())}";
     }
@@ -108,18 +103,14 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     /// </summary>
     public IReadOnlyList<InstallInstructions> GetInstallInstructions()
     {
-        var id = Package.PackageId;
-        var version = Version.ToNormalizedString();
+        string id = Package.PackageId;
+        string version = Version.ToNormalizedString();
 
         if (IsDotnetTemplate)
-        {
             return [new InstallInstructions(".NET CLI", ">", [$"dotnet new --install {id}::{version}"])];
-        }
 
         if (IsDotnetTool)
-        {
             return [new InstallInstructions(".NET CLI", ">", [$"dotnet tool install --global {id} --version {version}"])];
-        }
 
         return
         [
@@ -132,19 +123,19 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 
     public async Task OnGetAsync(string id, string? version, CancellationToken cancellationToken)
     {
-        var packages = await _packages.GetPackageMetadataAsync(id, cancellationToken);
-        var listedPackages = packages.Where(p => p.IsListed()).ToList();
+        IReadOnlyList<NuDepotPackageMetadata> packages = await Packages.GetPackageMetadataAsync(id, cancellationToken);
+        List<NuDepotPackageMetadata> listedPackages = [.. packages.Where(p => p.IsListed())];
 
         NuDepotPackageMetadata? package = null;
 
         // Try to find the requested version.
-        if (NuGetVersion.TryParse(version, out var requestedVersion))
-        {
+        if (NuGetVersion.TryParse(version, out NuGetVersion? requestedVersion))
             package = packages.SingleOrDefault(p => p.ParseVersion() == requestedVersion);
-        }
 
         // Otherwise try to display the latest version.
-        package ??= listedPackages.OrderByDescending(p => p.ParseVersion()).FirstOrDefault();
+        package ??= listedPackages
+            .OrderByDescending(p => p.ParseVersion())
+            .FirstOrDefault();
 
         if (package == null)
         {
@@ -156,7 +147,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         Package = package;
         Version = Package.ParseVersion();
 
-        var packageTypes = Package.PackageTypes ?? [];
+        IReadOnlyList<string> packageTypes = Package.PackageTypes ?? [];
 
         Found = true;
         IsDotnetTemplate = packageTypes.Any(t => t.Equals("Template", StringComparison.OrdinalIgnoreCase));
@@ -164,20 +155,18 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         LastUpdated = packages.Max(p => p.Published).UtcDateTime;
         TotalDownloads = packages.Sum(p => p.Downloads);
 
-        var dependents = await _packages.GetPackageDependentsAsync(Package.PackageId, cancellationToken);
+        DependentsResponse dependents = await Packages.GetPackageDependentsAsync(Package.PackageId, cancellationToken);
 
         UsedBy = dependents.Data;
         DependencyGroups = ToDependencyGroups(Package);
         Versions = ToVersions(listedPackages, Version);
 
         if (Package.HasReadme)
-        {
             Readme = await GetReadmeHtmlStringOrNullAsync(Package.PackageId, Version, cancellationToken);
-        }
 
-        IconUrl = _feed.ToPublicUrl(Package.IconUrl);
-        LicenseUrl = _feed.ToPublicUrl(Package.LicenseUrl);
-        PackageDownloadUrl = _feed.ToPublicUrl(Package.PackageContentUrl);
+        IconUrl = Feed.ToPublicUrl(Package.IconUrl);
+        LicenseUrl = Feed.ToPublicUrl(Package.LicenseUrl);
+        PackageDownloadUrl = Feed.ToPublicUrl(Package.PackageContentUrl);
     }
 
     private IReadOnlyList<DependencyGroupModel> ToDependencyGroups(NuDepotPackageMetadata package)
@@ -200,7 +189,8 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 
     private string PrettifyTargetFramework(string? targetFramework)
     {
-        if (targetFramework == null) return "All Frameworks";
+        if (targetFramework == null)
+            return "All Frameworks";
 
         NuGetFramework framework;
         try
@@ -214,23 +204,15 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 
         string frameworkName;
         if (framework.Framework.Equals(FrameworkConstants.FrameworkIdentifiers.NetCoreApp, StringComparison.OrdinalIgnoreCase))
-        {
             frameworkName = (framework.Version.Major >= 5) ? ".NET" : ".NET Core";
-        }
         else if (framework.Framework.Equals(FrameworkConstants.FrameworkIdentifiers.NetStandard, StringComparison.OrdinalIgnoreCase))
-        {
             frameworkName = ".NET Standard";
-        }
         else if (framework.Framework.Equals(FrameworkConstants.FrameworkIdentifiers.Net, StringComparison.OrdinalIgnoreCase))
-        {
             frameworkName = ".NET Framework";
-        }
         else
-        {
             frameworkName = framework.Framework;
-        }
 
-        var frameworkVersion = (framework.Version.Build == 0)
+        string frameworkVersion = (framework.Version.Build == 0)
             ? framework.Version.ToString(2)
             : framework.Version.ToString(3);
 
@@ -253,15 +235,16 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     private async Task<HtmlString?> GetReadmeHtmlStringOrNullAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken)
     {
         string readme;
-        using (var readmeStream = await _packages.GetPackageReadmeStreamOrNullAsync(packageId, packageVersion, cancellationToken))
+        using (Stream? readmeStream = await Packages.GetPackageReadmeStreamOrNullAsync(packageId, packageVersion, cancellationToken))
         {
-            if (readmeStream == null) return null;
+            if (readmeStream == null)
+                return null;
 
-            using var reader = new StreamReader(readmeStream);
+            using StreamReader reader = new(readmeStream);
             readme = await reader.ReadToEndAsync(cancellationToken);
         }
 
-        var readmeHtml = Markdown.ToHtml(readme, MarkdownPipeline);
+        string readmeHtml = Markdown.ToHtml(readme, MarkdownPipeline);
         return new HtmlString(readmeHtml);
     }
 

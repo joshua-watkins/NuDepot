@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Metadata;
@@ -18,21 +13,17 @@ namespace NuDepot.Feed.Endpoints;
 internal static class PackageDeprecationEndpoints
 {
     // PUT api/package/{id}/{version}/deprecation
-    public static async Task<IResult> DeprecateAsync(
-        string id,
-        string version,
-        HttpRequest request,
-        IPackageDeprecationService deprecations,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> DeprecateAsync(string id, string version, HttpRequest request, IPackageDeprecationService deprecations, CancellationToken cancellationToken)
     {
-        if (!NuGetVersion.TryParse(version, out var nugetVersion)) return Results.NotFound();
+        if (!NuGetVersion.TryParse(version, out NuGetVersion? nugetVersion))
+            return Results.NotFound();
 
-        var body = await EndpointHelpers.ReadJsonOrNullAsync(request, AdminJsonContext.Default.DeprecationRequest, cancellationToken);
+        DeprecationRequest? body = await EndpointHelpers.ReadJsonOrNullAsync(request, AdminJsonContext.Default.DeprecationRequest, cancellationToken);
 
-        var reasons = new List<string>();
-        foreach (var reason in body?.Reasons ?? Array.Empty<string>())
+        List<string> reasons = [];
+        foreach (string reason in body?.Reasons ?? [])
         {
-            var known = PackageModelExtensions.DeprecationReasons
+            string? known = PackageModelExtensions.DeprecationReasons
                 .FirstOrDefault(r => string.Equals(r, reason, StringComparison.OrdinalIgnoreCase));
             if (known == null)
             {
@@ -41,7 +32,8 @@ internal static class PackageDeprecationEndpoints
                     $"Unknown deprecation reason '{reason}'. Use: {string.Join(", ", PackageModelExtensions.DeprecationReasons)}.");
             }
 
-            if (!reasons.Contains(known)) reasons.Add(known);
+            if (!reasons.Contains(known))
+                reasons.Add(known);
         }
 
         if (body == null || reasons.Count == 0)
@@ -51,14 +43,12 @@ internal static class PackageDeprecationEndpoints
                 $"At least one deprecation reason is required: {string.Join(", ", PackageModelExtensions.DeprecationReasons)}.");
         }
 
-        var alternateId = string.IsNullOrWhiteSpace(body.AlternatePackageId) ? null : body.AlternatePackageId.Trim();
-        var alternateRange = string.IsNullOrWhiteSpace(body.AlternatePackageVersionRange) ? null : body.AlternatePackageVersionRange.Trim();
+        string? alternateId = string.IsNullOrWhiteSpace(body.AlternatePackageId) ? null : body.AlternatePackageId.Trim();
+        string? alternateRange = string.IsNullOrWhiteSpace(body.AlternatePackageVersionRange) ? null : body.AlternatePackageVersionRange.Trim();
         if (alternateRange != null && !VersionRange.TryParse(alternateRange, out _))
-        {
             return EndpointHelpers.Text(StatusCodes.Status400BadRequest, $"'{alternateRange}' isn't a valid version range.");
-        }
 
-        var found = await deprecations.DeprecateAsync(
+        bool found = await deprecations.DeprecateAsync(
             id,
             nugetVersion,
             reasons,
@@ -71,13 +61,10 @@ internal static class PackageDeprecationEndpoints
     }
 
     // DELETE api/package/{id}/{version}/deprecation
-    public static async Task<IResult> UndeprecateAsync(
-        string id,
-        string version,
-        IPackageDeprecationService deprecations,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> UndeprecateAsync(string id, string version, IPackageDeprecationService deprecations, CancellationToken cancellationToken)
     {
-        if (!NuGetVersion.TryParse(version, out var nugetVersion)) return Results.NotFound();
+        if (!NuGetVersion.TryParse(version, out NuGetVersion? nugetVersion))
+            return Results.NotFound();
 
         return await deprecations.UndeprecateAsync(id, nugetVersion, cancellationToken)
             ? Results.NoContent()

@@ -1,8 +1,7 @@
-using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Html;
 using NuDepot.Gallery.Pages;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace NuDepot.Gallery.Serialization;
 

@@ -14,13 +14,13 @@ namespace NuDepot.Core.Models;
 /// </remarks>
 public class NuDepotRegistrationIndexPageItem
 {
-#region Original properties from RegistrationIndexPageItem.
+    #region Original properties from RegistrationIndexPageItem.
     [JsonPropertyName("@id")]
     public string RegistrationLeafUrl { get; set; } = null!;
 
     [JsonPropertyName("packageContent")]
     public string PackageContentUrl { get; set; } = null!;
-#endregion
+    #endregion
 
     /// <summary>
     /// The catalog entry containing the package metadata.

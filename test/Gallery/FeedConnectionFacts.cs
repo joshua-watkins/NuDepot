@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
@@ -24,7 +23,7 @@ public class FeedConnectionFacts
     [Fact]
     public void RemoteFeedUsesConfiguredUrl()
     {
-        var target = CreateRemoteFeed();
+        FeedConnection target = CreateRemoteFeed();
 
         Assert.Equal("https://feed.test/v3/index.json", target.ServiceIndexUrl);
     }
@@ -35,7 +34,7 @@ public class FeedConnectionFacts
     [InlineData("https://feed.test/v3/package/a/1.0.0/a.1.0.0.nupkg", "https://feed.test/v3/package/a/1.0.0/a.1.0.0.nupkg")]
     public void RemoteFeedKeepsUrls(string? url, string? expected)
     {
-        var target = CreateRemoteFeed();
+        FeedConnection target = CreateRemoteFeed();
 
         Assert.Equal(expected, target.ToPublicUrl(url));
     }
@@ -48,7 +47,7 @@ public class FeedConnectionFacts
     [InlineData("http://[::]:5000", "http://localhost:5000/v3/index.json")]
     public void CoHostedFeedUsesListeningAddress(string address, string expected)
     {
-        var target = CreateCoHostedFeed(new[] { address });
+        FeedConnection target = CreateCoHostedFeed([address]);
 
         Assert.Equal(expected, target.ServiceIndexUrl);
     }
@@ -56,7 +55,7 @@ public class FeedConnectionFacts
     [Fact]
     public void CoHostedFeedPrefersHttp()
     {
-        var target = CreateCoHostedFeed(new[] { "https://localhost:5001", "http://localhost:5000" });
+        FeedConnection target = CreateCoHostedFeed(["https://localhost:5001", "http://localhost:5000"]);
 
         Assert.Equal("http://localhost:5000/v3/index.json", target.ServiceIndexUrl);
     }
@@ -69,7 +68,7 @@ public class FeedConnectionFacts
     [InlineData("https://example.org/icon.png", "https://example.org/icon.png")]
     public void CoHostedFeedRewritesLocalUrls(string? url, string? expected)
     {
-        var target = CreateCoHostedFeed(new[] { "http://localhost:5000" });
+        FeedConnection target = CreateCoHostedFeed(["http://localhost:5000"]);
 
         Assert.Equal(expected, target.ToPublicUrl(url));
     }
@@ -80,10 +79,11 @@ public class FeedConnectionFacts
     [InlineData(false, true, false)]
     public void SignInIsAvailableWhenCoHostedWithUsers(bool coHosted, bool users, bool expected)
     {
-        var features = new NuDepotFeatures { Passkeys = users };
+        NuDepotFeatures features = new()
+        { Passkeys = users };
 
-        var target = coHosted
-            ? CreateCoHostedFeed(new[] { "http://localhost:5000" }, features)
+        FeedConnection target = coHosted
+            ? CreateCoHostedFeed(["http://localhost:5000"], features)
             : new FeedConnection(
                 Options.Create(new GalleryOptions { ServiceIndexUrl = "https://feed.test/v3/index.json" }),
                 features,
@@ -96,19 +96,21 @@ public class FeedConnectionFacts
 
     private static FeedConnection CreateCoHostedFeed(IEnumerable<string> addresses, NuDepotFeatures? nuDepotFeatures = null)
     {
-        var addressesFeature = new ServerAddressesFeature();
-        foreach (var address in addresses)
+        ServerAddressesFeature addressesFeature = new();
+        foreach (string address in addresses)
         {
             addressesFeature.Addresses.Add(address);
         }
 
-        var features = new FeatureCollection();
+        FeatureCollection features = new();
         features.Set<IServerAddressesFeature>(addressesFeature);
 
-        var server = new Mock<IServer>();
-        server.Setup(s => s.Features).Returns(features);
+        Mock<IServer> server = new();
+        server
+            .Setup(s => s.Features)
+            .Returns(features);
 
-        var context = new DefaultHttpContext();
+        DefaultHttpContext context = new();
         context.Request.Scheme = "https";
         context.Request.Host = new HostString("nuget.example.com");
         context.Request.PathBase = "/feed";

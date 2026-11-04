@@ -1,7 +1,3 @@
-using System;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
 using NuDepot.Core.Serialization;
@@ -13,27 +9,18 @@ namespace NuDepot.Core.ServiceIndex;
 /// 
 /// See https://docs.microsoft.com/en-us/nuget/api/service-index
 /// </summary>
-public class RawServiceIndexClient : IServiceIndexClient
+/// <param name="httpClient">The HTTP client used to send requests.</param>
+/// <param name="serviceIndexUrl">The NuGet server's service index URL.</param>
+public class RawServiceIndexClient(HttpClient httpClient, string serviceIndexUrl) : IServiceIndexClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _serviceIndexUrl;
-
-    /// <summary>
-    /// Create a service index for the upstream source.
-    /// </summary>
-    /// <param name="httpClient">The HTTP client used to send requests.</param>
-    /// <param name="serviceIndexUrl">The NuGet server's service index URL.</param>
-    public RawServiceIndexClient(HttpClient httpClient, string serviceIndexUrl)
-    {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _serviceIndexUrl = serviceIndexUrl ?? throw new ArgumentNullException(nameof(serviceIndexUrl));
-    }
+    private HttpClient HttpClient { get; } = httpClient;
+    private string ServiceIndexUrl { get; } = serviceIndexUrl;
 
     /// <inheritdoc />
     public async Task<ServiceIndexResponse> GetAsync(CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync(
-            _serviceIndexUrl,
+        return await HttpClient.GetFromJsonAsync(
+            ServiceIndexUrl,
             NuGetJsonContext.Default.ServiceIndexResponse,
             cancellationToken);
     }

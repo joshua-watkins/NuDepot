@@ -1,7 +1,3 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Extensions;
@@ -16,16 +12,14 @@ public class FileStorageService : IStorageService
     // See: https://github.com/dotnet/corefx/blob/master/src/Common/src/CoreLib/System/IO/Stream.cs#L35
     private const int DefaultCopyBufferSize = 81920;
 
-    private readonly string _storePath;
+    private string StorePath { get; }
 
     public FileStorageService(IOptionsSnapshot<FeedOptions> options)
     {
-        if (options == null) throw new ArgumentNullException(nameof(options));
-
         // Resolve relative path components ('.'/'..') and ensure there is a trailing slash.
-        _storePath = Path.GetFullPath(options.Value.Storage.Path ?? Directory.GetCurrentDirectory());
-        if (!_storePath.EndsWith(Path.DirectorySeparatorChar.ToString()))
-            _storePath += Path.DirectorySeparatorChar;
+        StorePath = Path.GetFullPath(options.Value.Storage.Path ?? Directory.GetCurrentDirectory());
+        if (!StorePath.EndsWith(Path.DirectorySeparatorChar.ToString()))
+            StorePath += Path.DirectorySeparatorChar;
     }
 
     public Task<Stream?> GetAsync(string path, CancellationToken cancellationToken = default)
@@ -33,7 +27,7 @@ public class FileStorageService : IStorageService
         cancellationToken.ThrowIfCancellationRequested();
 
         path = GetFullPath(path);
-        var content = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        FileStream content = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
 
         return Task.FromResult<Stream?>(content);
     }
@@ -42,19 +36,17 @@ public class FileStorageService : IStorageService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var result = new Uri(GetFullPath(path));
+        Uri result = new(GetFullPath(path));
 
         return Task.FromResult<Uri?>(result);
     }
 
-    public async Task<StoragePutResult> PutAsync(
-        string path,
-        Stream content,
-        string contentType,
-        CancellationToken cancellationToken = default)
+    public async Task<StoragePutResult> PutAsync(string path, Stream content, string contentType, CancellationToken cancellationToken = default)
     {
-        if (content == null) throw new ArgumentNullException(nameof(content));
-        if (string.IsNullOrEmpty(contentType)) throw new ArgumentException("Content type is required", nameof(contentType));
+        if (content == null)
+            throw new ArgumentNullException(nameof(content));
+        if (string.IsNullOrEmpty(contentType))
+            throw new ArgumentException("Content type is required", nameof(contentType));
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -65,7 +57,7 @@ public class FileStorageService : IStorageService
 
         try
         {
-            using (var fileStream = File.Open(path, FileMode.CreateNew))
+            using (FileStream fileStream = File.Open(path, FileMode.CreateNew))
             {
                 await content.CopyToAsync(fileStream, DefaultCopyBufferSize, cancellationToken);
                 return StoragePutResult.Success;
@@ -73,7 +65,7 @@ public class FileStorageService : IStorageService
         }
         catch (IOException) when (File.Exists(path))
         {
-            using (var targetStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (FileStream targetStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 content.Position = 0;
                 return content.Matches(targetStream)
@@ -101,18 +93,14 @@ public class FileStorageService : IStorageService
     private string GetFullPath(string path)
     {
         if (string.IsNullOrEmpty(path))
-        {
             throw new ArgumentException("Path is required", nameof(path));
-        }
 
-        var fullPath = Path.GetFullPath(Path.Combine(_storePath, path));
+        string fullPath = Path.GetFullPath(Path.Combine(StorePath, path));
 
         // Verify path is under the _storePath.
-        if (!fullPath.StartsWith(_storePath, StringComparison.Ordinal) ||
-            fullPath.Length == _storePath.Length)
-        {
+        if (!fullPath.StartsWith(StorePath, StringComparison.Ordinal) ||
+            fullPath.Length == StorePath.Length)
             throw new ArgumentException("Path resolves outside store path", nameof(path));
-        }
 
         return fullPath;
     }

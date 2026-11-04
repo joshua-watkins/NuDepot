@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NuGet.Packaging;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
@@ -8,46 +7,21 @@ using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Search;
 using NuDepot.Feed.Signing;
 using NuDepot.Feed.Storage;
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using NuGet.Packaging;
 
 namespace NuDepot.Feed.Indexing;
 
-public class PackageIndexingService : IPackageIndexingService
+public class PackageIndexingService(IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, IOptionsSnapshot<FeedOptions> options, ILogger<PackageIndexingService> logger) : IPackageIndexingService
 {
-    private readonly IPackageDatabase _packages;
-    private readonly IPackageStorageService _storage;
-    private readonly ISearchIndexer _search;
-    private readonly ICatalogService _catalog;
-    private readonly IRepositorySigningService _signing;
-    private readonly IUrlGenerator _url;
-    private readonly SystemTime _time;
-    private readonly IOptionsSnapshot<FeedOptions> _options;
-    private readonly ILogger<PackageIndexingService> _logger;
-
-    public PackageIndexingService(
-        IPackageDatabase packages,
-        IPackageStorageService storage,
-        ISearchIndexer search,
-        ICatalogService catalog,
-        IRepositorySigningService signing,
-        IUrlGenerator url,
-        SystemTime time,
-        IOptionsSnapshot<FeedOptions> options,
-        ILogger<PackageIndexingService> logger)
-    {
-        _packages = packages ?? throw new ArgumentNullException(nameof(packages));
-        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-        _search = search ?? throw new ArgumentNullException(nameof(search));
-        _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-        _signing = signing ?? throw new ArgumentNullException(nameof(signing));
-        _url = url ?? throw new ArgumentNullException(nameof(url));
-        _time = time ?? throw new ArgumentNullException(nameof(time));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private IPackageDatabase Packages { get; } = packages;
+    private IPackageStorageService Storage { get; } = storage;
+    private ISearchIndexer Search { get; } = search;
+    private ICatalogService Catalog { get; } = catalog;
+    private IRepositorySigningService Signing { get; } = signing;
+    private IUrlGenerator Url { get; } = url;
+    private SystemTime Time { get; } = time;
+    private IOptionsSnapshot<FeedOptions> Options { get; } = options;
+    private ILogger<PackageIndexingService> Logger { get; } = logger;
 
     public Task<PackageIndexingResult> IndexAsync(Stream packageStream, CancellationToken cancellationToken)
         => IndexAsync(packageStream, allowOverwrite: true, cancellationToken);
@@ -63,10 +37,10 @@ public class PackageIndexingService : IPackageIndexingService
 
         try
         {
-            using (var packageReader = new PackageArchiveReader(packageStream, leaveStreamOpen: true))
+            using (PackageArchiveReader packageReader = new(packageStream, leaveStreamOpen: true))
             {
                 package = packageReader.GetPackageMetadata();
-                package.PublishedAt = _time.UtcNow;
+                package.PublishedAt = Time.UtcNow;
 
                 nuspecStream = await packageReader.GetNuspecAsync(cancellationToken);
                 nuspecStream = await nuspecStream.AsTemporaryFileStreamAsync(cancellationToken);
@@ -93,7 +67,7 @@ public class PackageIndexingService : IPackageIndexingService
 
                 if (package.HasEmbeddedLicense)
                 {
-                    var license = await packageReader.GetLicenseAsync(cancellationToken)
+                    Stream license = await packageReader.GetLicenseAsync(cancellationToken)
                         ?? throw new InvalidOperationException("Package does not have a license file!");
                     licenseStream = await license.AsTemporaryFileStreamAsync(cancellationToken);
                 }
@@ -105,35 +79,33 @@ public class PackageIndexingService : IPackageIndexingService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Uploaded package is invalid");
+            Logger.LogError(e, "Uploaded package is invalid");
 
             return PackageIndexingResult.InvalidPackage;
         }
 
         // The package is well-formed. Ensure this is a new package.
-        if (await _packages.ExistsAsync(package.Id, package.Version, cancellationToken))
+        if (await Packages.ExistsAsync(package.Id, package.Version, cancellationToken))
         {
-            if (!_options.Value.AllowPackageOverwrites || !allowOverwrite)
-            {
+            if (!Options.Value.AllowPackageOverwrites || !allowOverwrite)
                 return PackageIndexingResult.PackageAlreadyExists;
-            }
 
-            await _packages.HardDeletePackageAsync(package.Id, package.Version, cancellationToken);
-            await _storage.DeleteAsync(package.Id, package.Version, cancellationToken);
-            await _catalog.AddPackageDeleteAsync(package.Id, package.Version, cancellationToken);
+            await Packages.HardDeletePackageAsync(package.Id, package.Version, cancellationToken);
+            await Storage.DeleteAsync(package.Id, package.Version, cancellationToken);
+            await Catalog.AddPackageDeleteAsync(package.Id, package.Version, cancellationToken);
         }
 
         // TODO: Add more package validations
         // TODO: Call PackageArchiveReader.ValidatePackageEntriesAsync
-        _logger.LogInformation(
+        Logger.LogInformation(
             "Validated package {PackageId} {PackageVersion}, persisting content to storage...",
             package.Id,
             package.NormalizedVersionString);
 
-        var signing = _signing.Certificate == null
+        RepositorySigningResult signing = Signing.Certificate == null
             ? RepositorySigningResult.Unsigned
-            : await _signing.SignAsync(packageStream, _url.GetServiceIndexUrl(), cancellationToken);
-        var storedPackageStream = signing.SignedPackage ?? packageStream;
+            : await Signing.SignAsync(packageStream, Url.GetServiceIndexUrl(), cancellationToken);
+        Stream storedPackageStream = signing.SignedPackage ?? packageStream;
 
         try
         {
@@ -144,7 +116,7 @@ public class PackageIndexingService : IPackageIndexingService
             (package.PackageHash, package.PackageSize) = await storedPackageStream.ComputeSha512Async(cancellationToken);
             storedPackageStream.Position = 0;
 
-            await _storage.SavePackageContentAsync(
+            await Storage.SavePackageContentAsync(
                 package,
                 storedPackageStream,
                 nuspecStream,
@@ -158,7 +130,7 @@ public class PackageIndexingService : IPackageIndexingService
             // This may happen due to concurrent pushes.
             // TODO: Make IPackageStorageService.SavePackageContentAsync return a result enum so this
             // can be properly handled.
-            _logger.LogError(
+            Logger.LogError(
                 e,
                 "Failed to persist package {PackageId} {PackageVersion} content to storage",
                 package.Id,
@@ -171,15 +143,15 @@ public class PackageIndexingService : IPackageIndexingService
             signing.SignedPackage?.Dispose();
         }
 
-        _logger.LogInformation(
+        Logger.LogInformation(
             "Persisted package {Id} {Version} content to storage, saving metadata to database...",
             package.Id,
             package.NormalizedVersionString);
 
-        var result = await _packages.AddAsync(package, cancellationToken);
+        PackageAddResult result = await Packages.AddAsync(package, cancellationToken);
         if (result == PackageAddResult.PackageAlreadyExists)
         {
-            _logger.LogWarning(
+            Logger.LogWarning(
                 "Package {Id} {Version} metadata already exists in database",
                 package.Id,
                 package.NormalizedVersionString);
@@ -189,21 +161,21 @@ public class PackageIndexingService : IPackageIndexingService
 
         if (result != PackageAddResult.Success)
         {
-            _logger.LogError($"Unknown {nameof(PackageAddResult)} value: {{PackageAddResult}}", result);
+            Logger.LogError($"Unknown {nameof(PackageAddResult)} value: {{PackageAddResult}}", result);
 
             throw new InvalidOperationException($"Unknown {nameof(PackageAddResult)} value: {result}");
         }
 
-        await _catalog.AddPackageDetailsAsync(new[] { package }, cancellationToken);
+        await Catalog.AddPackageDetailsAsync([package], cancellationToken);
 
-        _logger.LogInformation(
+        Logger.LogInformation(
             "Successfully persisted package {Id} {Version} metadata to database. Indexing in search...",
             package.Id,
             package.NormalizedVersionString);
 
-        await _search.IndexAsync(package, cancellationToken);
+        await Search.IndexAsync(package, cancellationToken);
 
-        _logger.LogInformation(
+        Logger.LogInformation(
             "Successfully indexed package {Id} {Version} in search",
             package.Id,
             package.NormalizedVersionString);

@@ -1,25 +1,20 @@
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 using NuDepot.Feed.Entities.Converters;
 using NuDepot.Feed.Upstream;
+using System.Net;
+using System.Text;
 using Xunit;
 
 namespace NuDepot.Feed.Tests.Services;
 
 public class StringArrayToJsonConverterTests
 {
-    private readonly StringArrayToJsonConverter _converter = StringArrayToJsonConverter.Instance;
+    private StringArrayToJsonConverter Converter { get; } = StringArrayToJsonConverter.Instance;
 
     [Fact]
     public void StoresValuesLikeJsonNet()
     {
-        var stored = (string?)_converter.ConvertToProvider(new[] { "c++", "<web>", "café", "a\"b" });
+        string? stored = (string?)Converter.ConvertToProvider(new[] { "c++", "<web>", "café", "a\"b" });
 
         Assert.Equal("[\"c++\",\"<web>\",\"café\",\"a\\\"b\"]", stored);
     }
@@ -31,7 +26,7 @@ public class StringArrayToJsonConverterTests
     [InlineData("", new string[0])]
     public void ReadsStoredValues(string stored, string[] expected)
     {
-        Assert.Equal(expected, (string[]?)_converter.ConvertFromProvider(stored));
+        Assert.Equal(expected, (string[]?)Converter.ConvertFromProvider(stored));
     }
 }
 
@@ -40,7 +35,7 @@ public class PackageDownloadsJsonSourceTests
     [Fact]
     public async Task ParsesDownloads()
     {
-        var source = CreateSource(@"[
+        PackageDownloadsJsonSource source = CreateSource(@"[
             [""Contoso.Json"", [""1.0.0"", 10], [""2.0.0-Beta"", 5000000000]],
             [""contoso.json"", [""1.0.0.0"", 12]],
             [""Other"", ""not-an-array""],
@@ -48,9 +43,9 @@ public class PackageDownloadsJsonSourceTests
             [""Empty""]
         ]");
 
-        var downloads = await source.GetPackageDownloadsAsync();
+        Dictionary<string, Dictionary<string, long>> downloads = await source.GetPackageDownloadsAsync();
 
-        Assert.Equal(new[] { "contoso.json", "invalid", "empty" }, downloads.Keys);
+        Assert.Equal(["contoso.json", "invalid", "empty"], downloads.Keys);
         Assert.Equal(
             new Dictionary<string, long> { ["1.0.0"] = 12, ["2.0.0-beta"] = 5000000000 },
             downloads["contoso.json"]);
@@ -59,20 +54,20 @@ public class PackageDownloadsJsonSourceTests
     }
 
     private static PackageDownloadsJsonSource CreateSource(string json)
-        => new PackageDownloadsJsonSource(
+        => new(
             new HttpClient(new StaticResponseHandler(json)),
             NullLogger<PackageDownloadsJsonSource>.Instance);
 
     private class StaticResponseHandler : HttpMessageHandler
     {
-        private readonly string _content;
+        private string Content { get; }
 
-        public StaticResponseHandler(string content) => _content = content;
+        public StaticResponseHandler(string content) => Content = content;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(_content, Encoding.UTF8, "application/json"),
+                Content = new StringContent(Content, Encoding.UTF8, "application/json"),
             });
     }
 }

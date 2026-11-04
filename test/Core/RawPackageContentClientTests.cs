@@ -1,24 +1,18 @@
-using System;
-using System.Threading.Tasks;
+using NuDepot.Core.Models;
 using NuDepot.Core.PackageContent;
 using NuDepot.Core.Tests.Support;
 using Xunit;
 
 namespace NuDepot.Core.Tests;
 
-public class RawPackageContentTests : IClassFixture<ProtocolFixture>
+public class RawPackageContentTests(ProtocolFixture fixture) : IClassFixture<ProtocolFixture>
 {
-    private readonly RawPackageContentClient _target;
-
-    public RawPackageContentTests(ProtocolFixture fixture)
-    {
-        _target = fixture.ContentClient;
-    }
+    private RawPackageContentClient Target { get; } = fixture.ContentClient;
 
     [Fact]
     public async Task GetsPackageVersions()
     {
-        var result = await _target.GetPackageVersionsOrNullAsync("Test.Package");
+        PackageVersionsResponse? result = await Target.GetPackageVersionsOrNullAsync("Test.Package");
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Versions.Count);
@@ -29,7 +23,7 @@ public class RawPackageContentTests : IClassFixture<ProtocolFixture>
     [Fact]
     public async Task ReturnsNullIfPackageDoesNotExist()
     {
-        var result = await _target.GetPackageVersionsOrNullAsync(Guid.NewGuid().ToString());
+        PackageVersionsResponse? result = await Target.GetPackageVersionsOrNullAsync(Guid.NewGuid().ToString());
 
         Assert.Null(result);
     }

@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 
 namespace NuDepot.Core.Search;
@@ -27,13 +25,5 @@ public interface ISearchClient
     /// </param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The search response.</returns>
-    Task<SearchResponse> SearchAsync(
-        string? query = null,
-        int skip = 0,
-        int take = 20,
-        bool includePrerelease = true,
-        bool includeSemVer2 = true,
-        string? packageType = null,
-        string? framework = null,
-        CancellationToken cancellationToken = default);
+    Task<SearchResponse> SearchAsync(string? query = null, int skip = 0, int take = 20, bool includePrerelease = true, bool includeSemVer2 = true, string? packageType = null, string? framework = null, CancellationToken cancellationToken = default);
 }

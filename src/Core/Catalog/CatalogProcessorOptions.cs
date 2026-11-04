@@ -1,5 +1,3 @@
-using System;
-
 namespace NuDepot.Core.Catalog;
 
 /// <summary>

@@ -1,8 +1,3 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace NuDepot.Feed.Storage;
 
 /// <summary>
@@ -46,11 +41,7 @@ public interface IStorageService
     /// <param name="contentType">The type of content that is being stored.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The result of the put operation.</returns>
-    Task<StoragePutResult> PutAsync(
-        string path,
-        Stream content,
-        string contentType,
-        CancellationToken cancellationToken = default);
+    Task<StoragePutResult> PutAsync(string path, Stream content, string contentType, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Remove content from storage.

@@ -1,14 +1,10 @@
 using Microsoft.Extensions.Logging;
-using NuGet.Versioning;
 using NuDepot.Feed.Entities;
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using NuGet.Versioning;
 
 namespace NuDepot.Feed.Storage;
 
-public class PackageStorageService : IPackageStorageService
+public class PackageStorageService(IStorageService storage, ILogger<PackageStorageService> logger) : IPackageStorageService
 {
     private const string PackagesPathPrefix = "packages";
 
@@ -20,51 +16,36 @@ public class PackageStorageService : IPackageStorageService
     private const string ReadmeContentType = "text/markdown";
     private const string IconContentType = "image/xyz";
 
-    private readonly IStorageService _storage;
-    private readonly ILogger<PackageStorageService> _logger;
+    private IStorageService Storage { get; } = storage;
+    private ILogger<PackageStorageService> Logger { get; } = logger;
 
-    public PackageStorageService(
-        IStorageService storage,
-        ILogger<PackageStorageService> logger)
-    {
-        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    public async Task SavePackageContentAsync(
-        Package package,
-        Stream packageStream,
-        Stream nuspecStream,
-        Stream? readmeStream,
-        Stream? iconStream,
-        Stream? licenseStream,
-        CancellationToken cancellationToken = default)
+    public async Task SavePackageContentAsync(Package package, Stream packageStream, Stream nuspecStream, Stream? readmeStream, Stream? iconStream, Stream? licenseStream, CancellationToken cancellationToken = default)
     {
         package = package ?? throw new ArgumentNullException(nameof(package));
         packageStream = packageStream ?? throw new ArgumentNullException(nameof(packageStream));
         nuspecStream = nuspecStream ?? throw new ArgumentNullException(nameof(nuspecStream));
 
-        var lowercasedId = package.Id.ToLowerInvariant();
-        var lowercasedNormalizedVersion = package.NormalizedVersionString.ToLowerInvariant();
+        string lowercasedId = package.Id.ToLowerInvariant();
+        string lowercasedNormalizedVersion = package.NormalizedVersionString.ToLowerInvariant();
 
-        var packagePath = PackagePath(lowercasedId, lowercasedNormalizedVersion);
-        var nuspecPath = NuspecPath(lowercasedId, lowercasedNormalizedVersion);
-        var readmePath = ReadmePath(lowercasedId, lowercasedNormalizedVersion);
-        var iconPath = IconPath(lowercasedId, lowercasedNormalizedVersion);
-        var licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, package.LicenseIsMarkDown);
+        string packagePath = PackagePath(lowercasedId, lowercasedNormalizedVersion);
+        string nuspecPath = NuspecPath(lowercasedId, lowercasedNormalizedVersion);
+        string readmePath = ReadmePath(lowercasedId, lowercasedNormalizedVersion);
+        string iconPath = IconPath(lowercasedId, lowercasedNormalizedVersion);
+        string licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, package.LicenseIsMarkDown);
 
-        _logger.LogInformation(
+        Logger.LogInformation(
             "Storing package {PackageId} {PackageVersion} at {Path}...",
             lowercasedId,
             lowercasedNormalizedVersion,
             packagePath);
 
         // Store the package.
-        var result = await _storage.PutAsync(packagePath, packageStream, PackageContentType, cancellationToken);
+        StoragePutResult result = await Storage.PutAsync(packagePath, packageStream, PackageContentType, cancellationToken);
         if (result == StoragePutResult.Conflict)
         {
             // TODO: This should be returned gracefully with an enum.
-            _logger.LogInformation(
+            Logger.LogInformation(
                 "Could not store package {PackageId} {PackageVersion} at {Path} due to conflict",
                 lowercasedId,
                 lowercasedNormalizedVersion,
@@ -74,17 +55,17 @@ public class PackageStorageService : IPackageStorageService
         }
 
         // Store the package's nuspec.
-        _logger.LogInformation(
+        Logger.LogInformation(
             "Storing package {PackageId} {PackageVersion} nuspec at {Path}...",
             lowercasedId,
             lowercasedNormalizedVersion,
             nuspecPath);
 
-        result = await _storage.PutAsync(nuspecPath, nuspecStream, NuspecContentType, cancellationToken);
+        result = await Storage.PutAsync(nuspecPath, nuspecStream, NuspecContentType, cancellationToken);
         if (result == StoragePutResult.Conflict)
         {
             // TODO: This should be returned gracefully with an enum.
-            _logger.LogInformation(
+            Logger.LogInformation(
                 "Could not store package {PackageId} {PackageVersion} nuspec at {Path} due to conflict",
                 lowercasedId,
                 lowercasedNormalizedVersion,
@@ -96,17 +77,17 @@ public class PackageStorageService : IPackageStorageService
         // Store the package's readme, if one exists.
         if (readmeStream != null)
         {
-            _logger.LogInformation(
+            Logger.LogInformation(
                 "Storing package {PackageId} {PackageVersion} readme at {Path}...",
                 lowercasedId,
                 lowercasedNormalizedVersion,
                 readmePath);
 
-            result = await _storage.PutAsync(readmePath, readmeStream, ReadmeContentType, cancellationToken);
+            result = await Storage.PutAsync(readmePath, readmeStream, ReadmeContentType, cancellationToken);
             if (result == StoragePutResult.Conflict)
             {
                 // TODO: This should be returned gracefully with an enum.
-                _logger.LogInformation(
+                Logger.LogInformation(
                     "Could not store package {PackageId} {PackageVersion} readme at {Path} due to conflict",
                     lowercasedId,
                     lowercasedNormalizedVersion,
@@ -119,17 +100,17 @@ public class PackageStorageService : IPackageStorageService
         // Store the package's icon, if one exists.
         if (iconStream != null)
         {
-            _logger.LogInformation(
+            Logger.LogInformation(
                 "Storing package {PackageId} {PackageVersion} icon at {Path}...",
                 lowercasedId,
                 lowercasedNormalizedVersion,
                 iconPath);
 
-            result = await _storage.PutAsync(iconPath, iconStream, IconContentType, cancellationToken);
+            result = await Storage.PutAsync(iconPath, iconStream, IconContentType, cancellationToken);
             if (result == StoragePutResult.Conflict)
             {
                 // TODO: This should be returned gracefully with an enum.
-                _logger.LogInformation(
+                Logger.LogInformation(
                     "Could not store package {PackageId} {PackageVersion} icon at {Path} due to conflict",
                     lowercasedId,
                     lowercasedNormalizedVersion,
@@ -142,24 +123,20 @@ public class PackageStorageService : IPackageStorageService
         // Store the package's license, if one exists.
         if (licenseStream != null)
         {
-            _logger.LogInformation(
+            Logger.LogInformation(
                 "Storing package {PackageId} {PackageVersion} license at {Path}...",
                 lowercasedId,
                 lowercasedNormalizedVersion,
                 licensePath);
 
             if (package.LicenseIsMarkDown)
-            {
-                result = await _storage.PutAsync(licensePath, licenseStream, LicenseMarkDownContentType, cancellationToken);
-            }
+                result = await Storage.PutAsync(licensePath, licenseStream, LicenseMarkDownContentType, cancellationToken);
             else
-            {
-                result = await _storage.PutAsync(licensePath, licenseStream, LicenseTextContentType, cancellationToken);
-            }
+                result = await Storage.PutAsync(licensePath, licenseStream, LicenseTextContentType, cancellationToken);
             if (result == StoragePutResult.Conflict)
             {
                 // TODO: This should be returned gracefully with an enum.
-                _logger.LogInformation(
+                Logger.LogInformation(
                     "Could not store package {PackageId} {PackageVersion} license at {Path} due to conflict",
                     lowercasedId,
                     lowercasedNormalizedVersion,
@@ -169,7 +146,7 @@ public class PackageStorageService : IPackageStorageService
             }
         }
 
-        _logger.LogInformation(
+        Logger.LogInformation(
             "Finished storing package {PackageId} {PackageVersion}",
             lowercasedId,
             lowercasedNormalizedVersion);
@@ -197,50 +174,54 @@ public class PackageStorageService : IPackageStorageService
 
     public async Task<Stream?> GetLicenseStreamAsync(string id, NuGetVersion version, bool licenseIsMarkDown, CancellationToken cancellationToken)
     {
-        var lowercasedId = id.ToLowerInvariant();
-        var lowercasedNormalizedVersion = version.ToNormalizedString().ToLowerInvariant();
-        var licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, licenseIsMarkDown);
+        string lowercasedId = id.ToLowerInvariant();
+        string lowercasedNormalizedVersion = version
+            .ToNormalizedString()
+            .ToLowerInvariant();
+        string licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, licenseIsMarkDown);
         return await GetStreamAsync(licensePath, cancellationToken);
     }
 
     public async Task DeleteAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        var lowercasedId = id.ToLowerInvariant();
-        var lowercasedNormalizedVersion = version.ToNormalizedString().ToLowerInvariant();
+        string lowercasedId = id.ToLowerInvariant();
+        string lowercasedNormalizedVersion = version
+            .ToNormalizedString()
+            .ToLowerInvariant();
 
-        var packagePath = PackagePath(lowercasedId, lowercasedNormalizedVersion);
-        var nuspecPath = NuspecPath(lowercasedId, lowercasedNormalizedVersion);
-        var readmePath = ReadmePath(lowercasedId, lowercasedNormalizedVersion);
-        var iconPath = IconPath(lowercasedId, lowercasedNormalizedVersion);
-        var licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, false);
+        string packagePath = PackagePath(lowercasedId, lowercasedNormalizedVersion);
+        string nuspecPath = NuspecPath(lowercasedId, lowercasedNormalizedVersion);
+        string readmePath = ReadmePath(lowercasedId, lowercasedNormalizedVersion);
+        string iconPath = IconPath(lowercasedId, lowercasedNormalizedVersion);
+        string licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, false);
         if (!File.Exists(licensePath))
-        {
             licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, true);
-        }
 
-        await _storage.DeleteAsync(packagePath, cancellationToken);
-        await _storage.DeleteAsync(nuspecPath, cancellationToken);
-        await _storage.DeleteAsync(readmePath, cancellationToken);
-        await _storage.DeleteAsync(iconPath, cancellationToken);
-        await _storage.DeleteAsync(licensePath, cancellationToken);
+        await Storage.DeleteAsync(packagePath, cancellationToken);
+        await Storage.DeleteAsync(nuspecPath, cancellationToken);
+        await Storage.DeleteAsync(readmePath, cancellationToken);
+        await Storage.DeleteAsync(iconPath, cancellationToken);
+        await Storage.DeleteAsync(licensePath, cancellationToken);
     }
 
     private async Task<Stream?> GetStreamAsync(string id, NuGetVersion version, Func<string, string, string> pathFunc, CancellationToken cancellationToken)
     {
-        var lowercasedId = id.ToLowerInvariant();
-        var lowercasedNormalizedVersion = version.ToNormalizedString().ToLowerInvariant();
-        var path = pathFunc(lowercasedId, lowercasedNormalizedVersion);
+        string lowercasedId = id.ToLowerInvariant();
+        string lowercasedNormalizedVersion = version
+            .ToNormalizedString()
+            .ToLowerInvariant();
+        string path = pathFunc(lowercasedId, lowercasedNormalizedVersion);
 
         try
         {
-            return await _storage.GetAsync(path, cancellationToken);
+            return await Storage.GetAsync(path, cancellationToken);
         }
         catch (DirectoryNotFoundException)
         {
             // The "packages" prefix was lowercased, which was a breaking change
             // on filesystems that are case sensitive. Handle this case to help
             // users migrate to the latest version of NuDepot.
-            _logger.LogError(
+            Logger.LogError(
                 $"Unable to find the '{PackagesPathPrefix}' folder. " +
                 "If you've recently upgraded NuDepot, please make sure this folder starts with a lowercased letter.");
             throw;
@@ -251,14 +232,14 @@ public class PackageStorageService : IPackageStorageService
     {
         try
         {
-            return await _storage.GetAsync(path, cancellationToken);
+            return await Storage.GetAsync(path, cancellationToken);
         }
         catch (DirectoryNotFoundException)
         {
             // The "packages" prefix was lowercased, which was a breaking change
             // on filesystems that are case sensitive. Handle this case to help
             // users migrate to the latest version of NuDepot.
-            _logger.LogError(
+            Logger.LogError(
                 $"Unable to find the '{PackagesPathPrefix}' folder. " +
                 "If you've recently upgraded NuDepot, please make sure this folder starts with a lowercased letter.");
             throw;
@@ -303,7 +284,7 @@ public class PackageStorageService : IPackageStorageService
 
     private string LicensePath(string lowercasedId, string lowercasedNormalizedVersion, bool licenseIsMarkDown)
     {
-        var path = Path.Combine(PackagesPathPrefix, lowercasedId, lowercasedNormalizedVersion, "license");
+        string path = Path.Combine(PackagesPathPrefix, lowercasedId, lowercasedNormalizedVersion, "license");
         path += licenseIsMarkDown ? ".md" : ".txt";
         return path;
     }

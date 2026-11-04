@@ -1,4 +1,3 @@
-using System.Net.Http;
 using NuDepot.Core.Catalog;
 using NuDepot.Core.PackageContent;
 using NuDepot.Core.PackageMetadata;
@@ -11,7 +10,7 @@ public class ProtocolFixture
 {
     public ProtocolFixture()
     {
-        var httpClient = new HttpClient(new TestDataHttpMessageHandler());
+        HttpClient httpClient = new(new TestDataHttpMessageHandler());
 
         NuGetClientFactory = new NuGetClientFactory(httpClient, TestData.ServiceIndexUrl);
         NuGetClient = new NuGetClient(NuGetClientFactory);

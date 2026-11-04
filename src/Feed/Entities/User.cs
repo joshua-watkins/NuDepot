@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Users;
 
@@ -48,11 +46,11 @@ public class User
 
     public DateTime? CeremonyExpiresAt { get; set; }
 
-    public List<UserPasskey> Passkeys { get; set; } = new();
+    public List<UserPasskey> Passkeys { get; set; } = [];
 
-    public List<UserApiKey> ApiKeys { get; set; } = new();
+    public List<UserApiKey> ApiKeys { get; set; } = [];
 
-    public List<UserSession> Sessions { get; set; } = new();
+    public List<UserSession> Sessions { get; set; } = [];
 }
 
 /// <summary>

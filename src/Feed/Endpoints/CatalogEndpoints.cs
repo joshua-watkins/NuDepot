@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using NuDepot.Core.Models;
 using NuDepot.Core.Serialization;
@@ -16,7 +14,7 @@ internal static class CatalogEndpoints
     // GET v3/catalog/index.json
     public static async Task<IResult> IndexAsync(ICatalogService catalog, CancellationToken cancellationToken)
     {
-        var index = await catalog.GetIndexAsync(cancellationToken);
+        CatalogIndex index = await catalog.GetIndexAsync(cancellationToken);
 
         return Results.Json(index, NuGetJsonContext.Default.CatalogIndex);
     }
@@ -24,11 +22,9 @@ internal static class CatalogEndpoints
     // GET v3/catalog/page{page}.json
     public static async Task<IResult> PageAsync(int page, ICatalogService catalog, CancellationToken cancellationToken)
     {
-        var result = await catalog.GetPageOrNullAsync(page, cancellationToken);
+        CatalogPage? result = await catalog.GetPageOrNullAsync(page, cancellationToken);
         if (result == null)
-        {
             return Results.NotFound();
-        }
 
         return Results.Json(result, NuGetJsonContext.Default.CatalogPage);
     }

@@ -1,6 +1,4 @@
 using NuGet.Versioning;
-using System;
-using System.Collections.Generic;
 
 namespace NuDepot.Feed.Entities;
 
@@ -23,7 +21,9 @@ public class Package
 
         set
         {
-            NormalizedVersionString = value.ToNormalizedString().ToLowerInvariant();
+            NormalizedVersionString = value
+                .ToNormalizedString()
+                .ToLowerInvariant();
             OriginalVersionString = value.OriginalVersion;
         }
     }
@@ -68,9 +68,9 @@ public class Package
     /// </summary>
     public byte[]? RowVersion { get; set; }
 
-    public List<PackageDependency> Dependencies { get; set; } = new();
-    public List<PackageType> PackageTypes { get; set; } = new();
-    public List<TargetFramework> TargetFrameworks { get; set; } = new();
+    public List<PackageDependency> Dependencies { get; set; } = [];
+    public List<PackageType> PackageTypes { get; set; } = [];
+    public List<TargetFramework> TargetFrameworks { get; set; } = [];
 
     public string NormalizedVersionString { get; set; } = null!;
     public string? OriginalVersionString { get; set; }

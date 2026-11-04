@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 using NuGet.Versioning;
 
@@ -25,9 +21,7 @@ public interface IPackageDetailsClient
     /// <param name="packageId">The package ID.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package's metadata, or an empty list if the package does not exist.</returns>
-    Task<IReadOnlyList<NuDepotPackageMetadata>> GetPackageMetadataAsync(
-        string packageId,
-        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<NuDepotPackageMetadata>> GetPackageMetadataAsync(string packageId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Download a package's readme, or null if the package has no readme or the
@@ -37,10 +31,7 @@ public interface IPackageDetailsClient
     /// <param name="packageVersion">The package's version.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The readme stream, or null. The stream may not be seekable.</returns>
-    Task<Stream?> GetPackageReadmeStreamOrNullAsync(
-        string packageId,
-        NuGetVersion packageVersion,
-        CancellationToken cancellationToken = default);
+    Task<Stream?> GetPackageReadmeStreamOrNullAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Find the packages that depend on a given package. Returns no results if the
@@ -50,7 +41,5 @@ public interface IPackageDetailsClient
     /// <param name="packageId">The package whose dependents should be found.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The dependents response.</returns>
-    Task<DependentsResponse> GetPackageDependentsAsync(
-        string packageId,
-        CancellationToken cancellationToken = default);
+    Task<DependentsResponse> GetPackageDependentsAsync(string packageId, CancellationToken cancellationToken = default);
 }

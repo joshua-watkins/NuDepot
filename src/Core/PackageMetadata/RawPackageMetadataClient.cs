@@ -1,7 +1,3 @@
-using System;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
 using NuDepot.Core.Serialization;
@@ -11,45 +7,30 @@ namespace NuDepot.Core.PackageMetadata;
 /// <summary>
 /// The client to interact with an upstream source's Package Metadata resource.
 /// </summary>
-public class RawPackageMetadataClient : IPackageMetadataClient
+/// <param name="httpClient">The HTTP client used to send requests.</param>
+/// <param name="registrationBaseUrl">The NuGet server's registration resource URL.</param>
+public class RawPackageMetadataClient(HttpClient httpClient, string registrationBaseUrl) : IPackageMetadataClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _packageMetadataUrl;
+    private HttpClient HttpClient { get; } = httpClient;
+    private string PackageMetadataUrl { get; } = registrationBaseUrl;
 
-    /// <summary>
-    /// Create a new Package Metadata client.
-    /// </summary>
-    /// <param name="httpClient">The HTTP client used to send requests.</param>
-    /// <param name="registrationBaseUrl">The NuGet server's registration resource URL.</param>
-    public RawPackageMetadataClient(HttpClient httpClient, string registrationBaseUrl)
+    /// <inheritdoc />
+    public async Task<RegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(string packageId, CancellationToken cancellationToken = default)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _packageMetadataUrl = registrationBaseUrl ?? throw new ArgumentNullException(nameof(registrationBaseUrl));
+        string url = $"{PackageMetadataUrl}/{packageId.ToLowerInvariant()}/index.json";
+
+        return await HttpClient.GetFromJsonOrDefaultAsync(url, NuGetJsonContext.Default.RegistrationIndexResponse, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task<RegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(
-        string packageId,
-        CancellationToken cancellationToken = default)
+    public async Task<RegistrationPageResponse> GetRegistrationPageAsync(string pageUrl, CancellationToken cancellationToken = default)
     {
-        var url = $"{_packageMetadataUrl}/{packageId.ToLowerInvariant()}/index.json";
-
-        return await _httpClient.GetFromJsonOrDefaultAsync(url, NuGetJsonContext.Default.RegistrationIndexResponse, cancellationToken);
+        return await HttpClient.GetFromJsonAsync(pageUrl, NuGetJsonContext.Default.RegistrationPageResponse, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task<RegistrationPageResponse> GetRegistrationPageAsync(
-        string pageUrl,
-        CancellationToken cancellationToken = default)
+    public async Task<RegistrationLeafResponse> GetRegistrationLeafAsync(string leafUrl, CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync(pageUrl, NuGetJsonContext.Default.RegistrationPageResponse, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<RegistrationLeafResponse> GetRegistrationLeafAsync(
-        string leafUrl,
-        CancellationToken cancellationToken = default)
-    {
-        return await _httpClient.GetFromJsonAsync(leafUrl, NuGetJsonContext.Default.RegistrationLeafResponse, cancellationToken);
+        return await HttpClient.GetFromJsonAsync(leafUrl, NuGetJsonContext.Default.RegistrationLeafResponse, cancellationToken);
     }
 }

@@ -1,17 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Tests.Support;
 using NuDepot.Feed.Validation;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -20,23 +16,19 @@ namespace NuDepot.Feed.Tests;
 /// <summary>
 /// Tests what API keys, and requests without one, may do on the feed.
 /// </summary>
-public class AuthorizationIntegrationTests : IDisposable
+public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposable
 {
     private const string AdminKey = "admin-key";
     private const string ReadWriteKey = "read-write-key";
     private const string ReadOnlyKey = "read-only-key";
 
-    private readonly ITestOutputHelper _output;
-    private readonly List<IDisposable> _disposables = new();
-
-    public AuthorizationIntegrationTests(ITestOutputHelper output)
-    {
-        _output = output;
-    }
+    private ITestOutputHelper Output { get; } = output;
+    private List<IDisposable> Disposables { get; } = [];
 
     public void Dispose()
     {
-        foreach (var disposable in _disposables) disposable.Dispose();
+        foreach (IDisposable disposable in Disposables)
+            disposable.Dispose();
     }
 
     public static TheoryData<string?, string, HttpStatusCode> RolePermissions => new()
@@ -79,17 +71,18 @@ public class AuthorizationIntegrationTests : IDisposable
     [MemberData(nameof(RolePermissions))]
     public async Task RolesGrantTheirOperations(string? apiKey, string operation, HttpStatusCode expected)
     {
-        var configuration = RoleKeys();
+        Dictionary<string, string> configuration = RoleKeys();
         configuration["PackageDeletionBehavior"] = operation == "hard delete" ? "HardDelete" : "Unlist";
 
-        var app = CreateApp(configuration);
+        NuDepotTestApplication app = CreateApp(configuration);
         await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
-        using var client = app.CreateClient();
+        using HttpClient client = app.CreateClient();
 
-        using var request = CreateRequest(operation);
-        if (apiKey != null) request.Headers.Add("X-NuGet-ApiKey", apiKey);
+        using HttpRequestMessage request = CreateRequest(operation);
+        if (apiKey != null)
+            request.Headers.Add("X-NuGet-ApiKey", apiKey);
 
-        using var response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -99,15 +92,16 @@ public class AuthorizationIntegrationTests : IDisposable
     [InlineData("any-key")]
     public async Task FeedIsOpenWithoutApiKeysOrUsers(string? apiKey)
     {
-        var app = CreateApp();
+        NuDepotTestApplication app = CreateApp();
         await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
-        using var client = app.CreateClient();
+        using HttpClient client = app.CreateClient();
 
-        foreach (var operation in new[] { "read", "push", "deprecate", "vulnerability", "hard delete" })
+        foreach (string? operation in new[] { "read", "push", "deprecate", "vulnerability", "hard delete" })
         {
-            using var request = CreateRequest(operation);
-            if (apiKey != null) request.Headers.Add("X-NuGet-ApiKey", apiKey);
-            using var response = await client.SendAsync(request);
+            using HttpRequestMessage request = CreateRequest(operation);
+            if (apiKey != null)
+                request.Headers.Add("X-NuGet-ApiKey", apiKey);
+            using HttpResponseMessage response = await client.SendAsync(request);
 
             Assert.True(response.IsSuccessStatusCode, $"{operation}: {response.StatusCode}");
         }
@@ -116,13 +110,13 @@ public class AuthorizationIntegrationTests : IDisposable
     [Fact]
     public async Task ApiKeySettingIsAnAdminKey()
     {
-        var app = CreateApp(new Dictionary<string, string> { { "ApiKey", AdminKey } });
-        using var client = app.CreateClient();
+        NuDepotTestApplication app = CreateApp(new Dictionary<string, string> { { "ApiKey", AdminKey } });
+        using HttpClient client = app.CreateClient();
 
-        using var anonymous = await client.SendAsync(CreateRequest("vulnerability"));
-        using var request = CreateRequest("vulnerability");
+        using HttpResponseMessage anonymous = await client.SendAsync(CreateRequest("vulnerability"));
+        using HttpRequestMessage request = CreateRequest("vulnerability");
         request.Headers.Add("X-NuGet-ApiKey", AdminKey);
-        using var withKey = await client.SendAsync(request);
+        using HttpResponseMessage withKey = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
         Assert.Equal(HttpStatusCode.OK, withKey.StatusCode);
@@ -132,12 +126,12 @@ public class AuthorizationIntegrationTests : IDisposable
     public async Task BasicPasswordIsTheApiKey()
     {
         // NuGet sends a package source's credentials from nuget.config this way.
-        var app = CreateApp(RoleKeys());
-        using var client = app.CreateClient();
+        NuDepotTestApplication app = CreateApp(RoleKeys());
+        using HttpClient client = app.CreateClient();
 
-        using var request = CreateRequest("push");
+        using HttpRequestMessage request = CreateRequest("push");
         request.Headers.Authorization = Basic("any user name", ReadWriteKey);
-        using var response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -145,21 +139,21 @@ public class AuthorizationIntegrationTests : IDisposable
     [Fact]
     public async Task MissingCredentialsAskForBasicCredentials()
     {
-        var configuration = RoleKeys();
+        Dictionary<string, string> configuration = RoleKeys();
         configuration["Authorization:AnonymousRole"] = "None";
-        var app = CreateApp(configuration);
-        using var client = app.CreateClient();
+        NuDepotTestApplication app = CreateApp(configuration);
+        using HttpClient client = app.CreateClient();
 
-        using var anonymous = await client.GetAsync("v3/index.json");
+        using HttpResponseMessage anonymous = await client.GetAsync("v3/index.json");
 
         // NuGet clients, including Visual Studio, answer the challenge with the source's credentials.
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
-        var challenge = Assert.Single(anonymous.Headers.WwwAuthenticate);
+        AuthenticationHeaderValue challenge = Assert.Single(anonymous.Headers.WwwAuthenticate);
         Assert.Equal("Basic", challenge.Scheme);
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "v3/index.json");
+        using HttpRequestMessage request = new(HttpMethod.Get, "v3/index.json");
         request.Headers.Authorization = Basic("user", ReadOnlyKey);
-        using var withCredentials = await client.SendAsync(request);
+        using HttpResponseMessage withCredentials = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, withCredentials.StatusCode);
     }
@@ -169,13 +163,15 @@ public class AuthorizationIntegrationTests : IDisposable
     [InlineData("Authorization")]
     public async Task UnknownApiKeyIsChallenged(string header)
     {
-        var app = CreateApp(RoleKeys());
-        using var client = app.CreateClient();
+        NuDepotTestApplication app = CreateApp(RoleKeys());
+        using HttpClient client = app.CreateClient();
 
-        using var request = CreateRequest("push");
-        if (header == "Authorization") request.Headers.Authorization = Basic("user", "wrong-key");
-        else request.Headers.Add(header, "wrong-key");
-        using var response = await client.SendAsync(request);
+        using HttpRequestMessage request = CreateRequest("push");
+        if (header == "Authorization")
+            request.Headers.Authorization = Basic("user", "wrong-key");
+        else
+            request.Headers.Add(header, "wrong-key");
+        using HttpResponseMessage response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("Basic", Assert.Single(response.Headers.WwwAuthenticate).Scheme);
@@ -184,12 +180,12 @@ public class AuthorizationIntegrationTests : IDisposable
     [Fact]
     public async Task UnknownApiKeyCanStillDoWhatAnyoneMay()
     {
-        var app = CreateApp(RoleKeys());
-        using var client = app.CreateClient();
+        NuDepotTestApplication app = CreateApp(RoleKeys());
+        using HttpClient client = app.CreateClient();
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "v3/index.json");
+        using HttpRequestMessage request = new(HttpMethod.Get, "v3/index.json");
         request.Headers.Add("X-NuGet-ApiKey", "wrong-key");
-        using var response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -197,13 +193,13 @@ public class AuthorizationIntegrationTests : IDisposable
     [Fact]
     public async Task AnonymousRoleCanBeRaised()
     {
-        var configuration = RoleKeys();
+        Dictionary<string, string> configuration = RoleKeys();
         configuration["Authorization:AnonymousRole"] = "ReadWrite";
-        var app = CreateApp(configuration);
-        using var client = app.CreateClient();
+        NuDepotTestApplication app = CreateApp(configuration);
+        using HttpClient client = app.CreateClient();
 
-        using var push = await client.SendAsync(CreateRequest("push"));
-        using var vulnerability = await client.SendAsync(CreateRequest("vulnerability"));
+        using HttpResponseMessage push = await client.SendAsync(CreateRequest("push"));
+        using HttpResponseMessage vulnerability = await client.SendAsync(CreateRequest("vulnerability"));
 
         Assert.Equal(HttpStatusCode.Created, push.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, vulnerability.StatusCode);
@@ -215,13 +211,13 @@ public class AuthorizationIntegrationTests : IDisposable
     public async Task OnlyAdminsReplacePackages(string apiKey, HttpStatusCode expected)
     {
         // The test application allows package overwrites.
-        var app = CreateApp(RoleKeys());
+        NuDepotTestApplication app = CreateApp(RoleKeys());
         await app.AddPackageAsync(TestPackages.Create("New.Package", "1.0.0"));
-        using var client = app.CreateClient();
+        using HttpClient client = app.CreateClient();
 
-        using var request = CreateRequest("push");
+        using HttpRequestMessage request = CreateRequest("push");
         request.Headers.Add("X-NuGet-ApiKey", apiKey);
-        using var response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -229,15 +225,15 @@ public class AuthorizationIntegrationTests : IDisposable
     [Fact]
     public async Task ReadOnlyModeForbidsChangesWithAnyKey()
     {
-        var configuration = RoleKeys();
+        Dictionary<string, string> configuration = RoleKeys();
         configuration["IsReadOnlyMode"] = "true";
-        var app = CreateApp(configuration);
-        using var client = app.CreateClient();
+        NuDepotTestApplication app = CreateApp(configuration);
+        using HttpClient client = app.CreateClient();
 
-        using var request = CreateRequest("push");
+        using HttpRequestMessage request = CreateRequest("push");
         request.Headers.Add("X-NuGet-ApiKey", AdminKey);
-        using var push = await client.SendAsync(request);
-        using var read = await client.GetAsync("v3/index.json");
+        using HttpResponseMessage push = await client.SendAsync(request);
+        using HttpResponseMessage read = await client.GetAsync("v3/index.json");
 
         Assert.Equal(HttpStatusCode.Forbidden, push.StatusCode);
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
@@ -256,7 +252,7 @@ public class AuthorizationIntegrationTests : IDisposable
     [MemberData(nameof(OpenFeeds))]
     public void FeedIsOpenUntilItHasApiKeysOrUsers(Dictionary<string, string> configuration, bool expected)
     {
-        var app = CreateApp(configuration);
+        NuDepotTestApplication app = CreateApp(configuration);
 
         Assert.Equal(expected, app.Services.GetRequiredService<FeedAccess>().IsOpen);
     }
@@ -282,15 +278,11 @@ public class AuthorizationIntegrationTests : IDisposable
 
     [Theory]
     [MemberData(nameof(MismatchedSettings))]
-    public void SettingsMustMatchWhatTheApplicationUses(
-        bool useApiKeys,
-        bool usePasskeys,
-        Dictionary<string, string> configuration,
-        string expectedFailure)
+    public void SettingsMustMatchWhatTheApplicationUses(bool useApiKeys, bool usePasskeys, Dictionary<string, string> configuration, string expectedFailure)
     {
-        var app = CreateApp(configuration, useApiKeys, usePasskeys);
+        NuDepotTestApplication app = CreateApp(configuration, useApiKeys, usePasskeys);
 
-        var exception = Assert.Throws<OptionsValidationException>(() => app.Services);
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
 
         Assert.Contains(exception.Failures, failure => failure.Contains(expectedFailure));
     }
@@ -298,7 +290,7 @@ public class AuthorizationIntegrationTests : IDisposable
     [Fact]
     public void ApiKeysNeedAUniqueKey()
     {
-        var options = new FeedOptions
+        FeedOptions options = new()
         {
             Database = { ConnectionString = "Data Source=nudepot.db" },
             Authorization =
@@ -312,7 +304,7 @@ public class AuthorizationIntegrationTests : IDisposable
             },
         };
 
-        var result = new ValidateFeedOptions().Validate(Options.DefaultName, options);
+        ValidateOptionsResult result = new ValidateFeedOptions().Validate(Options.DefaultName, options);
 
         Assert.True(result.Failed);
         Assert.Collection(
@@ -373,13 +365,10 @@ public class AuthorizationIntegrationTests : IDisposable
     private static AuthenticationHeaderValue Basic(string userName, string password)
         => new("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{password}")));
 
-    private NuDepotTestApplication CreateApp(
-        IReadOnlyDictionary<string, string>? configuration = null,
-        bool useApiKeys = true,
-        bool usePasskeys = true)
+    private NuDepotTestApplication CreateApp(IReadOnlyDictionary<string, string>? configuration = null, bool useApiKeys = true, bool usePasskeys = true)
     {
-        var app = new NuDepotTestApplication(_output, configuration: configuration, useApiKeys: useApiKeys, usePasskeys: usePasskeys);
-        _disposables.Add(app);
+        NuDepotTestApplication app = new(Output, configuration: configuration, useApiKeys: useApiKeys, usePasskeys: usePasskeys);
+        Disposables.Add(app);
         return app;
     }
 }

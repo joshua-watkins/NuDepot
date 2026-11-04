@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Catalog;
 using NuDepot.Core.Models;
 
@@ -8,39 +5,34 @@ namespace NuDepot.Core;
 
 public partial class NuGetClientFactory
 {
-    private class CatalogClient : ICatalogClient
+    private class CatalogClient(NuGetClientFactory clientFactory) : ICatalogClient
     {
-        private readonly NuGetClientFactory _clientfactory;
-
-        public CatalogClient(NuGetClientFactory clientFactory)
-        {
-            _clientfactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-        }
+        private NuGetClientFactory Clientfactory { get; } = clientFactory;
 
         public async Task<CatalogIndex> GetIndexAsync(CancellationToken cancellationToken = default)
         {
-            var client = await _clientfactory.GetCatalogClientAsync(cancellationToken);
+            ICatalogClient client = await Clientfactory.GetCatalogClientAsync(cancellationToken);
 
             return await client.GetIndexAsync(cancellationToken);
         }
 
         public async Task<CatalogPage> GetPageAsync(string pageUrl, CancellationToken cancellationToken = default)
         {
-            var client = await _clientfactory.GetCatalogClientAsync(cancellationToken);
+            ICatalogClient client = await Clientfactory.GetCatalogClientAsync(cancellationToken);
 
             return await client.GetPageAsync(pageUrl, cancellationToken);
         }
 
         public async Task<PackageDetailsCatalogLeaf> GetPackageDetailsLeafAsync(string leafUrl, CancellationToken cancellationToken = default)
         {
-            var client = await _clientfactory.GetCatalogClientAsync(cancellationToken);
+            ICatalogClient client = await Clientfactory.GetCatalogClientAsync(cancellationToken);
 
             return await client.GetPackageDetailsLeafAsync(leafUrl, cancellationToken);
         }
 
         public async Task<PackageDeleteCatalogLeaf> GetPackageDeleteLeafAsync(string leafUrl, CancellationToken cancellationToken = default)
         {
-            var client = await _clientfactory.GetCatalogClientAsync(cancellationToken);
+            ICatalogClient client = await Clientfactory.GetCatalogClientAsync(cancellationToken);
 
             return await client.GetPackageDeleteLeafAsync(leafUrl, cancellationToken);
         }

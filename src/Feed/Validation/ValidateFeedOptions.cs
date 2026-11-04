@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Configuration;
@@ -16,12 +14,10 @@ public class ValidateFeedOptions : IValidateOptions<FeedOptions>
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        var failures = new List<string>();
+        List<string> failures = [];
 
         if (string.IsNullOrWhiteSpace(options.Database.ConnectionString))
-        {
             failures.Add($"'{Field(nameof(FeedOptions.Database), nameof(DatabaseOptions.ConnectionString))}' is required.");
-        }
 
         if (options.Mirror.PackageDownloadTimeoutSeconds < 0)
         {
@@ -44,27 +40,21 @@ public class ValidateFeedOptions : IValidateOptions<FeedOptions>
 
     private static void ValidateAuthorization(FeedOptions options, List<string> failures)
     {
-        var authorization = options.Authorization;
-        var keys = new HashSet<string>(StringComparer.Ordinal);
+        FeedAuthorizationOptions authorization = options.Authorization;
+        HashSet<string> keys = new(StringComparer.Ordinal);
 
-        for (var i = 0; i < authorization.ApiKeys.Count; i++)
+        for (int i = 0; i < authorization.ApiKeys.Count; i++)
         {
-            var apiKey = authorization.ApiKeys[i];
-            var field = Field(nameof(FeedOptions.Authorization), nameof(FeedAuthorizationOptions.ApiKeys), i.ToString());
+            ApiKeyOptions apiKey = authorization.ApiKeys[i];
+            string field = Field(nameof(FeedOptions.Authorization), nameof(FeedAuthorizationOptions.ApiKeys), i.ToString());
 
             if (string.IsNullOrWhiteSpace(apiKey.Key))
-            {
                 failures.Add($"'{field}:{nameof(ApiKeyOptions.Key)}' is required.");
-            }
             else if (!keys.Add(apiKey.Key))
-            {
                 failures.Add($"'{field}:{nameof(ApiKeyOptions.Key)}' is the same as another API key.");
-            }
 
             if (apiKey.Role == null)
-            {
                 failures.Add($"'{field}:{nameof(ApiKeyOptions.Role)}' is required. Allowed values: {string.Join(", ", Enum.GetNames<FeedRole>())}");
-            }
         }
 
         // Without API keys or users, the feed is open, and would ignore what anonymous requests may do.

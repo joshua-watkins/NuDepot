@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 
 namespace NuDepot.Core.PackageMetadata;
@@ -27,9 +25,7 @@ public interface IPackageMetadataClient
     /// <param name="pageUrl">The URL of the page, from the <see cref="RegistrationIndexResponse"/>.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The registration index page.</returns>
-    Task<RegistrationPageResponse> GetRegistrationPageAsync(
-        string pageUrl,
-        CancellationToken cancellationToken = default);
+    Task<RegistrationPageResponse> GetRegistrationPageAsync(string pageUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get the metadata for a single package version.
@@ -37,7 +33,5 @@ public interface IPackageMetadataClient
     /// <param name="leafUrl">The URL of the leaf, from the <see cref="RegistrationIndexPageItem"/>.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The registration leaf.</returns>
-    Task<RegistrationLeafResponse> GetRegistrationLeafAsync(
-        string leafUrl,
-        CancellationToken cancellationToken = default);
+    Task<RegistrationLeafResponse> GetRegistrationLeafAsync(string leafUrl, CancellationToken cancellationToken = default);
 }

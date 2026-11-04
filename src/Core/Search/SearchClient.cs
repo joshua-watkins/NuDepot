@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 using NuDepot.Core.Search;
 
@@ -8,27 +5,14 @@ namespace NuDepot.Core;
 
 public partial class NuGetClientFactory
 {
-    private class SearchClient : ISearchClient
+    private class SearchClient(NuGetClientFactory clientFactory) : ISearchClient
     {
-        private readonly NuGetClientFactory _clientfactory;
+        private NuGetClientFactory Clientfactory { get; } = clientFactory;
 
-        public SearchClient(NuGetClientFactory clientFactory)
-        {
-            _clientfactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-        }
-
-        public async Task<SearchResponse> SearchAsync(
-            string? query = null,
-            int skip = 0,
-            int take = 20,
-            bool includePrerelease = true,
-            bool includeSemVer2 = true,
-            string? packageType = null,
-            string? framework = null,
-            CancellationToken cancellationToken = default)
+        public async Task<SearchResponse> SearchAsync(string? query = null, int skip = 0, int take = 20, bool includePrerelease = true, bool includeSemVer2 = true, string? packageType = null, string? framework = null, CancellationToken cancellationToken = default)
         {
             // TODO: Support search failover.
-            var client = await _clientfactory.GetSearchClientAsync(cancellationToken);
+            ISearchClient client = await Clientfactory.GetSearchClientAsync(cancellationToken);
 
             return await client.SearchAsync(query, skip, take, includePrerelease, includeSemVer2, packageType, framework, cancellationToken);
         }

@@ -1,4 +1,3 @@
-using System;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using NuDepot.Core.Hosting;
@@ -20,9 +19,11 @@ public static class FeedApplicationBuilderExtensions
     public static NuDepotApplicationBuilder UseNuDepotFeed<TApplication>(this TApplication application)
         where TApplication : IApplicationBuilder, IEndpointRouteBuilder
     {
-        ArgumentNullException.ThrowIfNull(application);
-
-        return application.UseNuDepot().UseFeed().UseApiKeys().UsePasskeys();
+        return application
+            .UseNuDepot()
+            .UseFeed()
+            .UseApiKeys()
+            .UsePasskeys();
     }
 
     /// <summary>
@@ -31,8 +32,6 @@ public static class FeedApplicationBuilderExtensions
     /// </summary>
     public static NuDepotApplicationBuilder UseFeed(this NuDepotApplicationBuilder app)
     {
-        ArgumentNullException.ThrowIfNull(app);
-
         app.Application.UseMiddleware<OperationCancelledMiddleware>();
         new NuDepotEndpointBuilder().MapEndpoints(app.Endpoints);
         GetPipeline(app).UsesFeed = true;
@@ -45,8 +44,6 @@ public static class FeedApplicationBuilderExtensions
     /// </summary>
     public static NuDepotApplicationBuilder UseApiKeys(this NuDepotApplicationBuilder app)
     {
-        ArgumentNullException.ThrowIfNull(app);
-
         GetPipeline(app).UsesApiKeys = true;
 
         return app;
@@ -58,8 +55,6 @@ public static class FeedApplicationBuilderExtensions
     /// </summary>
     public static NuDepotApplicationBuilder UsePasskeys(this NuDepotApplicationBuilder app)
     {
-        ArgumentNullException.ThrowIfNull(app);
-
         GetPipeline(app).UsesPasskeys = true;
 
         if (app.Services.GetRequiredService<FeedAccess>().UsersEnabled)

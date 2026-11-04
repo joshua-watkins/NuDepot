@@ -1,6 +1,6 @@
+using NuDepot.Feed.Entities;
 using System.Globalization;
 using System.Security.Claims;
-using NuDepot.Feed.Entities;
 
 namespace NuDepot.Feed.Authentication;
 
@@ -27,7 +27,7 @@ public static class FeedClaims
     /// </summary>
     public static ClaimsIdentity CreateIdentity(User user, string authenticationType)
     {
-        var identity = CreateIdentity(user.UserName, user.Role, authenticationType);
+        ClaimsIdentity identity = CreateIdentity(user.UserName, user.Role, authenticationType);
         identity.AddClaim(new Claim(
             ClaimTypes.NameIdentifier,
             user.Key.ToString(CultureInfo.InvariantCulture),
@@ -42,9 +42,10 @@ public static class FeedClaims
     /// </summary>
     public static int? GetUserKey(ClaimsPrincipal principal)
     {
-        var claim = principal.FindFirst(ClaimTypes.NameIdentifier);
-        if (claim?.Issuer != ApiKeyAuthenticationHandler.Issuer) return null;
+        Claim? claim = principal.FindFirst(ClaimTypes.NameIdentifier);
+        if (claim?.Issuer != ApiKeyAuthenticationHandler.Issuer)
+            return null;
 
-        return int.TryParse(claim.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var key) ? key : null;
+        return int.TryParse(claim.Value, NumberStyles.None, CultureInfo.InvariantCulture, out int key) ? key : null;
     }
 }

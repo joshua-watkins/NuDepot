@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace NuDepot.Core.Models;
@@ -15,7 +14,7 @@ namespace NuDepot.Core.Models;
 /// </remarks>
 public class NuDepotRegistrationIndexPage
 {
-#region Original properties from RegistrationIndexPage.
+    #region Original properties from RegistrationIndexPage.
     [JsonPropertyName("@id")]
     public string RegistrationPageUrl { get; set; } = null!;
 
@@ -27,7 +26,7 @@ public class NuDepotRegistrationIndexPage
 
     [JsonPropertyName("upper")]
     public string Upper { get; set; } = null!;
-#endregion
+    #endregion
 
     /// <summary>
     /// This was modified to use NuDepot's extended registration index page item model.

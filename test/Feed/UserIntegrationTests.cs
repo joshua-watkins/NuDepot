@@ -1,18 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Tests.Support;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -21,28 +17,24 @@ namespace NuDepot.Feed.Tests;
 /// <summary>
 /// Tests users who sign up and sign in with passkeys, and their API keys.
 /// </summary>
-public class UserIntegrationTests : IDisposable
+public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
 {
-    private readonly ITestOutputHelper _output;
-    private readonly List<IDisposable> _disposables = new();
-
-    public UserIntegrationTests(ITestOutputHelper output)
-    {
-        _output = output;
-    }
+    private ITestOutputHelper Output { get; } = output;
+    private List<IDisposable> Disposables { get; } = [];
 
     public void Dispose()
     {
-        foreach (var disposable in _disposables) disposable.Dispose();
+        foreach (IDisposable disposable in Disposables)
+            disposable.Dispose();
     }
 
     [Fact]
     public async Task FirstUserIsAnAdminAndOthersGetTheDefaultRole()
     {
-        var app = CreateApp();
+        NuDepotTestApplication app = CreateApp();
 
-        var (alice, _) = await SignUpAsync(app, "alice");
-        var (bob, _) = await SignUpAsync(app, "bob");
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
+        (HttpClient? bob, TestAuthenticator _) = await SignUpAsync(app, "bob");
 
         Assert.Equal("Admin", (await GetAccountAsync(alice)).GetProperty("role").GetString());
         Assert.Equal("ReadOnly", (await GetAccountAsync(bob)).GetProperty("role").GetString());
@@ -51,17 +43,17 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task SignsInWithThePasskey()
     {
-        var app = CreateApp();
-        var (_, authenticator) = await SignUpAsync(app, "alice");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient _, TestAuthenticator? authenticator) = await SignUpAsync(app, "alice");
 
-        using var browser = app.CreateBrowserClient();
+        using HttpClient browser = app.CreateBrowserClient();
         Assert.False((await GetAccountAsync(browser)).GetProperty("signedIn").GetBoolean());
 
-        var options = await PostAsync(browser, "api/account/signin/options", new { userName = "ALICE" });
-        var signIn = await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)));
+        string options = await PostAsync(browser, "api/account/signin/options", new { userName = "ALICE" });
+        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)));
 
         Assert.Equal(HttpStatusCode.NoContent, signIn.StatusCode);
-        var account = await GetAccountAsync(browser);
+        JsonElement account = await GetAccountAsync(browser);
         Assert.True(account.GetProperty("signedIn").GetBoolean());
         Assert.Equal("alice", account.GetProperty("userName").GetString());
     }
@@ -69,12 +61,12 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task EachChallengeCanOnlyBeAnsweredOnce()
     {
-        var app = CreateApp();
-        var (_, authenticator) = await SignUpAsync(app, "alice");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient _, TestAuthenticator? authenticator) = await SignUpAsync(app, "alice");
 
-        using var browser = app.CreateBrowserClient();
-        var options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
-        var assertion = authenticator.GetAssertion(options);
+        using HttpClient browser = app.CreateBrowserClient();
+        string options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
+        string assertion = authenticator.GetAssertion(options);
 
         Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(assertion))).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync("api/account/signin", Json(assertion))).StatusCode);
@@ -83,16 +75,16 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task EachUserHasOneSignInInProgress()
     {
-        var app = CreateApp();
-        var (_, authenticator) = await SignUpAsync(app, "alice");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient _, TestAuthenticator? authenticator) = await SignUpAsync(app, "alice");
 
         // The challenge isn't kept by the browser, so another browser's sign-in replaces it.
-        using var first = app.CreateBrowserClient();
-        using var second = app.CreateBrowserClient();
-        var firstOptions = await PostAsync(first, "api/account/signin/options", new { userName = "alice" });
-        var secondOptions = await PostAsync(second, "api/account/signin/options", new { userName = "alice" });
+        using HttpClient first = app.CreateBrowserClient();
+        using HttpClient second = app.CreateBrowserClient();
+        string firstOptions = await PostAsync(first, "api/account/signin/options", new { userName = "alice" });
+        string secondOptions = await PostAsync(second, "api/account/signin/options", new { userName = "alice" });
 
-        var replaced = await first.PostAsync("api/account/signin", Json(authenticator.GetAssertion(firstOptions)));
+        HttpResponseMessage replaced = await first.PostAsync("api/account/signin", Json(authenticator.GetAssertion(firstOptions)));
         Assert.Equal(HttpStatusCode.BadRequest, replaced.StatusCode);
         Assert.Contains("expired", await replaced.Content.ReadAsStringAsync());
 
@@ -102,14 +94,14 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task ChallengesExpire()
     {
-        var app = CreateApp();
-        var (_, authenticator) = await SignUpAsync(app, "alice");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient _, TestAuthenticator? authenticator) = await SignUpAsync(app, "alice");
 
-        using var browser = app.CreateBrowserClient();
-        var options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
+        using HttpClient browser = app.CreateBrowserClient();
+        string options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
         app.Clock.Advance(TimeSpan.FromMinutes(6));
 
-        var signIn = await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)));
+        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)));
 
         Assert.Equal(HttpStatusCode.BadRequest, signIn.StatusCode);
         Assert.Contains("expired", await signIn.Content.ReadAsStringAsync());
@@ -118,12 +110,12 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task OnlyAccountsCanSignIn()
     {
-        var app = CreateApp();
-        using var browser = app.CreateBrowserClient();
+        NuDepotTestApplication app = CreateApp();
+        using HttpClient browser = app.CreateBrowserClient();
         await PostAsync(browser, "api/account/signup", new { userName = "never-finished" });
 
-        var unknown = await browser.PostAsync("api/account/signin/options", JsonContent.Create(new { userName = "nobody" }));
-        var unfinished = await browser.PostAsync("api/account/signin/options", JsonContent.Create(new { userName = "never-finished" }));
+        HttpResponseMessage unknown = await browser.PostAsync("api/account/signin/options", JsonContent.Create(new { userName = "nobody" }));
+        HttpResponseMessage unfinished = await browser.PostAsync("api/account/signin/options", JsonContent.Create(new { userName = "never-finished" }));
 
         Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, unfinished.StatusCode);
@@ -136,16 +128,16 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task UnknownPasskeysCantSignIn()
     {
-        var app = CreateApp();
+        NuDepotTestApplication app = CreateApp();
         await SignUpAsync(app, "alice");
 
         // A passkey made for a sign-up that was never finished.
-        using var stranger = new TestAuthenticator();
-        using var browser = app.CreateBrowserClient();
+        using TestAuthenticator stranger = new();
+        using HttpClient browser = app.CreateBrowserClient();
         stranger.CreateCredential(await PostAsync(browser, "api/account/signup", new { userName = "never-finished" }));
 
-        var options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
-        var signIn = await browser.PostAsync("api/account/signin", Json(stranger.GetAssertion(options)));
+        string options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
+        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(stranger.GetAssertion(options)));
 
         Assert.Equal(HttpStatusCode.BadRequest, signIn.StatusCode);
         Assert.Contains("isn't registered", await signIn.Content.ReadAsStringAsync());
@@ -154,31 +146,31 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task AnUnfinishedSignUpIsReplacedByTheNext()
     {
-        var app = CreateApp();
-        using var first = app.CreateBrowserClient();
-        using var second = app.CreateBrowserClient();
-        using var firstAuthenticator = new TestAuthenticator();
-        using var secondAuthenticator = new TestAuthenticator();
+        NuDepotTestApplication app = CreateApp();
+        using HttpClient first = app.CreateBrowserClient();
+        using HttpClient second = app.CreateBrowserClient();
+        using TestAuthenticator firstAuthenticator = new();
+        using TestAuthenticator secondAuthenticator = new();
 
-        var firstOptions = await PostAsync(first, "api/account/signup", new { userName = "bob" });
-        var secondOptions = await PostAsync(second, "api/account/signup", new { userName = "bob" });
+        string firstOptions = await PostAsync(first, "api/account/signup", new { userName = "bob" });
+        string secondOptions = await PostAsync(second, "api/account/signup", new { userName = "bob" });
 
-        var replaced = await first.PostAsync("api/account/passkeys?userName=bob", Json(firstAuthenticator.CreateCredential(firstOptions)));
-        var created = await second.PostAsync("api/account/passkeys?userName=bob", Json(secondAuthenticator.CreateCredential(secondOptions)));
+        HttpResponseMessage replaced = await first.PostAsync("api/account/passkeys?userName=bob", Json(firstAuthenticator.CreateCredential(firstOptions)));
+        HttpResponseMessage created = await second.PostAsync("api/account/passkeys?userName=bob", Json(secondAuthenticator.CreateCredential(secondOptions)));
 
         Assert.Equal(HttpStatusCode.BadRequest, replaced.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, created.StatusCode);
 
         // Once the account is created, the user name is taken.
-        var third = await first.PostAsync("api/account/signup", JsonContent.Create(new { userName = "bob" }));
+        HttpResponseMessage third = await first.PostAsync("api/account/signup", JsonContent.Create(new { userName = "bob" }));
         Assert.Equal(HttpStatusCode.Conflict, third.StatusCode);
     }
 
     [Fact]
     public async Task RoleChangesReachSignedInUsersStraightAway()
     {
-        var app = CreateApp();
-        var (alice, _) = await SignUpAsync(app, "alice");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
         Assert.Equal(HttpStatusCode.Created, (await alice.PutAsync("api/v2/package", Package("Admin.Package"))).StatusCode);
 
         await SetRoleAsync(app, "alice", FeedRole.ReadOnly);
@@ -189,11 +181,11 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task ACopiedCookieRevokesTheSession()
     {
-        var app = CreateApp();
-        var cookies = new CookieContainer();
-        var (alice, _) = await SignUpAsync(app, "alice", cookies);
+        NuDepotTestApplication app = CreateApp();
+        CookieContainer cookies = new();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice", cookies);
 
-        using var thief = app.CreateBrowserClient();
+        using HttpClient thief = app.CreateBrowserClient();
         thief.DefaultRequestHeaders.Add("Cookie", cookies.GetCookieHeader(alice.BaseAddress!));
 
         // Alice keeps using the feed, which replaces her cookie.
@@ -209,12 +201,12 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task RequestsSentTogetherShareTheCookie()
     {
-        var app = CreateApp();
-        var cookies = new CookieContainer();
-        var (alice, _) = await SignUpAsync(app, "alice", cookies);
+        NuDepotTestApplication app = CreateApp();
+        CookieContainer cookies = new();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice", cookies);
 
         // Like a page's requests sent at once, or the website's requests to the feed for the browser.
-        using var sentTogether = app.CreateClient();
+        using HttpClient sentTogether = app.CreateClient();
         sentTogether.DefaultRequestHeaders.Add("Cookie", cookies.GetCookieHeader(alice.BaseAddress!));
 
         Assert.True((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
@@ -225,11 +217,11 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task SignOutEndsTheSessionForCopiesOfTheCookie()
     {
-        var app = CreateApp();
-        var cookies = new CookieContainer();
-        var (alice, _) = await SignUpAsync(app, "alice", cookies);
+        NuDepotTestApplication app = CreateApp();
+        CookieContainer cookies = new();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice", cookies);
 
-        using var copy = app.CreateClient();
+        using HttpClient copy = app.CreateClient();
         copy.DefaultRequestHeaders.Add("Cookie", cookies.GetCookieHeader(alice.BaseAddress!));
 
         Assert.Equal(HttpStatusCode.NoContent, (await alice.PostAsync("api/account/signout", null)).StatusCode);
@@ -240,13 +232,13 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task EachRequestKeepsTheUserSignedInForAnotherYear()
     {
-        var app = CreateApp();
-        var (alice, _) = await SignUpAsync(app, "alice");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
 
-        for (var i = 0; i < 3; i++)
+        for (int i = 0; i < 3; i++)
         {
             app.Clock.Advance(TimeSpan.FromDays(300));
-            var response = await alice.GetAsync("api/account");
+            HttpResponseMessage response = await alice.GetAsync("api/account");
 
             Assert.True((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("signedIn").GetBoolean());
             Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("NuDepot.User=", StringComparison.Ordinal));
@@ -263,11 +255,11 @@ public class UserIntegrationTests : IDisposable
     [InlineData("", HttpStatusCode.BadRequest)]
     public async Task UserNamesMustBeValidAndUnique(string userName, HttpStatusCode expected)
     {
-        var app = CreateApp();
+        NuDepotTestApplication app = CreateApp();
         await SignUpAsync(app, "alice");
 
-        using var browser = app.CreateBrowserClient();
-        var response = await browser.PostAsync("api/account/signup", JsonContent.Create(new { userName }));
+        using HttpClient browser = app.CreateBrowserClient();
+        HttpResponseMessage response = await browser.PostAsync("api/account/signup", JsonContent.Create(new { userName }));
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -275,12 +267,12 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task OnlyTheFirstAccountCanSignUpWhenSignUpIsOff()
     {
-        var app = CreateApp(new() { { "Authorization:Users:AllowSignUp", "false" } });
+        NuDepotTestApplication app = CreateApp(new() { { "Authorization:Users:AllowSignUp", "false" } });
 
         await SignUpAsync(app, "admin");
 
-        using var browser = app.CreateBrowserClient();
-        var response = await browser.PostAsync("api/account/signup", JsonContent.Create(new { userName = "bob" }));
+        using HttpClient browser = app.CreateBrowserClient();
+        HttpResponseMessage response = await browser.PostAsync("api/account/signup", JsonContent.Create(new { userName = "bob" }));
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.False((await GetAccountAsync(browser)).GetProperty("canSignUp").GetBoolean());
     }
@@ -290,12 +282,12 @@ public class UserIntegrationTests : IDisposable
     [InlineData("bob", HttpStatusCode.Forbidden)]
     public async Task SignedInUsersHaveTheirRoleOnTheFeed(string userName, HttpStatusCode expected)
     {
-        var app = CreateApp();
-        var (alice, _) = await SignUpAsync(app, "alice");
-        var (bob, _) = await SignUpAsync(app, "bob");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
+        (HttpClient? bob, TestAuthenticator _) = await SignUpAsync(app, "bob");
 
-        var browser = userName == "alice" ? alice : bob;
-        var response = await browser.PutAsync("api/v2/package", Package("Signed.In.Package"));
+        HttpClient browser = userName == "alice" ? alice : bob;
+        HttpResponseMessage response = await browser.PutAsync("api/v2/package", Package("Signed.In.Package"));
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -303,10 +295,10 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task SignedInUsersReadAFeedClosedToEveryoneElse()
     {
-        var app = CreateApp(new() { { "Authorization:AnonymousRole", "None" } });
-        var (alice, _) = await SignUpAsync(app, "alice");
+        NuDepotTestApplication app = CreateApp(new() { { "Authorization:AnonymousRole", "None" } });
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
 
-        using var anonymous = app.CreateClient();
+        using HttpClient anonymous = app.CreateClient();
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("v3/index.json")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await alice.GetAsync("v3/index.json")).StatusCode);
@@ -315,15 +307,15 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task UserApiKeysActAsTheirUser()
     {
-        var app = CreateApp();
-        var (alice, _) = await SignUpAsync(app, "alice");
-        var (bob, _) = await SignUpAsync(app, "bob");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
+        (HttpClient? bob, TestAuthenticator _) = await SignUpAsync(app, "bob");
 
-        var aliceKey = await CreateApiKeyAsync(alice, "Build server");
-        var bobKey = await CreateApiKeyAsync(bob, "Laptop");
+        string aliceKey = await CreateApiKeyAsync(alice, "Build server");
+        string bobKey = await CreateApiKeyAsync(bob, "Laptop");
         Assert.StartsWith("nd_", aliceKey);
 
-        using var client = app.CreateClient();
+        using HttpClient client = app.CreateClient();
 
         // Like the push command's -k option, and like nuget.config's package source credentials.
         Assert.Equal(HttpStatusCode.Created, (await SendWithKeyAsync(client, aliceKey, "Header.Package", basic: false)).StatusCode);
@@ -334,33 +326,36 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task RevokedApiKeysStopWorking()
     {
-        var app = CreateApp();
-        var (alice, _) = await SignUpAsync(app, "alice");
-        var key = await CreateApiKeyAsync(alice, "Build server");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
+        string key = await CreateApiKeyAsync(alice, "Build server");
 
-        var apiKeys = await alice.GetFromJsonAsync<JsonElement>("api/account/apikeys");
-        var apiKey = Assert.Single(apiKeys.EnumerateArray());
+        JsonElement apiKeys = await alice.GetFromJsonAsync<JsonElement>("api/account/apikeys");
+        JsonElement apiKey = Assert.Single(apiKeys.EnumerateArray());
         Assert.Equal(key[..10], apiKey.GetProperty("prefix").GetString());
         Assert.False(apiKey.TryGetProperty("key", out _));
 
         Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/apikeys/{apiKey.GetProperty("id").GetInt32()}")).StatusCode);
 
-        using var client = app.CreateClient();
+        using HttpClient client = app.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await SendWithKeyAsync(client, key, "Revoked.Package", basic: false)).StatusCode);
     }
 
     [Fact]
     public async Task UsersCanAddPasskeysButNotRemoveTheirLast()
     {
-        var app = CreateApp();
-        var (alice, _) = await SignUpAsync(app, "alice");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
 
-        var passkeys = await alice.GetFromJsonAsync<JsonElement>("api/account/passkeys");
-        var first = Assert.Single(passkeys.EnumerateArray()).GetProperty("id").GetInt32();
+        JsonElement passkeys = await alice.GetFromJsonAsync<JsonElement>("api/account/passkeys");
+        int first = Assert
+            .Single(passkeys.EnumerateArray())
+            .GetProperty("id")
+            .GetInt32();
         Assert.Equal(HttpStatusCode.Conflict, (await alice.DeleteAsync($"api/account/passkeys/{first}")).StatusCode);
 
-        using var phone = new TestAuthenticator();
-        var options = await PostAsync(alice, "api/account/passkeys/options", new { passkeyName = "Phone" });
+        using TestAuthenticator phone = new();
+        string options = await PostAsync(alice, "api/account/passkeys/options", new { passkeyName = "Phone" });
         Assert.Equal(HttpStatusCode.NoContent, (await alice.PostAsync("api/account/passkeys", Json(phone.CreateCredential(options)))).StatusCode);
 
         passkeys = await alice.GetFromJsonAsync<JsonElement>("api/account/passkeys");
@@ -370,20 +365,20 @@ public class UserIntegrationTests : IDisposable
         Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/passkeys/{first}")).StatusCode);
 
         // The new passkey signs in.
-        using var browser = app.CreateBrowserClient();
-        var signInOptions = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
+        using HttpClient browser = app.CreateBrowserClient();
+        string signInOptions = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
         Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(phone.GetAssertion(signInOptions)))).StatusCode);
     }
 
     [Fact]
     public async Task AccountsNeedASignInCookie()
     {
-        var app = CreateApp(new() { { "ApiKey", "admin-key" } });
-        using var client = app.CreateClient();
+        NuDepotTestApplication app = CreateApp(new() { { "ApiKey", "admin-key" } });
+        using HttpClient client = app.CreateClient();
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "api/account/apikeys");
+        using HttpRequestMessage request = new(HttpMethod.Get, "api/account/apikeys");
         request.Headers.Add("X-NuGet-ApiKey", "admin-key");
-        var response = await client.SendAsync(request);
+        HttpResponseMessage response = await client.SendAsync(request);
 
         // API keys can't manage accounts, and the browser isn't asked for Basic credentials.
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -393,10 +388,10 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task SignOutEndsTheSession()
     {
-        var app = CreateApp();
-        var (alice, _) = await SignUpAsync(app, "alice");
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
 
-        var signOut = await alice.PostAsync("api/account/signout", null);
+        HttpResponseMessage signOut = await alice.PostAsync("api/account/signout", null);
         Assert.Equal(HttpStatusCode.NoContent, signOut.StatusCode);
 
         Assert.False((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
@@ -405,9 +400,9 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public void UsersWithoutUsePasskeysStopStartup()
     {
-        var app = new NuDepotTestApplication(_output, configuration: UsersEnabled(), usePasskeys: false);
+        NuDepotTestApplication app = new(Output, configuration: UsersEnabled(), usePasskeys: false);
 
-        var exception = Assert.Throws<OptionsValidationException>(() => app.Services);
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
 
         Assert.Contains(exception.Failures, f => f.Contains("Call UsePasskeys()"));
     }
@@ -415,9 +410,9 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public void UsersWithoutUseApiKeysStopStartup()
     {
-        var app = new NuDepotTestApplication(_output, configuration: UsersEnabled(), useApiKeys: false);
+        NuDepotTestApplication app = new(Output, configuration: UsersEnabled(), useApiKeys: false);
 
-        var exception = Assert.Throws<OptionsValidationException>(() => app.Services);
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
 
         Assert.Contains(exception.Failures, f => f.Contains("who create their own API keys, but doesn't accept API keys"));
     }
@@ -425,44 +420,43 @@ public class UserIntegrationTests : IDisposable
     [Fact]
     public async Task AccountsArentMappedWithoutUsers()
     {
-        var app = new NuDepotTestApplication(_output);
-        _disposables.Add(app);
-        using var client = app.CreateClient();
+        NuDepotTestApplication app = new(Output);
+        Disposables.Add(app);
+        using HttpClient client = app.CreateClient();
 
-        using var response = await client.GetAsync("api/account");
+        using HttpResponseMessage response = await client.GetAsync("api/account");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     private static Dictionary<string, string> UsersEnabled(Dictionary<string, string>? configuration = null)
     {
-        var settings = new Dictionary<string, string>(configuration ?? new Dictionary<string, string>());
-        settings["Authorization:Users:Enabled"] = "true";
+        Dictionary<string, string> settings = new(configuration ?? [])
+        {
+            ["Authorization:Users:Enabled"] = "true"
+        };
         return settings;
     }
 
     private NuDepotTestApplication CreateApp(Dictionary<string, string>? configuration = null)
     {
-        var app = new NuDepotTestApplication(_output, configuration: UsersEnabled(configuration));
-        _disposables.Add(app);
+        NuDepotTestApplication app = new(Output, configuration: UsersEnabled(configuration));
+        Disposables.Add(app);
         return app;
     }
 
     /// <summary>
     /// Sign up the way the website does, returning a client that's signed in as the new user.
     /// </summary>
-    private async Task<(HttpClient Browser, TestAuthenticator Authenticator)> SignUpAsync(
-        NuDepotTestApplication app,
-        string userName,
-        CookieContainer? cookies = null)
+    private async Task<(HttpClient Browser, TestAuthenticator Authenticator)> SignUpAsync(NuDepotTestApplication app, string userName, CookieContainer? cookies = null)
     {
-        var browser = app.CreateBrowserClient(cookies);
-        var authenticator = new TestAuthenticator();
-        _disposables.Add(browser);
-        _disposables.Add(authenticator);
+        HttpClient browser = app.CreateBrowserClient(cookies);
+        TestAuthenticator authenticator = new();
+        Disposables.Add(browser);
+        Disposables.Add(authenticator);
 
-        var options = await PostAsync(browser, "api/account/signup", new { userName, passkeyName = "Laptop" });
-        var response = await browser.PostAsync($"api/account/passkeys?userName={userName}", Json(authenticator.CreateCredential(options)));
+        string options = await PostAsync(browser, "api/account/signup", new { userName, passkeyName = "Laptop" });
+        HttpResponseMessage response = await browser.PostAsync($"api/account/passkeys?userName={userName}", Json(authenticator.CreateCredential(options)));
         Assert.True(response.StatusCode == HttpStatusCode.NoContent, await response.Content.ReadAsStringAsync());
 
         return (browser, authenticator);
@@ -470,8 +464,8 @@ public class UserIntegrationTests : IDisposable
 
     private static async Task<string> PostAsync(HttpClient client, string url, object body)
     {
-        var response = await client.PostAsync(url, JsonContent.Create(body));
-        var content = await response.Content.ReadAsStringAsync();
+        HttpResponseMessage response = await client.PostAsync(url, JsonContent.Create(body));
+        string content = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, content);
 
         return content;
@@ -479,10 +473,10 @@ public class UserIntegrationTests : IDisposable
 
     private static async Task SetRoleAsync(NuDepotTestApplication app, string userName, FeedRole role)
     {
-        using var scope = app.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+        using IServiceScope scope = app.Services.CreateScope();
+        NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
 
-        var user = await context.Users.SingleAsync(u => u.UserName == userName);
+        User user = await context.Users.SingleAsync(u => u.UserName == userName);
         user.Role = role;
         await context.SaveChangesAsync();
     }
@@ -492,24 +486,22 @@ public class UserIntegrationTests : IDisposable
 
     private static async Task<string> CreateApiKeyAsync(HttpClient client, string name)
     {
-        var response = await client.PostAsync("api/account/apikeys", JsonContent.Create(new { name }));
+        HttpResponseMessage response = await client.PostAsync("api/account/apikeys", JsonContent.Create(new { name }));
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-        var apiKey = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return apiKey.GetProperty("key").GetString()!;
+        JsonElement apiKey = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return apiKey
+            .GetProperty("key")
+            .GetString()!;
     }
 
     private static Task<HttpResponseMessage> SendWithKeyAsync(HttpClient client, string key, string packageId, bool basic)
     {
-        var request = new HttpRequestMessage(HttpMethod.Put, "api/v2/package") { Content = Package(packageId) };
+        HttpRequestMessage request = new(HttpMethod.Put, "api/v2/package") { Content = Package(packageId) };
         if (basic)
-        {
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes("me:" + key)));
-        }
         else
-        {
             request.Headers.Add("X-NuGet-ApiKey", key);
-        }
 
         return client.SendAsync(request);
     }

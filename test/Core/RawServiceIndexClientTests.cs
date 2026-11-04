@@ -1,24 +1,19 @@
-using System.Threading.Tasks;
 using NuDepot.Core.Extensions;
+using NuDepot.Core.Models;
 using NuDepot.Core.ServiceIndex;
 using NuDepot.Core.Tests.Support;
 using Xunit;
 
 namespace NuDepot.Core.Tests;
 
-public class RawServiceIndexClientTests : IClassFixture<ProtocolFixture>
+public class RawServiceIndexClientTests(ProtocolFixture fixture) : IClassFixture<ProtocolFixture>
 {
-    private readonly RawServiceIndexClient _target;
-
-    public RawServiceIndexClientTests(ProtocolFixture fixture)
-    {
-        _target = fixture.ServiceIndexClient;
-    }
+    private RawServiceIndexClient Target { get; } = fixture.ServiceIndexClient;
 
     [Fact]
     public async Task GetsServiceIndex()
     {
-        var result = await _target.GetAsync();
+        ServiceIndexResponse result = await Target.GetAsync();
 
         Assert.Equal("3.0.0", result.Version);
         Assert.Equal(5, result.Resources.Count);

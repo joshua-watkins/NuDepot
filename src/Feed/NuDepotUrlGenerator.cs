@@ -1,28 +1,17 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
-using NuGet.Versioning;
 using NuDepot.Feed.Configuration;
-using System;
+using NuGet.Versioning;
 
 namespace NuDepot.Feed;
 
 // TODO: This should validate the "Host" header against known valid values
-public class NuDepotUrlGenerator : IUrlGenerator
+public class NuDepotUrlGenerator(IHttpContextAccessor httpContextAccessor, LinkGenerator linkGenerator, IOptions<FeedOptions> options) : IUrlGenerator
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly LinkGenerator _linkGenerator;
-    private readonly IOptions<FeedOptions> _options;
-
-    public NuDepotUrlGenerator(
-        IHttpContextAccessor httpContextAccessor,
-        LinkGenerator linkGenerator,
-        IOptions<FeedOptions> options)
-    {
-        _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
-        _linkGenerator = linkGenerator ?? throw new ArgumentNullException(nameof(linkGenerator));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-    }
+    private IHttpContextAccessor HttpContextAccessor { get; } = httpContextAccessor;
+    private LinkGenerator LinkGenerator { get; } = linkGenerator;
+    private IOptions<FeedOptions> Options { get; } = options;
 
     public string GetServiceIndexUrl()
     {
@@ -99,7 +88,9 @@ public class NuDepotUrlGenerator : IUrlGenerator
     public string GetPackageDownloadUrl(string id, NuGetVersion version)
     {
         id = id.ToLowerInvariant();
-        var versionString = version.ToNormalizedString().ToLowerInvariant();
+        string versionString = version
+            .ToNormalizedString()
+            .ToLowerInvariant();
 
         return GetUrl(
             Routes.PackageDownloadRouteName,
@@ -114,7 +105,9 @@ public class NuDepotUrlGenerator : IUrlGenerator
     public string GetPackageManifestDownloadUrl(string id, NuGetVersion version)
     {
         id = id.ToLowerInvariant();
-        var versionString = version.ToNormalizedString().ToLowerInvariant();
+        string versionString = version
+            .ToNormalizedString()
+            .ToLowerInvariant();
 
         return GetUrl(
             Routes.PackageDownloadManifestRouteName,
@@ -170,8 +163,9 @@ public class NuDepotUrlGenerator : IUrlGenerator
 
     public string? GetPackageDetailsUriTemplate()
     {
-        var template = _options.Value.PackageDetailsUriTemplate;
-        if (string.IsNullOrEmpty(template)) return null;
+        string? template = Options.Value.PackageDetailsUriTemplate;
+        if (string.IsNullOrEmpty(template))
+            return null;
 
         // An absolute template points somewhere else, like a separately hosted website.
         // A relative one is resolved against this server's address.
@@ -211,13 +205,13 @@ public class NuDepotUrlGenerator : IUrlGenerator
 
     private string GetUrl(string endpointName, RouteValueDictionary? values = null)
     {
-        return _linkGenerator.GetUriByName(HttpContext, endpointName, values ?? new RouteValueDictionary())
+        return LinkGenerator.GetUriByName(HttpContext, endpointName, values ?? [])
             ?? throw new InvalidOperationException($"Could not generate a URL for the '{endpointName}' endpoint.");
     }
 
     private string AbsoluteUrl(string relativePath)
     {
-        var request = HttpContext.Request;
+        HttpRequest request = HttpContext.Request;
 
         return string.Concat(
             request.Scheme,
@@ -228,6 +222,6 @@ public class NuDepotUrlGenerator : IUrlGenerator
             relativePath);
     }
 
-    private HttpContext HttpContext => _httpContextAccessor.HttpContext
+    private HttpContext HttpContext => HttpContextAccessor.HttpContext
         ?? throw new InvalidOperationException("URLs can only be generated while handling a request.");
 }

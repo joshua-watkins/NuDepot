@@ -1,4 +1,4 @@
-﻿namespace NuDepot.Gallery;
+namespace NuDepot.Gallery;
 
 /// <summary>
 /// The gallery's options, bound from the <see cref="Section"/> configuration section.

@@ -1,6 +1,5 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
 using NuDepot.Core.Converters;
+using System.Text.Json.Serialization;
 
 namespace NuDepot.Core.Models;
 

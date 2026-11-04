@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -5,10 +6,6 @@ using Microsoft.Extensions.Options;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
 // In the namespace of IHost, so applications see RunMigrationsAsync() without a using.
 namespace Microsoft.Extensions.Hosting;
@@ -27,15 +24,14 @@ public static class FeedHostExtensions
     /// </summary>
     public static IHostApplicationBuilder UseNuDepotConfigRoot(this IHostApplicationBuilder builder)
     {
-        if (builder == null) throw new ArgumentNullException(nameof(builder));
+        string? root = Environment.GetEnvironmentVariable(ConfigRootVariable);
+        if (string.IsNullOrEmpty(root))
+            return builder;
 
-        var root = Environment.GetEnvironmentVariable(ConfigRootVariable);
-        if (string.IsNullOrEmpty(root)) return builder;
+        PhysicalFileProvider fileProvider = new(Path.GetFullPath(root));
+        IList<IConfigurationSource> sources = builder.Configuration.Sources;
 
-        var fileProvider = new PhysicalFileProvider(Path.GetFullPath(root));
-        var sources = builder.Configuration.Sources;
-
-        for (var i = 0; i < sources.Count; i++)
+        for (int i = 0; i < sources.Count; i++)
         {
             if (sources[i] is JsonConfigurationSource json &&
                 json.Path != null &&
@@ -55,28 +51,24 @@ public static class FeedHostExtensions
         return builder;
     }
 
-    public static async Task RunMigrationsAsync(
-        this IHost host,
-        CancellationToken cancellationToken = default)
+    public static async Task RunMigrationsAsync(this IHost host, CancellationToken cancellationToken = default)
     {
         // Run migrations if necessary.
-        var options = host.Services.GetRequiredService<IOptions<FeedOptions>>();
+        IOptions<FeedOptions> options = host.Services.GetRequiredService<IOptions<FeedOptions>>();
 
         if (options.Value.RunMigrationsAtStartup)
         {
-            using (var scope = host.Services.CreateScope())
+            using (IServiceScope scope = host.Services.CreateScope())
             {
-                var context = scope.ServiceProvider.GetService<NuDepotContext>();
+                NuDepotContext? context = scope.ServiceProvider.GetService<NuDepotContext>();
                 if (context != null)
                 {
                     await context.RunMigrationsAsync(cancellationToken);
 
                     // Packages indexed before the catalog existed are added to it once.
-                    var catalog = scope.ServiceProvider.GetService<ICatalogService>();
+                    ICatalogService? catalog = scope.ServiceProvider.GetService<ICatalogService>();
                     if (catalog != null)
-                    {
                         await catalog.InitializeAsync(cancellationToken);
-                    }
                 }
             }
         }

@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -14,32 +12,22 @@ public class StringOrStringArrayJsonConverter : JsonConverter<IReadOnlyList<stri
     {
         // Try to read a single string first.
         if (reader.TokenType == JsonTokenType.String)
-        {
-            return new List<string> { reader.GetString()! };
-        }
+            return [reader.GetString()!];
 
         // Try to read an array of strings.
         if (reader.TokenType != JsonTokenType.StartArray)
-        {
             throw new JsonException();
-        }
 
-        var result = new List<string>();
+        List<string> result = [];
 
         while (reader.Read())
         {
             if (reader.TokenType == JsonTokenType.String)
-            {
                 result.Add(reader.GetString()!);
-            }
             else if (reader.TokenType == JsonTokenType.EndArray)
-            {
                 return result;
-            }
             else
-            {
                 break;
-            }
         }
 
         throw new JsonException();
@@ -49,7 +37,7 @@ public class StringOrStringArrayJsonConverter : JsonConverter<IReadOnlyList<stri
     {
         writer.WriteStartArray();
 
-        foreach (var value in values)
+        foreach (string value in values)
         {
             writer.WriteStringValue(value);
         }

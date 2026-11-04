@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NuDepot.Feed.Upstream;
@@ -21,7 +16,8 @@ public static class NuDepotCommands
     /// <returns>Whether the help was written, and the application should exit.</returns>
     public static bool TryWriteHelp(string[] args)
     {
-        if (!args.Any(arg => arg is "-h" or "-?" or "--help")) return false;
+        if (!args.Any(arg => arg is "-h" or "-?" or "--help"))
+            return false;
 
         Console.WriteLine("""
             A light-weight NuGet service
@@ -53,8 +49,8 @@ public static class NuDepotCommands
                 return false;
 
             case ["import", "downloads"]:
-                using (var cancellation = new CancellationTokenSource())
-                using (var scope = host.Services.CreateScope())
+                using (CancellationTokenSource cancellation = new())
+                using (IServiceScope scope = host.Services.CreateScope())
                 {
                     // Stop the import with Ctrl+C.
                     Console.CancelKeyPress += (_, e) =>
@@ -63,7 +59,7 @@ public static class NuDepotCommands
                         cancellation.Cancel();
                     };
 
-                    var importer = scope.ServiceProvider.GetRequiredService<DownloadsImporter>();
+                    DownloadsImporter importer = scope.ServiceProvider.GetRequiredService<DownloadsImporter>();
 
                     await importer.ImportAsync(cancellation.Token);
                 }
@@ -81,15 +77,16 @@ public static class NuDepotCommands
     // or --Database:ConnectionString=..., are configuration values that the host already read.
     private static string[] GetCommand(string[] args)
     {
-        var command = new List<string>();
+        List<string> command = [];
 
-        for (var i = 0; i < args.Length; i++)
+        for (int i = 0; i < args.Length; i++)
         {
-            var arg = args[i];
+            string arg = args[i];
             if (arg.StartsWith('-') || arg.StartsWith('/'))
             {
                 // "--key value" passes the value as the next argument; "--key=value" doesn't.
-                if (!arg.Contains('=')) i++;
+                if (!arg.Contains('='))
+                    i++;
 
                 continue;
             }

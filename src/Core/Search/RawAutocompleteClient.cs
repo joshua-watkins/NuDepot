@@ -1,7 +1,3 @@
-using System;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
 using NuDepot.Core.Serialization;
@@ -13,32 +9,17 @@ namespace NuDepot.Core.Search;
 /// 
 /// See https://docs.microsoft.com/en-us/nuget/api/search-autocomplete-service-resource
 /// </summary>
-public class RawAutocompleteClient : IAutocompleteClient
+/// <param name="httpClient">The HTTP client used to send requests.</param>
+/// <param name="autocompleteUrl">The NuGet server's autocomplete URL.</param>
+public class RawAutocompleteClient(HttpClient httpClient, string autocompleteUrl) : IAutocompleteClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _autocompleteUrl;
+    private HttpClient HttpClient { get; } = httpClient;
+    private string AutocompleteUrl { get; } = autocompleteUrl;
 
-    /// <summary>
-    /// Create a new Search client.
-    /// </summary>
-    /// <param name="httpClient">The HTTP client used to send requests.</param>
-    /// <param name="autocompleteUrl">The NuGet server's autocomplete URL.</param>
-    public RawAutocompleteClient(HttpClient httpClient, string autocompleteUrl)
+    public async Task<AutocompleteResponse> AutocompleteAsync(string? query = null, int skip = 0, int take = 20, bool includePrerelease = true, bool includeSemVer2 = true, CancellationToken cancellationToken = default)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _autocompleteUrl = autocompleteUrl ?? throw new ArgumentNullException(nameof(autocompleteUrl));
-    }
-
-    public async Task<AutocompleteResponse> AutocompleteAsync(
-        string? query = null,
-        int skip = 0,
-        int take = 20,
-        bool includePrerelease = true,
-        bool includeSemVer2 = true,
-        CancellationToken cancellationToken = default)
-    {
-        var url = RawSearchClient.AddSearchQueryString(
-            _autocompleteUrl,
+        string url = RawSearchClient.AddSearchQueryString(
+            AutocompleteUrl,
             query,
             skip,
             take,
@@ -46,17 +27,13 @@ public class RawAutocompleteClient : IAutocompleteClient
             includeSemVer2,
             "q");
 
-        return await _httpClient.GetFromJsonAsync(url, NuGetJsonContext.Default.AutocompleteResponse, cancellationToken);
+        return await HttpClient.GetFromJsonAsync(url, NuGetJsonContext.Default.AutocompleteResponse, cancellationToken);
     }
 
-    public async Task<AutocompleteResponse> ListPackageVersionsAsync(
-        string packageId,
-        bool includePrerelease = true,
-        bool includeSemVer2 = true,
-        CancellationToken cancellationToken = default)
+    public async Task<AutocompleteResponse> ListPackageVersionsAsync(string packageId, bool includePrerelease = true, bool includeSemVer2 = true, CancellationToken cancellationToken = default)
     {
-        var url = RawSearchClient.AddSearchQueryString(
-            _autocompleteUrl,
+        string url = RawSearchClient.AddSearchQueryString(
+            AutocompleteUrl,
             packageId,
             skip: null,
             take: null,
@@ -64,6 +41,6 @@ public class RawAutocompleteClient : IAutocompleteClient
             includeSemVer2,
             "id");
 
-        return await _httpClient.GetFromJsonAsync(url, NuGetJsonContext.Default.AutocompleteResponse, cancellationToken);
+        return await HttpClient.GetFromJsonAsync(url, NuGetJsonContext.Default.AutocompleteResponse, cancellationToken);
     }
 }

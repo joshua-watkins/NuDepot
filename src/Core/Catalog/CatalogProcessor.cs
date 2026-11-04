@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
@@ -12,36 +9,18 @@ namespace NuDepot.Core.Catalog;
 /// See: https://docs.microsoft.com/en-us/nuget/api/catalog-resource
 /// Based off: https://github.com/NuGet/NuGet.Services.Metadata/blob/3a468fe534a03dcced897eb5992209fdd3c4b6c9/src/NuGet.Protocol.Catalog/CatalogProcessor.cs
 /// </summary>
-public class CatalogProcessor
+/// <param name="cursor">Cursor to track succesfully processed leafs. Leafs before the cursor are skipped.</param>
+/// <param name="client">The client to interact with the catalog resource.</param>
+/// <param name="leafProcessor">The leaf processor.</param>
+/// <param name="options">The options to configure catalog processing.</param>
+/// <param name="logger">The logger used for telemetry.</param>
+public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLeafProcessor leafProcessor, CatalogProcessorOptions options, ILogger<CatalogProcessor> logger)
 {
-    private readonly ICatalogLeafProcessor _leafProcessor;
-    private readonly ICatalogClient _client;
-    private readonly ICursor _cursor;
-    private readonly CatalogProcessorOptions _options;
-    private readonly ILogger<CatalogProcessor> _logger;
-
-    /// <summary>
-    /// Create a processor to discover and download catalog leafs. Leafs are processed
-    /// by the <see cref="ICatalogLeafProcessor"/>.
-    /// </summary>
-    /// <param name="cursor">Cursor to track succesfully processed leafs. Leafs before the cursor are skipped.</param>
-    /// <param name="client">The client to interact with the catalog resource.</param>
-    /// <param name="leafProcessor">The leaf processor.</param>
-    /// <param name="options">The options to configure catalog processing.</param>
-    /// <param name="logger">The logger used for telemetry.</param>
-    public CatalogProcessor(
-        ICursor cursor,
-        ICatalogClient client,
-        ICatalogLeafProcessor leafProcessor,
-        CatalogProcessorOptions options,
-        ILogger<CatalogProcessor> logger)
-    {
-        _leafProcessor = leafProcessor ?? throw new ArgumentNullException(nameof(leafProcessor));
-        _client = client ?? throw new ArgumentNullException(nameof(client));
-        _cursor = cursor ?? throw new ArgumentNullException(nameof(cursor));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private ICatalogLeafProcessor LeafProcessor { get; } = leafProcessor;
+    private ICatalogClient Client { get; } = client;
+    private ICursor Cursor { get; } = cursor;
+    private CatalogProcessorOptions Options { get; } = options;
+    private ILogger<CatalogProcessor> Logger { get; } = logger;
 
     /// <summary>
     /// Discovers and downloads all of the catalog leafs after the current cursor value and before the maximum
@@ -53,34 +32,34 @@ public class CatalogProcessor
     /// <returns>True if all of the catalog leaves found were processed successfully.</returns>
     public async Task<bool> ProcessAsync(CancellationToken cancellationToken = default)
     {
-        var minCommitTimestamp = await GetMinCommitTimestamp(cancellationToken);
-        _logger.LogInformation(
+        DateTimeOffset minCommitTimestamp = await GetMinCommitTimestamp(cancellationToken);
+        Logger.LogInformation(
             "Using time bounds {min:O} (exclusive) to {max:O} (inclusive).",
             minCommitTimestamp,
-            _options.MaxCommitTimestamp);
+            Options.MaxCommitTimestamp);
 
         return await ProcessIndexAsync(minCommitTimestamp, cancellationToken);
     }
 
     private async Task<bool> ProcessIndexAsync(DateTimeOffset minCommitTimestamp, CancellationToken cancellationToken)
     {
-        var index = await _client.GetIndexAsync(cancellationToken);
+        CatalogIndex index = await Client.GetIndexAsync(cancellationToken);
 
-        var pageItems = index.GetPagesInBounds(
+        List<CatalogPageItem> pageItems = index.GetPagesInBounds(
             minCommitTimestamp,
-            _options.MaxCommitTimestamp);
-        _logger.LogInformation(
+            Options.MaxCommitTimestamp);
+        Logger.LogInformation(
             "{pages} pages were in the time bounds, out of {totalPages}.",
             pageItems.Count,
             index.Items.Count);
 
-        var success = true;
-        for (var i = 0; i < pageItems.Count; i++)
+        bool success = true;
+        for (int i = 0; i < pageItems.Count; i++)
         {
             success = await ProcessPageAsync(minCommitTimestamp, pageItems[i], cancellationToken);
             if (!success)
             {
-                _logger.LogWarning(
+                Logger.LogWarning(
                     "{unprocessedPages} out of {pages} pages were left incomplete due to a processing failure.",
                     pageItems.Count - i,
                     pageItems.Count);
@@ -91,40 +70,35 @@ public class CatalogProcessor
         return success;
     }
 
-    private async Task<bool> ProcessPageAsync(
-        DateTimeOffset minCommitTimestamp,
-        CatalogPageItem pageItem,
-        CancellationToken cancellationToken)
+    private async Task<bool> ProcessPageAsync(DateTimeOffset minCommitTimestamp, CatalogPageItem pageItem, CancellationToken cancellationToken)
     {
-        var page = await _client.GetPageAsync(pageItem.CatalogPageUrl, cancellationToken);
+        CatalogPage page = await Client.GetPageAsync(pageItem.CatalogPageUrl, cancellationToken);
 
-        var leafItems = page.GetLeavesInBounds(
+        List<CatalogLeafItem> leafItems = page.GetLeavesInBounds(
             minCommitTimestamp,
-            _options.MaxCommitTimestamp,
-            _options.ExcludeRedundantLeaves);
-        _logger.LogInformation(
+            Options.MaxCommitTimestamp,
+            Options.ExcludeRedundantLeaves);
+        Logger.LogInformation(
             "On page {page}, {leaves} out of {totalLeaves} were in the time bounds.",
             pageItem.CatalogPageUrl,
             leafItems.Count,
             page.Items.Count);
 
         DateTimeOffset? newCursor = null;
-        var success = true;
-        for (var i = 0; i < leafItems.Count; i++)
+        bool success = true;
+        for (int i = 0; i < leafItems.Count; i++)
         {
-            var leafItem = leafItems[i];
+            CatalogLeafItem leafItem = leafItems[i];
 
             if (newCursor.HasValue && newCursor.Value != leafItem.CommitTimestamp)
-            {
-                await _cursor.SetAsync(newCursor.Value, cancellationToken);
-            }
+                await Cursor.SetAsync(newCursor.Value, cancellationToken);
 
             newCursor = leafItem.CommitTimestamp;
 
             success = await ProcessLeafAsync(leafItem, cancellationToken);
             if (!success)
             {
-                _logger.LogWarning(
+                Logger.LogWarning(
                     "{unprocessedLeaves} out of {leaves} leaves were left incomplete due to a processing failure.",
                     leafItems.Count - i,
                     leafItems.Count);
@@ -133,9 +107,7 @@ public class CatalogProcessor
         }
 
         if (newCursor.HasValue && success)
-        {
-            await _cursor.SetAsync(newCursor.Value);
-        }
+            await Cursor.SetAsync(newCursor.Value);
 
         return success;
     }
@@ -147,13 +119,13 @@ public class CatalogProcessor
         {
             if (leafItem.IsPackageDelete())
             {
-                var packageDelete = await _client.GetPackageDeleteLeafAsync(leafItem.CatalogLeafUrl);
-                success = await _leafProcessor.ProcessPackageDeleteAsync(packageDelete, cancellationToken);
+                PackageDeleteCatalogLeaf packageDelete = await Client.GetPackageDeleteLeafAsync(leafItem.CatalogLeafUrl);
+                success = await LeafProcessor.ProcessPackageDeleteAsync(packageDelete, cancellationToken);
             }
             else if (leafItem.IsPackageDetails())
             {
-                var packageDetails = await _client.GetPackageDetailsLeafAsync(leafItem.CatalogLeafUrl);
-                success = await _leafProcessor.ProcessPackageDetailsAsync(packageDetails, cancellationToken);
+                PackageDetailsCatalogLeaf packageDetails = await Client.GetPackageDetailsLeafAsync(leafItem.CatalogLeafUrl);
+                success = await LeafProcessor.ProcessPackageDetailsAsync(packageDetails, cancellationToken);
             }
             else
             {
@@ -162,7 +134,7 @@ public class CatalogProcessor
         }
         catch (Exception exception)
         {
-            _logger.LogError(
+            Logger.LogError(
                 0,
                 exception,
                 "An exception was thrown while processing leaf {leafUrl}.",
@@ -172,7 +144,7 @@ public class CatalogProcessor
 
         if (!success)
         {
-            _logger.LogWarning(
+            Logger.LogWarning(
                 "Failed to process leaf {leafUrl} ({packageId} {packageVersion}, {leafType}).",
                 leafItem.CatalogLeafUrl,
                 leafItem.PackageId,
@@ -185,16 +157,14 @@ public class CatalogProcessor
 
     private async Task<DateTimeOffset> GetMinCommitTimestamp(CancellationToken cancellationToken)
     {
-        var minCommitTimestamp = await _cursor.GetAsync(cancellationToken);
+        DateTimeOffset? minCommitTimestamp = await Cursor.GetAsync(cancellationToken);
 
         minCommitTimestamp = minCommitTimestamp
-            ?? _options.DefaultMinCommitTimestamp
-            ?? _options.MinCommitTimestamp;
+            ?? Options.DefaultMinCommitTimestamp
+            ?? Options.MinCommitTimestamp;
 
-        if (minCommitTimestamp.Value < _options.MinCommitTimestamp)
-        {
-            minCommitTimestamp = _options.MinCommitTimestamp;
-        }
+        if (minCommitTimestamp.Value < Options.MinCommitTimestamp)
+            minCommitTimestamp = Options.MinCommitTimestamp;
 
         return minCommitTimestamp.Value;
     }

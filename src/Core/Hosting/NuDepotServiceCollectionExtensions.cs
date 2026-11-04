@@ -1,4 +1,3 @@
-using System;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NuDepot.Core.Hosting;
 
@@ -13,8 +12,6 @@ public static class NuDepotServiceCollectionExtensions
     /// </summary>
     public static NuDepotBuilder AddNuDepot(this IServiceCollection services)
     {
-        ArgumentNullException.ThrowIfNull(services);
-
         services.TryAddSingleton<NuDepotFeatures>();
         services.AddRouting(options => options.LowercaseUrls = true);
         services.AddHttpContextAccessor();

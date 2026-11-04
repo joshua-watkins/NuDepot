@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Indexing;
@@ -11,72 +6,57 @@ using NuGet.Versioning;
 
 namespace NuDepot.Feed;
 
-public class PackageService : IPackageService
+public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPackageIndexingService indexer, ILogger<PackageService> logger) : IPackageService
 {
-    private readonly IPackageDatabase _db;
-    private readonly IUpstreamClient _upstream;
-    private readonly IPackageIndexingService _indexer;
-    private readonly ILogger<PackageService> _logger;
+    private IPackageDatabase Db { get; } = db;
+    private IUpstreamClient Upstream { get; } = upstream;
+    private IPackageIndexingService Indexer { get; } = indexer;
+    private ILogger<PackageService> Logger { get; } = logger;
 
-    public PackageService(
-        IPackageDatabase db,
-        IUpstreamClient upstream,
-        IPackageIndexingService indexer,
-        ILogger<PackageService> logger)
+    public async Task<IReadOnlyList<NuGetVersion>> FindPackageVersionsAsync(string id, CancellationToken cancellationToken)
     {
-        _db = db ?? throw new ArgumentNullException(nameof(db));
-        _upstream = upstream ?? throw new ArgumentNullException(nameof(upstream));
-        _indexer = indexer ?? throw new ArgumentNullException(nameof(indexer));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    public async Task<IReadOnlyList<NuGetVersion>> FindPackageVersionsAsync(
-        string id,
-        CancellationToken cancellationToken)
-    {
-        var upstreamVersions = await _upstream.ListPackageVersionsAsync(id, cancellationToken);
+        IReadOnlyList<NuGetVersion> upstreamVersions = await Upstream.ListPackageVersionsAsync(id, cancellationToken);
 
         // Merge the local package versions into the upstream package versions.
-        var localPackages = await _db.FindAsync(id, includeUnlisted: true, cancellationToken);
-        var localVersions = localPackages.Select(p => p.Version);
+        IReadOnlyList<Package> localPackages = await Db.FindAsync(id, includeUnlisted: true, cancellationToken);
+        IEnumerable<NuGetVersion> localVersions = localPackages.Select(p => p.Version);
 
-        if (!upstreamVersions.Any()) return localVersions.ToList();
-        if (!localPackages.Any()) return upstreamVersions;
+        if (!upstreamVersions.Any())
+            return [.. localVersions];
+        if (!localPackages.Any())
+            return upstreamVersions;
 
-        return upstreamVersions.Concat(localVersions).Distinct().ToList();
+        return [.. upstreamVersions.Concat(localVersions).Distinct()];
     }
 
     public async Task<IReadOnlyList<Package>> FindPackagesAsync(string id, CancellationToken cancellationToken)
     {
-        var upstreamPackages = await _upstream.ListPackagesAsync(id, cancellationToken);
-        var localPackages = await _db.FindAsync(id, includeUnlisted: true, cancellationToken);
+        IReadOnlyList<Package> upstreamPackages = await Upstream.ListPackagesAsync(id, cancellationToken);
+        IReadOnlyList<Package> localPackages = await Db.FindAsync(id, includeUnlisted: true, cancellationToken);
 
-        if (!upstreamPackages.Any()) return localPackages;
-        if (!localPackages.Any()) return upstreamPackages;
+        if (!upstreamPackages.Any())
+            return localPackages;
+        if (!localPackages.Any())
+            return upstreamPackages;
 
         // Merge the local packages into the upstream packages.
-        var result = upstreamPackages.ToDictionary(p => p.Version);
-        var local = localPackages.ToDictionary(p => p.Version);
+        Dictionary<NuGetVersion, Package> result = upstreamPackages.ToDictionary(p => p.Version);
+        Dictionary<NuGetVersion, Package> local = localPackages.ToDictionary(p => p.Version);
 
-        foreach (var localPackage in local)
+        foreach (KeyValuePair<NuGetVersion, Package> localPackage in local)
         {
             result[localPackage.Key] = localPackage.Value;
         }
 
-        return result.Values.ToList();
+        return [.. result.Values];
     }
 
-    public async Task<Package?> FindPackageOrNullAsync(
-        string id,
-        NuGetVersion version,
-        CancellationToken cancellationToken)
+    public async Task<Package?> FindPackageOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         if (!await MirrorAsync(id, version, cancellationToken))
-        {
             return null;
-        }
 
-        return await _db.FindOrNullAsync(id, version, includeUnlisted: true, cancellationToken);
+        return await Db.FindOrNullAsync(id, version, includeUnlisted: true, cancellationToken);
     }
 
     public async Task<bool> ExistsAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
@@ -86,7 +66,7 @@ public class PackageService : IPackageService
 
     public async Task AddDownloadAsync(string packageId, NuGetVersion version, CancellationToken cancellationToken)
     {
-        await _db.AddDownloadAsync(packageId, version, cancellationToken);
+        await Db.AddDownloadAsync(packageId, version, cancellationToken);
     }
 
     /// <summary>
@@ -98,37 +78,35 @@ public class PackageService : IPackageService
     /// <returns>True if the package exists locally or was indexed from an upstream source.</returns>
     private async Task<bool> MirrorAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        if (await _db.ExistsAsync(id, version, cancellationToken))
-        {
+        if (await Db.ExistsAsync(id, version, cancellationToken))
             return true;
-        }
 
-        _logger.LogInformation(
+        Logger.LogInformation(
             "Package {PackageId} {PackageVersion} does not exist locally. Checking upstream feed...",
             id,
             version);
 
         try
         {
-            using (var packageStream = await _upstream.DownloadPackageOrNullAsync(id, version, cancellationToken))
+            using (Stream? packageStream = await Upstream.DownloadPackageOrNullAsync(id, version, cancellationToken))
             {
                 if (packageStream == null)
                 {
-                    _logger.LogWarning(
+                    Logger.LogWarning(
                         "Upstream feed does not have package {PackageId} {PackageVersion}",
                         id,
                         version);
                     return false;
                 }
 
-                _logger.LogInformation(
+                Logger.LogInformation(
                     "Downloaded package {PackageId} {PackageVersion}, indexing...",
                     id,
                     version);
 
-                var result = await _indexer.IndexAsync(packageStream, cancellationToken);
+                PackageIndexingResult result = await Indexer.IndexAsync(packageStream, cancellationToken);
 
-                _logger.LogInformation(
+                Logger.LogInformation(
                     "Finished indexing package {PackageId} {PackageVersion} from upstream feed with result {Result}",
                     id,
                     version,
@@ -139,7 +117,7 @@ public class PackageService : IPackageService
         }
         catch (Exception e)
         {
-            _logger.LogError(
+            Logger.LogError(
                 e,
                 "Failed to index package {PackageId} {PackageVersion} from upstream",
                 id,

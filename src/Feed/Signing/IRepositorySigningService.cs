@@ -1,7 +1,4 @@
-using System.IO;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NuDepot.Feed.Signing;
 
@@ -26,6 +23,7 @@ public interface IRepositorySigningService
     /// </summary>
     /// <param name="package">The package. Its position is reset afterwards.</param>
     /// <param name="serviceIndexUrl">This server's service index URL, which the signature records. Must be HTTPS.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
     Task<RepositorySigningResult> SignAsync(Stream package, string serviceIndexUrl, CancellationToken cancellationToken);
 }
 

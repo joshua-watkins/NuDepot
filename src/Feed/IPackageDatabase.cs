@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
@@ -8,7 +5,7 @@ namespace NuDepot.Feed;
 
 /// <summary>
 /// The "source of truth" for packages' state. Packages' content
-/// are stored by the <see cref="IPackageStorageService"/>.
+/// are stored by the <see cref="Storage.IPackageStorageService"/>.
 /// </summary>
 public interface IPackageDatabase
 {
@@ -28,11 +25,7 @@ public interface IPackageDatabase
     /// <param name="includeUnlisted">Whether unlisted results should be included.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package found, or null.</returns>
-    Task<Package?> FindOrNullAsync(
-        string id,
-        NuGetVersion version,
-        bool includeUnlisted,
-        CancellationToken cancellationToken);
+    Task<Package?> FindOrNullAsync(string id, NuGetVersion version, bool includeUnlisted, CancellationToken cancellationToken);
 
     /// <summary>
     /// Attempt to find all packages with a given id.

@@ -1,17 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
 using NuDepot.Core.PackageContent;
 using NuDepot.Core.PackageMetadata;
 using NuDepot.Core.Search;
 using NuGet.Versioning;
+using System.Net;
 
 namespace NuDepot.Core;
 
@@ -20,10 +13,10 @@ namespace NuDepot.Core;
 /// </summary>
 public class NuGetClient
 {
-    private readonly IPackageContentClient _contentClient;
-    private readonly IPackageMetadataClient _metadataClient;
-    private readonly ISearchClient _searchClient;
-    private readonly IAutocompleteClient _autocompleteClient;
+    private IPackageContentClient ContentClient { get; }
+    private IPackageMetadataClient MetadataClient { get; }
+    private ISearchClient SearchClient { get; }
+    private IAutocompleteClient AutocompleteClient { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NuGetClient"/> class
@@ -31,10 +24,10 @@ public class NuGetClient
     /// </summary>
     protected NuGetClient()
     {
-        _contentClient = null!;
-        _metadataClient = null!;
-        _searchClient = null!;
-        _autocompleteClient = null!;
+        ContentClient = null!;
+        MetadataClient = null!;
+        SearchClient = null!;
+        AutocompleteClient = null!;
     }
 
     /// <summary>
@@ -47,17 +40,17 @@ public class NuGetClient
     /// </param>
     public NuGetClient(string serviceIndexUrl)
     {
-        var httpClient = new HttpClient(new HttpClientHandler
+        HttpClient httpClient = new(new HttpClientHandler
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
         });
 
-        var clientFactory = new NuGetClientFactory(httpClient, serviceIndexUrl);
+        NuGetClientFactory clientFactory = new(httpClient, serviceIndexUrl);
 
-        _contentClient = clientFactory.CreatePackageContentClient();
-        _metadataClient = clientFactory.CreatePackageMetadataClient();
-        _searchClient = clientFactory.CreateSearchClient();
-        _autocompleteClient = clientFactory.CreateAutocompleteClient();
+        ContentClient = clientFactory.CreatePackageContentClient();
+        MetadataClient = clientFactory.CreatePackageMetadataClient();
+        SearchClient = clientFactory.CreateSearchClient();
+        AutocompleteClient = clientFactory.CreateAutocompleteClient();
     }
 
     /// <summary>
@@ -66,12 +59,10 @@ public class NuGetClient
     /// <param name="clientFactory">The factory used to create NuGet clients.</param>
     public NuGetClient(NuGetClientFactory clientFactory)
     {
-        if (clientFactory == null) throw new ArgumentNullException(nameof(clientFactory));
-
-        _contentClient = clientFactory.CreatePackageContentClient();
-        _metadataClient = clientFactory.CreatePackageMetadataClient();
-        _searchClient = clientFactory.CreateSearchClient();
-        _autocompleteClient = clientFactory.CreateAutocompleteClient();
+        ContentClient = clientFactory.CreatePackageContentClient();
+        MetadataClient = clientFactory.CreatePackageMetadataClient();
+        SearchClient = clientFactory.CreateSearchClient();
+        AutocompleteClient = clientFactory.CreateAutocompleteClient();
     }
 
     /// <summary>
@@ -80,11 +71,9 @@ public class NuGetClient
     /// <param name="packageId">The package ID.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>Whether the package exists.</returns>
-    public virtual async Task<bool> ExistsAsync(
-        string packageId,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<bool> ExistsAsync(string packageId, CancellationToken cancellationToken = default)
     {
-        var versions = await _contentClient.GetPackageVersionsOrNullAsync(packageId, cancellationToken);
+        PackageVersionsResponse? versions = await ContentClient.GetPackageVersionsOrNullAsync(packageId, cancellationToken);
 
         return versions != null && versions.Versions.Any();
     }
@@ -96,17 +85,12 @@ public class NuGetClient
     /// <param name="packageVersion">The package version.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>Whether the package exists.</returns>
-    public virtual async Task<bool> ExistsAsync(
-        string packageId,
-        NuGetVersion packageVersion,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<bool> ExistsAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default)
     {
-        var versions = await _contentClient.GetPackageVersionsOrNullAsync(packageId, cancellationToken);
+        PackageVersionsResponse? versions = await ContentClient.GetPackageVersionsOrNullAsync(packageId, cancellationToken);
 
         if (versions == null)
-        {
             return false;
-        }
 
         return versions
             .ParseVersions()
@@ -125,12 +109,10 @@ public class NuGetClient
     /// </exception>
     public virtual async Task<Stream> DownloadPackageAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default)
     {
-        var stream = await _contentClient.DownloadPackageOrNullAsync(packageId, packageVersion, cancellationToken);
+        Stream? stream = await ContentClient.DownloadPackageOrNullAsync(packageId, packageVersion, cancellationToken);
 
         if (stream == null)
-        {
             throw new PackageNotFoundException(packageId, packageVersion);
-        }
 
         return stream;
     }
@@ -145,17 +127,12 @@ public class NuGetClient
     /// <exception cref="PackageNotFoundException">
     ///     The package could not be found.
     /// </exception>
-    public virtual async Task<Stream> DownloadPackageManifestAsync(
-        string packageId,
-        NuGetVersion packageVersion,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<Stream> DownloadPackageManifestAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default)
     {
-        var stream = await _contentClient.DownloadPackageManifestOrNullAsync(packageId, packageVersion, cancellationToken);
+        Stream? stream = await ContentClient.DownloadPackageManifestOrNullAsync(packageId, packageVersion, cancellationToken);
 
         if (stream == null)
-        {
             throw new PackageNotFoundException(packageId, packageVersion);
-        }
 
         return stream;
     }
@@ -166,17 +143,14 @@ public class NuGetClient
     /// <param name="packageId">The package ID.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package's listed versions, if any.</returns>
-    public virtual async Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(
-        string packageId,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(string packageId, CancellationToken cancellationToken = default)
     {
         // TODO: Use the Autocomplete's enumerate versions endpoint if this is not Sleet.
-        var packages = await GetPackageMetadataAsync(packageId, cancellationToken);
+        IReadOnlyList<Models.PackageMetadata> packages = await GetPackageMetadataAsync(packageId, cancellationToken);
 
-        return packages
+        return [.. packages
             .Where(p => p.IsListed())
-            .Select(p => p.ParseVersion())
-            .ToList();
+            .Select(p => p.ParseVersion())];
     }
 
     /// <summary>
@@ -186,22 +160,15 @@ public class NuGetClient
     /// <param name="includeUnlisted">Whether to include unlisted versions.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package's versions, or an empty list if the package does not exist.</returns>
-    public virtual async Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(
-        string packageId,
-        bool includeUnlisted,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(string packageId, bool includeUnlisted, CancellationToken cancellationToken = default)
     {
         if (!includeUnlisted)
-        {
             return await ListPackageVersionsAsync(packageId, cancellationToken);
-        }
 
-        var response = await _contentClient.GetPackageVersionsOrNullAsync(packageId, cancellationToken);
+        PackageVersionsResponse? response = await ContentClient.GetPackageVersionsOrNullAsync(packageId, cancellationToken);
 
         if (response == null)
-        {
-            return new List<NuGetVersion>();
-        }
+            return [];
 
         return response.ParseVersions();
     }
@@ -212,33 +179,30 @@ public class NuGetClient
     /// <param name="packageId">The package ID.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package's metadata, or an empty list if the package does not exist.</returns>
-    public virtual async Task<IReadOnlyList<Models.PackageMetadata>> GetPackageMetadataAsync(
-        string packageId,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<Models.PackageMetadata>> GetPackageMetadataAsync(string packageId, CancellationToken cancellationToken = default)
     {
-        var result = new List<Models.PackageMetadata>();
+        List<Models.PackageMetadata> result = [];
 
-        var registrationIndex = await _metadataClient.GetRegistrationIndexOrNullAsync(packageId, cancellationToken);
+        RegistrationIndexResponse? registrationIndex = await MetadataClient.GetRegistrationIndexOrNullAsync(packageId, cancellationToken);
 
         if (registrationIndex == null)
-        {
             return result;
-        }
 
-        foreach (var registrationIndexPage in registrationIndex.Pages)
+        foreach (RegistrationIndexPage registrationIndexPage in registrationIndex.Pages)
         {
             // If the package's registration index is too big, it will be split into registration
             // pages stored at different URLs. We will need to fetch each page's items individually.
             // We can detect this case as the registration index will have "null" items.
-            var items = registrationIndexPage.ItemsOrNull;
+            IReadOnlyList<RegistrationIndexPageItem>? items = registrationIndexPage.ItemsOrNull;
             if (items == null)
             {
-                var externalRegistrationPage = await _metadataClient.GetRegistrationPageAsync(
+                RegistrationPageResponse externalRegistrationPage = await MetadataClient.GetRegistrationPageAsync(
                     registrationIndexPage.RegistrationPageUrl,
                     cancellationToken);
 
                 // Skip malformed external pages.
-                if (externalRegistrationPage?.ItemsOrNull == null) continue;
+                if (externalRegistrationPage?.ItemsOrNull == null)
+                    continue;
 
                 items = externalRegistrationPage.ItemsOrNull;
             }
@@ -259,49 +223,45 @@ public class NuGetClient
     /// <exception cref="PackageNotFoundException">
     ///     The package could not be found.
     /// </exception>
-    public virtual async Task<Models.PackageMetadata> GetPackageMetadataAsync(
-        string packageId,
-        NuGetVersion packageVersion,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<Models.PackageMetadata> GetPackageMetadataAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default)
     {
-        var registrationIndex = await _metadataClient.GetRegistrationIndexOrNullAsync(packageId, cancellationToken);
+        RegistrationIndexResponse? registrationIndex = await MetadataClient.GetRegistrationIndexOrNullAsync(packageId, cancellationToken);
 
         if (registrationIndex == null)
-        {
             throw new PackageNotFoundException(packageId, packageVersion);
-        }
 
-        foreach (var registrationIndexPage in registrationIndex.Pages)
+        foreach (RegistrationIndexPage registrationIndexPage in registrationIndex.Pages)
         {
             // Skip pages that do not contain the desired package version.
-            var pageLowerVersion = registrationIndexPage.ParseLower();
-            var pageUpperVersion = registrationIndexPage.ParseUpper();
+            NuGetVersion pageLowerVersion = registrationIndexPage.ParseLower();
+            NuGetVersion pageUpperVersion = registrationIndexPage.ParseUpper();
 
-            if (pageLowerVersion > packageVersion) continue;
-            if (pageUpperVersion < packageVersion) continue;
+            if (pageLowerVersion > packageVersion)
+                continue;
+            if (pageUpperVersion < packageVersion)
+                continue;
 
             // If the package's registration index is too big, it will be split into registration
             // pages stored at different URLs. We will need to fetch each page's items individually.
             // We can detect this case as the registration index will have "null" items.
-            var items = registrationIndexPage.ItemsOrNull;
+            IReadOnlyList<RegistrationIndexPageItem>? items = registrationIndexPage.ItemsOrNull;
             if (items == null)
             {
-                var externalRegistrationPage = await _metadataClient.GetRegistrationPageAsync(
+                RegistrationPageResponse externalRegistrationPage = await MetadataClient.GetRegistrationPageAsync(
                     registrationIndexPage.RegistrationPageUrl,
                     cancellationToken);
 
                 // Skip malformed external pages.
-                if (externalRegistrationPage?.ItemsOrNull == null) continue;
+                if (externalRegistrationPage?.ItemsOrNull == null)
+                    continue;
 
                 items = externalRegistrationPage.ItemsOrNull;
             }
 
             // We've found the registration items that should cover the desired package.
-            var result = items.SingleOrDefault(i => i.PackageMetadata.ParseVersion() == packageVersion);
+            RegistrationIndexPageItem? result = items.SingleOrDefault(i => i.PackageMetadata.ParseVersion() == packageVersion);
             if (result == null)
-            {
                 break;
-            }
 
             return result.PackageMetadata;
         }
@@ -318,11 +278,9 @@ public class NuGetClient
     /// </param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The search results, including prerelease packages.</returns>
-    public virtual async Task<IReadOnlyList<SearchResult>> SearchAsync(
-        string? query = null,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<SearchResult>> SearchAsync(string? query = null, CancellationToken cancellationToken = default)
     {
-        var response = await _searchClient.SearchAsync(query, cancellationToken: cancellationToken);
+        SearchResponse response = await SearchClient.SearchAsync(query, cancellationToken: cancellationToken);
 
         return response.Data;
     }
@@ -337,13 +295,9 @@ public class NuGetClient
     /// <param name="take">The number of results to include.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The search results, including prerelease packages.</returns>
-    public virtual async Task<IReadOnlyList<SearchResult>> SearchAsync(
-        string? query,
-        int skip,
-        int take,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<SearchResult>> SearchAsync(string? query, int skip, int take, CancellationToken cancellationToken = default)
     {
-        var response =  await _searchClient.SearchAsync(
+        SearchResponse response = await SearchClient.SearchAsync(
             query,
             skip,
             take,
@@ -363,12 +317,9 @@ public class NuGetClient
     /// <param name="includePrerelease">Whether to include prerelease packages.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The search results.</returns>
-    public virtual async Task<IReadOnlyList<SearchResult>> SearchAsync(
-        string? query,
-        bool includePrerelease,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<SearchResult>> SearchAsync(string? query, bool includePrerelease, CancellationToken cancellationToken = default)
     {
-        var response = await _searchClient.SearchAsync(
+        SearchResponse response = await SearchClient.SearchAsync(
             query,
             includePrerelease: includePrerelease,
             cancellationToken: cancellationToken);
@@ -387,14 +338,9 @@ public class NuGetClient
     /// <param name="includePrerelease">Whether to include prerelease packages.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The search results, including prerelease packages.</returns>
-    public virtual async Task<IReadOnlyList<SearchResult>> SearchAsync(
-        string? query,
-        int skip,
-        int take,
-        bool includePrerelease,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<SearchResult>> SearchAsync(string? query, int skip, int take, bool includePrerelease, CancellationToken cancellationToken = default)
     {
-        var response = await _searchClient.SearchAsync(
+        SearchResponse response = await SearchClient.SearchAsync(
             query,
             skip,
             take,
@@ -413,11 +359,9 @@ public class NuGetClient
     /// </param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package IDs that matched the query.</returns>
-    public virtual async Task<IReadOnlyList<string>> AutocompleteAsync(
-        string? query = null,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<string>> AutocompleteAsync(string? query = null, CancellationToken cancellationToken = default)
     {
-        var response = await _autocompleteClient.AutocompleteAsync(query, cancellationToken: cancellationToken);
+        AutocompleteResponse response = await AutocompleteClient.AutocompleteAsync(query, cancellationToken: cancellationToken);
 
         return response.Data;
     }
@@ -432,13 +376,9 @@ public class NuGetClient
     /// <param name="take">The number of results to include.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package IDs that matched the query.</returns>
-    public virtual async Task<IReadOnlyList<string>> AutocompleteAsync(
-        string? query,
-        int skip,
-        int take,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<string>> AutocompleteAsync(string? query, int skip, int take, CancellationToken cancellationToken = default)
     {
-        var response = await _autocompleteClient.AutocompleteAsync(
+        AutocompleteResponse response = await AutocompleteClient.AutocompleteAsync(
             query,
             skip,
             take,
@@ -458,12 +398,9 @@ public class NuGetClient
     /// <param name="includePrerelease">Whether to include prerelease packages.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package IDs that matched the query.</returns>
-    public virtual async Task<IReadOnlyList<string>> AutocompleteAsync(
-        string? query,
-        bool includePrerelease,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<string>> AutocompleteAsync(string? query, bool includePrerelease, CancellationToken cancellationToken = default)
     {
-        var response = await _autocompleteClient.AutocompleteAsync(
+        AutocompleteResponse response = await AutocompleteClient.AutocompleteAsync(
             query,
             includePrerelease: includePrerelease,
             cancellationToken: cancellationToken);
@@ -482,14 +419,9 @@ public class NuGetClient
     /// <param name="includePrerelease">Whether to include prerelease packages.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package IDs that matched the query.</returns>
-    public virtual async Task<IReadOnlyList<string>> AutocompleteAsync(
-        string? query,
-        int skip,
-        int take,
-        bool includePrerelease,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<string>> AutocompleteAsync(string? query, int skip, int take, bool includePrerelease, CancellationToken cancellationToken = default)
     {
-        var response = await _autocompleteClient.AutocompleteAsync(
+        AutocompleteResponse response = await AutocompleteClient.AutocompleteAsync(
             query,
             skip,
             take,

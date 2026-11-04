@@ -1,45 +1,28 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace NuDepot.Feed.Storage;
 
-public class SymbolStorageService : ISymbolStorageService
+public class SymbolStorageService(IStorageService storage) : ISymbolStorageService
 {
     private const string SymbolsPathPrefix = "symbols";
     private const string PdbContentType = "binary/octet-stream";
 
-    private readonly IStorageService _storage;
+    private IStorageService Storage { get; } = storage;
 
-    public SymbolStorageService(IStorageService storage)
+    public async Task SavePortablePdbContentAsync(string filename, string key, Stream pdbStream, CancellationToken cancellationToken)
     {
-        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-    }
-
-    public async Task SavePortablePdbContentAsync(
-        string filename,
-        string key,
-        Stream pdbStream,
-        CancellationToken cancellationToken)
-    {
-        var path = GetPathForKey(filename, key);
-        var result = await _storage.PutAsync(path, pdbStream, PdbContentType, cancellationToken);
+        string path = GetPathForKey(filename, key);
+        StoragePutResult result = await Storage.PutAsync(path, pdbStream, PdbContentType, cancellationToken);
 
         if (result == StoragePutResult.Conflict)
-        {
             throw new InvalidOperationException($"Could not save PDB {filename} {key} due to conflict");
-        }
     }
 
     public async Task<Stream?> GetPortablePdbContentStreamOrNullAsync(string filename, string key)
     {
-        var path = GetPathForKey(filename, key);
+        string path = GetPathForKey(filename, key);
 
         try
         {
-            return await _storage.GetAsync(path);
+            return await Storage.GetAsync(path);
         }
         catch
         {
@@ -50,18 +33,14 @@ public class SymbolStorageService : ISymbolStorageService
     private string GetPathForKey(string filename, string key)
     {
         // Ensure the filename doesn't try to escape out of the current directory.
-        var tempPath = Path.GetDirectoryName(Path.GetTempPath())!;
-        var expandedPath = Path.GetDirectoryName(Path.Combine(tempPath, filename));
-        
+        string tempPath = Path.GetDirectoryName(Path.GetTempPath())!;
+        string? expandedPath = Path.GetDirectoryName(Path.Combine(tempPath, filename));
+
         if (expandedPath != tempPath)
-        {
             throw new ArgumentException(nameof(filename));
-        }
 
         if (!key.All(char.IsLetterOrDigit))
-        {
             throw new ArgumentException(nameof(key));
-        }
 
         // The key's first 32 characters are the GUID, the remaining characters are the age.
         // See: https://github.com/dotnet/symstore/blob/98717c63ec8342acf8a07aa5c909b88bd0c664cc/docs/specs/SSQP_Key_Conventions.md#portable-pdb-signature

@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace NuDepot.Core.Models;
@@ -11,11 +9,11 @@ namespace NuDepot.Core.Models;
 /// </summary>
 public class RegistrationLeafResponse
 {
-    public static readonly IReadOnlyList<string> DefaultType = new List<string>
-    {
+    public static readonly IReadOnlyList<string> DefaultType =
+    [
         "Package",
         "http://schema.nuget.org/catalog#Permalink"
-    };
+    ];
 
     /// <summary>
     /// The URL to the registration leaf.

@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 
 namespace NuDepot.Feed.Search;
@@ -44,7 +42,5 @@ public interface ISearchService
     /// <param name="packageId">The package whose dependents should be found.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The dependents response.</returns>
-    Task<DependentsResponse> FindDependentsAsync(
-        string packageId,
-        CancellationToken cancellationToken);
+    Task<DependentsResponse> FindDependentsAsync(string packageId, CancellationToken cancellationToken);
 }

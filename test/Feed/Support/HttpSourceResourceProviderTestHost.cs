@@ -1,47 +1,35 @@
-using System;
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using NuGet.Configuration;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 
-namespace NuDepot.Feed.Tests
+namespace NuDepot.Feed.Tests;
+
+/// <summary>
+/// Similar to official HttpSourceResourceProvider, but uses test host.
+/// </summary>
+public class HttpSourceResourceProviderTestHost(HttpClient httpClient) : ResourceProvider(typeof(HttpSourceResource),
+              nameof(HttpSourceResource),
+              NuGetResourceProviderPositions.Last)
 {
-    /// <summary>
-    /// Similar to official HttpSourceResourceProvider, but uses test host.
-    /// </summary>
-    public class HttpSourceResourceProviderTestHost : ResourceProvider
+    // Only one HttpSource per source should exist. This is to reduce the number of TCP connections.
+    private ConcurrentDictionary<PackageSource, HttpSourceResource> Cache { get; } = new();
+    private HttpClient HttpClient { get; } = httpClient;
+
+    public override Task<Tuple<bool, INuGetResource?>> TryCreate(SourceRepository source, CancellationToken token)
     {
-        // Only one HttpSource per source should exist. This is to reduce the number of TCP connections.
-        private readonly ConcurrentDictionary<PackageSource, HttpSourceResource> _cache
-            = new ConcurrentDictionary<PackageSource, HttpSourceResource>();
-        private readonly HttpClient _httpClient;
+        Debug.Assert(source.PackageSource.IsHttp, "HTTP source requested for a non-http source.");
 
-        public HttpSourceResourceProviderTestHost(HttpClient httpClient)
-            : base(typeof(HttpSourceResource),
-                  nameof(HttpSourceResource),
-                  NuGetResourceProviderPositions.Last)
+        HttpSourceResource? curResource = null;
+
+        if (source.PackageSource.IsHttp)
         {
-            _httpClient = httpClient;
+            curResource = Cache.GetOrAdd(
+                source.PackageSource,
+                packageSource => new HttpSourceResource(TestableHttpSource.Create(source, HttpClient)));
         }
 
-        public override Task<Tuple<bool, INuGetResource?>> TryCreate(SourceRepository source, CancellationToken token)
-        {
-            Debug.Assert(source.PackageSource.IsHttp, "HTTP source requested for a non-http source.");
-
-            HttpSourceResource? curResource = null;
-
-            if (source.PackageSource.IsHttp)
-            {
-                curResource = _cache.GetOrAdd(
-                    source.PackageSource,
-                    packageSource => new HttpSourceResource(TestableHttpSource.Create(source, _httpClient)));
-            }
-
-            return Task.FromResult(new Tuple<bool, INuGetResource?>(curResource != null, curResource));
-        }
+        return Task.FromResult(new Tuple<bool, INuGetResource?>(curResource != null, curResource));
     }
 }

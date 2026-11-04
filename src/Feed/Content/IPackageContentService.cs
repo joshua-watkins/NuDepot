@@ -1,8 +1,5 @@
-using NuGet.Versioning;
 using NuDepot.Core.Models;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using NuGet.Versioning;
 
 namespace NuDepot.Feed.Content;
 
@@ -20,9 +17,7 @@ public interface IPackageContentService
     /// <param name="packageId">The package ID.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package's versions, or null if the package does not exist.</returns>
-    Task<PackageVersionsResponse?> GetPackageVersionsOrNullAsync(
-        string packageId,
-        CancellationToken cancellationToken);
+    Task<PackageVersionsResponse?> GetPackageVersionsOrNullAsync(string packageId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Download a package, or null if the package does not exist.
@@ -34,10 +29,7 @@ public interface IPackageContentService
     /// <returns>
     /// The package's content stream, or null if the package does not exist. The stream may not be seekable.
     /// </returns>
-    Task<Stream?> GetPackageContentStreamOrNullAsync(
-        string packageId,
-        NuGetVersion packageVersion,
-        CancellationToken cancellationToken);
+    Task<Stream?> GetPackageContentStreamOrNullAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken);
 
     /// <summary>
     /// Download a package's manifest (nuspec), or null if the package does not exist.
@@ -49,10 +41,7 @@ public interface IPackageContentService
     /// <returns>
     /// The package's manifest stream, or null if the package does not exist. The stream may not be seekable.
     /// </returns>
-    Task<Stream?> GetPackageManifestStreamOrNullAsync(
-        string packageId,
-        NuGetVersion packageVersion,
-        CancellationToken cancellationToken);
+    Task<Stream?> GetPackageManifestStreamOrNullAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken);
 
     /// <summary>
     /// Download a package's readme, or null if the package or readme does not exist.
@@ -63,10 +52,7 @@ public interface IPackageContentService
     /// <returns>
     /// The package's readme stream, or null if the package or readme does not exist. The stream may not be seekable.
     /// </returns>
-    Task<Stream?> GetPackageReadmeStreamOrNullAsync(
-        string id,
-        NuGetVersion version,
-        CancellationToken cancellationToken);
+    Task<Stream?> GetPackageReadmeStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken);
 
     /// <summary>
     /// Download a package's icon, or null if the package or icon does not exist.
@@ -77,10 +63,7 @@ public interface IPackageContentService
     /// <returns>
     /// The package's icon stream, or null if the package or icon does not exist. The stream may not be seekable.
     /// </returns>
-    Task<Stream?> GetPackageIconStreamOrNullAsync(
-        string id,
-        NuGetVersion version,
-        CancellationToken cancellationToken);
+    Task<Stream?> GetPackageIconStreamOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken);
 
     /// <summary>
     /// The package license if the license is an embedded license, or null if the license is a URL or expression.

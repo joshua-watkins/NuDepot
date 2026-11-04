@@ -1,6 +1,5 @@
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using NuDepot.Core.Models;
 using NuDepot.Core.Serialization;
 using NuDepot.Feed.Metadata;
 using NuGet.Versioning;
@@ -29,38 +28,23 @@ internal static class PackageMetadataEndpoints
     public static Task<IResult> SemVer2RegistrationLeafAsync(string id, string version, IPackageMetadataService metadata, CancellationToken cancellationToken)
         => GetRegistrationLeafAsync(id, version, semVer2: true, metadata, cancellationToken);
 
-    private static async Task<IResult> GetRegistrationIndexAsync(
-        string id,
-        bool semVer2,
-        IPackageMetadataService metadata,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> GetRegistrationIndexAsync(string id, bool semVer2, IPackageMetadataService metadata, CancellationToken cancellationToken)
     {
-        var index = await metadata.GetRegistrationIndexOrNullAsync(id, semVer2, cancellationToken);
+        NuDepotRegistrationIndexResponse? index = await metadata.GetRegistrationIndexOrNullAsync(id, semVer2, cancellationToken);
         if (index == null)
-        {
             return Results.NotFound();
-        }
 
         return Results.Json(index, NuGetJsonContext.Default.NuDepotRegistrationIndexResponse);
     }
 
-    private static async Task<IResult> GetRegistrationLeafAsync(
-        string id,
-        string version,
-        bool semVer2,
-        IPackageMetadataService metadata,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> GetRegistrationLeafAsync(string id, string version, bool semVer2, IPackageMetadataService metadata, CancellationToken cancellationToken)
     {
-        if (!NuGetVersion.TryParse(version, out var nugetVersion))
-        {
+        if (!NuGetVersion.TryParse(version, out NuGetVersion? nugetVersion))
             return Results.NotFound();
-        }
 
-        var leaf = await metadata.GetRegistrationLeafOrNullAsync(id, nugetVersion, semVer2, cancellationToken);
+        RegistrationLeafResponse? leaf = await metadata.GetRegistrationLeafOrNullAsync(id, nugetVersion, semVer2, cancellationToken);
         if (leaf == null)
-        {
             return Results.NotFound();
-        }
 
         return Results.Json(leaf, NuGetJsonContext.Default.RegistrationLeafResponse);
     }

@@ -1,7 +1,4 @@
-using System.Linq;
-using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
+using Fido2NetLib;
 using Fido2NetLib.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -11,6 +8,7 @@ using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Serialization;
 using NuDepot.Feed.Users;
+using System.Security.Claims;
 
 namespace NuDepot.Feed.Endpoints;
 
@@ -25,8 +23,8 @@ internal static class AccountEndpoints
     // GET api/account
     public static async Task<IResult> GetAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
     {
-        var user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
-        var isFirstUser = user == null && !await users.AnyAsync(cancellationToken);
+        User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+        bool isFirstUser = user == null && !await users.AnyAsync(cancellationToken);
 
         return Results.Json(
             new AccountResponse
@@ -42,19 +40,13 @@ internal static class AccountEndpoints
 
     // POST api/account/signup
     // Starts creating an account. The browser then creates a passkey and sends it to api/account/passkeys?userName=.
-    public static async Task<IResult> SignUpAsync(
-        HttpContext httpContext,
-        UserService users,
-        PasskeyService passkeys,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> SignUpAsync(HttpContext httpContext, UserService users, PasskeyService passkeys, CancellationToken cancellationToken)
     {
-        var body = await EndpointHelpers.ReadJsonOrNullAsync(httpContext.Request, AccountJsonContext.Default.PasskeyCreationRequest, cancellationToken);
-        var userName = body?.UserName?.Trim();
+        PasskeyCreationRequest? body = await EndpointHelpers.ReadJsonOrNullAsync(httpContext.Request, AccountJsonContext.Default.PasskeyCreationRequest, cancellationToken);
+        string? userName = body?.UserName?.Trim();
 
         if (!await users.CanSignUpAsync(cancellationToken))
-        {
             return EndpointHelpers.Text(StatusCodes.Status403Forbidden, "This feed doesn't allow new accounts.");
-        }
 
         if (!UserService.IsValidUserName(userName))
         {
@@ -63,28 +55,23 @@ internal static class AccountEndpoints
                 "A user name is up to 64 letters, digits, '.', '_', '-' or '@', and starts with a letter or digit.");
         }
 
-        var options = await passkeys.BeginSignUpAsync(httpContext, userName!, GetName(body?.PasskeyName, DefaultPasskeyName)!, cancellationToken);
+        CredentialCreateOptions? options = await passkeys.BeginSignUpAsync(httpContext, userName!, GetName(body?.PasskeyName, DefaultPasskeyName)!, cancellationToken);
         if (options == null)
-        {
             return EndpointHelpers.Text(StatusCodes.Status409Conflict, $"The user name '{userName}' is taken.");
-        }
 
         return Results.Json(options, FidoModelSerializerContext.Default.CredentialCreateOptions);
     }
 
     // POST api/account/passkeys/options
     // Starts adding a passkey to the signed-in user's account.
-    public static async Task<IResult> AddPasskeyOptionsAsync(
-        HttpContext httpContext,
-        UserService users,
-        PasskeyService passkeys,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> AddPasskeyOptionsAsync(HttpContext httpContext, UserService users, PasskeyService passkeys, CancellationToken cancellationToken)
     {
-        var user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
-        if (user == null) return Results.Unauthorized();
+        User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+        if (user == null)
+            return Results.Unauthorized();
 
-        var body = await EndpointHelpers.ReadJsonOrNullAsync(httpContext.Request, AccountJsonContext.Default.PasskeyCreationRequest, cancellationToken);
-        var options = await passkeys.BeginAddPasskeyAsync(httpContext, user, GetName(body?.PasskeyName, DefaultPasskeyName)!, cancellationToken);
+        PasskeyCreationRequest? body = await EndpointHelpers.ReadJsonOrNullAsync(httpContext.Request, AccountJsonContext.Default.PasskeyCreationRequest, cancellationToken);
+        CredentialCreateOptions options = await passkeys.BeginAddPasskeyAsync(httpContext, user, GetName(body?.PasskeyName, DefaultPasskeyName)!, cancellationToken);
 
         return Results.Json(options, FidoModelSerializerContext.Default.CredentialCreateOptions);
     }
@@ -92,18 +79,14 @@ internal static class AccountEndpoints
     // POST api/account/passkeys?userName=
     // Finishes creating the account with the user name, which signs the new user in. Without a user name,
     // finishes adding a passkey to the signed-in user's account.
-    public static async Task<IResult> CreatePasskeyAsync(
-        string? userName,
-        HttpContext httpContext,
-        UserService users,
-        PasskeyService passkeys,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> CreatePasskeyAsync(string? userName, HttpContext httpContext, UserService users, PasskeyService passkeys, CancellationToken cancellationToken)
     {
-        var response = await EndpointHelpers.ReadJsonOrNullAsync(
+        AuthenticatorAttestationRawResponse? response = await EndpointHelpers.ReadJsonOrNullAsync(
             httpContext.Request,
             AccountJsonContext.Default.AuthenticatorAttestationRawResponse,
             cancellationToken);
-        if (response == null) return Results.BadRequest();
+        if (response == null)
+            return Results.BadRequest();
 
         PasskeyResult result;
         if (userName != null)
@@ -112,21 +95,18 @@ internal static class AccountEndpoints
         }
         else
         {
-            var user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
-            if (user == null) return Results.Unauthorized();
+            User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+            if (user == null)
+                return Results.Unauthorized();
 
             result = await passkeys.CompleteAddPasskeyAsync(httpContext, user, response, cancellationToken);
         }
 
         if (result.User == null)
-        {
             return EndpointHelpers.Text(StatusCodes.Status400BadRequest, result.Error!);
-        }
 
         if (userName != null)
-        {
             await SignInAsync(httpContext, users, result.User, cancellationToken);
-        }
 
         return Results.NoContent();
     }
@@ -134,36 +114,29 @@ internal static class AccountEndpoints
     // POST api/account/signin/options
     public static async Task<IResult> SignInOptionsAsync(HttpContext httpContext, PasskeyService passkeys, CancellationToken cancellationToken)
     {
-        var body = await EndpointHelpers.ReadJsonOrNullAsync(httpContext.Request, AccountJsonContext.Default.SignInRequest, cancellationToken);
-        var userName = body?.UserName?.Trim();
+        SignInRequest? body = await EndpointHelpers.ReadJsonOrNullAsync(httpContext.Request, AccountJsonContext.Default.SignInRequest, cancellationToken);
+        string? userName = body?.UserName?.Trim();
 
-        var options = string.IsNullOrEmpty(userName) ? null : await passkeys.BeginSignInAsync(httpContext, userName, cancellationToken);
+        AssertionOptions? options = string.IsNullOrEmpty(userName) ? null : await passkeys.BeginSignInAsync(httpContext, userName, cancellationToken);
         if (options == null)
-        {
             return EndpointHelpers.Text(StatusCodes.Status400BadRequest, $"There's no account named '{userName}'.");
-        }
 
         return Results.Json(options, FidoModelSerializerContext.Default.AssertionOptions);
     }
 
     // POST api/account/signin
-    public static async Task<IResult> SignInAsync(
-        HttpContext httpContext,
-        UserService users,
-        PasskeyService passkeys,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> SignInAsync(HttpContext httpContext, UserService users, PasskeyService passkeys, CancellationToken cancellationToken)
     {
-        var response = await EndpointHelpers.ReadJsonOrNullAsync(
+        AuthenticatorAssertionRawResponse? response = await EndpointHelpers.ReadJsonOrNullAsync(
             httpContext.Request,
             AccountJsonContext.Default.AuthenticatorAssertionRawResponse,
             cancellationToken);
-        if (response == null) return Results.BadRequest();
+        if (response == null)
+            return Results.BadRequest();
 
-        var result = await passkeys.CompleteSignInAsync(httpContext, response, cancellationToken);
+        PasskeyResult result = await passkeys.CompleteSignInAsync(httpContext, response, cancellationToken);
         if (result.User == null)
-        {
             return EndpointHelpers.Text(StatusCodes.Status400BadRequest, result.Error!);
-        }
 
         await SignInAsync(httpContext, users, result.User, cancellationToken);
         return Results.NoContent();
@@ -173,11 +146,12 @@ internal static class AccountEndpoints
     // This only takes the HttpContext, so it's mapped as a RequestDelegate, which can't return a result.
     public static async Task SignOutAsync(HttpContext httpContext)
     {
-        var result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
-        var session = result.Properties == null ? null : UserCookieEvents.GetSession(result.Properties);
+        AuthenticateResult result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
+        (int Key, string Token)? session = result.Properties == null ? null : UserCookieEvents.GetSession(result.Properties);
         if (result.Succeeded && session != null)
         {
-            await httpContext.RequestServices.GetRequiredService<UserService>()
+            await httpContext.RequestServices
+                .GetRequiredService<UserService>()
                 .DeleteSessionAsync(session.Value.Key, httpContext.RequestAborted);
         }
 
@@ -188,28 +162,30 @@ internal static class AccountEndpoints
     // GET api/account/passkeys
     public static async Task<IResult> GetPasskeysAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
     {
-        var user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
-        if (user == null) return Results.Unauthorized();
+        User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+        if (user == null)
+            return Results.Unauthorized();
 
-        var passkeys = await users.GetPasskeysAsync(user.Key, cancellationToken);
+        List<UserPasskey> passkeys = await users.GetPasskeysAsync(user.Key, cancellationToken);
 
         return Results.Json(
-            passkeys.Select(p => new PasskeyResponse
+            [.. passkeys.Select(p => new PasskeyResponse
             {
                 Id = p.Key,
                 Name = p.Name,
                 CreatedAt = p.CreatedAt,
                 LastUsedAt = p.LastUsedAt,
                 IsBackedUp = p.IsBackedUp,
-            }).ToArray(),
+            })],
             AccountJsonContext.Default.PasskeyResponseArray);
     }
 
     // DELETE api/account/passkeys/{id}
     public static async Task<IResult> DeletePasskeyAsync(int id, HttpContext httpContext, UserService users, CancellationToken cancellationToken)
     {
-        var user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
-        if (user == null) return Results.Unauthorized();
+        User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+        if (user == null)
+            return Results.Unauthorized();
 
         return await users.DeletePasskeyAsync(user.Key, id, cancellationToken) switch
         {
@@ -224,28 +200,28 @@ internal static class AccountEndpoints
     // GET api/account/apikeys
     public static async Task<IResult> GetApiKeysAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
     {
-        var user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
-        if (user == null) return Results.Unauthorized();
+        User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+        if (user == null)
+            return Results.Unauthorized();
 
-        var apiKeys = await users.GetApiKeysAsync(user.Key, cancellationToken);
+        List<UserApiKey> apiKeys = await users.GetApiKeysAsync(user.Key, cancellationToken);
 
-        return Results.Json(apiKeys.Select(k => ToResponse(k, key: null)).ToArray(), AccountJsonContext.Default.ApiKeyResponseArray);
+        return Results.Json([.. apiKeys.Select(k => ToResponse(k, key: null))], AccountJsonContext.Default.ApiKeyResponseArray);
     }
 
     // POST api/account/apikeys
     public static async Task<IResult> CreateApiKeyAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
     {
-        var user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
-        if (user == null) return Results.Unauthorized();
+        User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+        if (user == null)
+            return Results.Unauthorized();
 
-        var body = await EndpointHelpers.ReadJsonOrNullAsync(httpContext.Request, AccountJsonContext.Default.ApiKeyCreationRequest, cancellationToken);
-        var name = GetName(body?.Name, defaultName: null);
+        ApiKeyCreationRequest? body = await EndpointHelpers.ReadJsonOrNullAsync(httpContext.Request, AccountJsonContext.Default.ApiKeyCreationRequest, cancellationToken);
+        string? name = GetName(body?.Name, defaultName: null);
         if (name == null)
-        {
             return EndpointHelpers.Text(StatusCodes.Status400BadRequest, "An API key needs a name, like \"Build server\".");
-        }
 
-        var (apiKey, key) = await users.CreateApiKeyAsync(user.Key, name, cancellationToken);
+        (UserApiKey? apiKey, string? key) = await users.CreateApiKeyAsync(user.Key, name, cancellationToken);
 
         return Results.Json(ToResponse(apiKey, key), AccountJsonContext.Default.ApiKeyResponse, statusCode: StatusCodes.Status201Created);
     }
@@ -253,8 +229,9 @@ internal static class AccountEndpoints
     // DELETE api/account/apikeys/{id}
     public static async Task<IResult> DeleteApiKeyAsync(int id, HttpContext httpContext, UserService users, CancellationToken cancellationToken)
     {
-        var user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
-        if (user == null) return Results.Unauthorized();
+        User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+        if (user == null)
+            return Results.Unauthorized();
 
         return await users.DeleteApiKeyAsync(user.Key, id, cancellationToken)
             ? Results.NoContent()
@@ -266,18 +243,19 @@ internal static class AccountEndpoints
     /// </summary>
     private static async Task<User?> GetSignedInUserAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
     {
-        var result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
-        var userKey = result.Succeeded ? FeedClaims.GetUserKey(result.Principal) : null;
+        AuthenticateResult result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
+        int? userKey = result.Succeeded ? FeedClaims.GetUserKey(result.Principal) : null;
 
         return userKey == null ? null : await users.FindAsync(userKey.Value, cancellationToken);
     }
 
     private static async Task SignInAsync(HttpContext httpContext, UserService users, User user, CancellationToken cancellationToken)
     {
-        var principal = new ClaimsPrincipal(FeedClaims.CreateIdentity(user, NuDepotAuthenticationSchemes.User));
-        var properties = new AuthenticationProperties { IsPersistent = true };
+        ClaimsPrincipal principal = new(FeedClaims.CreateIdentity(user, NuDepotAuthenticationSchemes.User));
+        AuthenticationProperties properties = new()
+        { IsPersistent = true };
 
-        var (session, token) = await users.CreateSessionAsync(user.Key, cancellationToken);
+        (UserSession? session, string? token) = await users.CreateSessionAsync(user.Key, cancellationToken);
         UserCookieEvents.SetSession(properties, session.Key, token);
 
         await httpContext.SignInAsync(NuDepotAuthenticationSchemes.User, principal, properties);
@@ -286,7 +264,8 @@ internal static class AccountEndpoints
     private static string? GetName(string? name, string? defaultName)
     {
         name = name?.Trim();
-        if (string.IsNullOrEmpty(name)) return defaultName;
+        if (string.IsNullOrEmpty(name))
+            return defaultName;
 
         return name.Length > NuDepotContext.MaxCredentialNameLength ? name[..NuDepotContext.MaxCredentialNameLength] : name;
     }

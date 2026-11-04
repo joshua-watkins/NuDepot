@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -11,65 +10,64 @@ using NuDepot.Feed.Signing;
 using NuDepot.Feed.Storage;
 using Xunit;
 
-namespace NuDepot.Feed.Tests.Services
+namespace NuDepot.Feed.Tests.Services;
+
+public class PackageIndexingServiceTests
 {
-    public class PackageIndexingServiceTests
+    private Mock<IPackageDatabase> Packages { get; }
+    private Mock<IPackageStorageService> Storage { get; }
+    private Mock<ISearchIndexer> Search { get; }
+    private Mock<SystemTime> Time { get; }
+    private PackageIndexingService Target { get; }
+
+    public PackageIndexingServiceTests()
     {
-        private readonly Mock<IPackageDatabase> _packages;
-        private readonly Mock<IPackageStorageService> _storage;
-        private readonly Mock<ISearchIndexer> _search;
-        private readonly Mock<SystemTime> _time;
-        private readonly PackageIndexingService _target;
+        Packages = new Mock<IPackageDatabase>();
+        Storage = new Mock<IPackageStorageService>();
+        Search = new Mock<ISearchIndexer>();
+        Time = new Mock<SystemTime>();
 
-        public PackageIndexingServiceTests()
-        {
-            _packages = new Mock<IPackageDatabase>();
-            _storage = new Mock<IPackageStorageService>();
-            _search = new Mock<ISearchIndexer>();
-            _time = new Mock<SystemTime>();
+        Target = new PackageIndexingService(
+            Packages.Object,
+            Storage.Object,
+            Search.Object,
+            Mock.Of<ICatalogService>(),
+            Mock.Of<IRepositorySigningService>(),
+            Mock.Of<IUrlGenerator>(),
+            Time.Object,
+            Mock.Of<IOptionsSnapshot<FeedOptions>>(),
+            Mock.Of<ILogger<PackageIndexingService>>());
+    }
 
-            _target = new PackageIndexingService(
-                _packages.Object,
-                _storage.Object,
-                _search.Object,
-                Mock.Of<ICatalogService>(),
-                Mock.Of<IRepositorySigningService>(),
-                Mock.Of<IUrlGenerator>(),
-                _time.Object,
-                Mock.Of<IOptionsSnapshot<FeedOptions>>(),
-                Mock.Of<ILogger<PackageIndexingService>>());
-        }
+    // TODO: Add malformed package tests
 
-        // TODO: Add malformed package tests
+    [Fact]
+    public async Task WhenPackageAlreadyExists_ReturnsPackageAlreadyExists()
+    {
+        await Task.Yield();
+    }
 
-        [Fact]
-        public async Task WhenPackageAlreadyExists_ReturnsPackageAlreadyExists()
-        {
-            await Task.Yield();
-        }
+    [Fact]
+    public async Task WhenDatabaseAddFailsBecausePackageAlreadyExists_ReturnsPackageAlreadyExists()
+    {
+        await Task.Yield();
+    }
 
-        [Fact]
-        public async Task WhenDatabaseAddFailsBecausePackageAlreadyExists_ReturnsPackageAlreadyExists()
-        {
-            await Task.Yield();
-        }
+    [Fact]
+    public async Task IndexesPackage()
+    {
+        await Task.Yield();
+    }
 
-        [Fact]
-        public async Task IndexesPackage()
-        {
-            await Task.Yield();
-        }
+    [Fact]
+    public async Task WhenPackageHasNoReadme_SavesNullReadmeStream()
+    {
+        await Task.Yield();
+    }
 
-        [Fact]
-        public async Task WhenPackageHasNoReadme_SavesNullReadmeStream()
-        {
-            await Task.Yield();
-        }
-
-        [Fact]
-        public async Task ThrowsWhenStorageSaveThrows()
-        {
-            await Task.Yield();
-        }
+    [Fact]
+    public async Task ThrowsWhenStorageSaveThrows()
+    {
+        await Task.Yield();
     }
 }

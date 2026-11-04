@@ -1,4 +1,4 @@
-using System;
+using Microsoft.Extensions.Options;
 using NuDepot.Core.Hosting;
 using NuDepot.Core.PackageDetails;
 using NuDepot.Core.Search;
@@ -18,15 +18,13 @@ public static class GalleryServiceCollectionExtensions
     /// </summary>
     public static NuDepotBuilder AddGallery(this NuDepotBuilder builder, Action<GalleryOptions>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(builder);
+        IServiceCollection services = builder.Services;
 
-        var services = builder.Services;
-
-        var options = services.AddOptions<GalleryOptions>().BindConfiguration(GalleryOptions.Section);
+        OptionsBuilder<GalleryOptions> options = services
+            .AddOptions<GalleryOptions>()
+            .BindConfiguration(GalleryOptions.Section);
         if (configure != null)
-        {
             options.Configure(configure);
-        }
 
         services.AddSingleton<FeedConnection>();
         services.AddSingleton<IServiceIndexClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateServiceIndexClient());
@@ -48,8 +46,8 @@ public static class GalleryServiceCollectionExtensions
     /// </summary>
     public static NuDepotBuilder AddNuDepotGallery(this IServiceCollection services, Action<GalleryOptions>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(services);
-
-        return services.AddNuDepot().AddGallery(configure);
+        return services
+            .AddNuDepot()
+            .AddGallery(configure);
     }
 }

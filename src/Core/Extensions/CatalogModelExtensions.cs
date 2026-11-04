@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using NuDepot.Core.Models;
 using NuGet.Frameworks;
 using NuGet.Versioning;
@@ -21,13 +18,9 @@ public static class CatalogModelExtensions
     /// <param name="minCommitTimestamp">The exclusive lower time bound on <see cref="CatalogLeafItem.CommitTimestamp"/>.</param>
     /// <param name="maxCommitTimestamp">The inclusive upper time bound on <see cref="CatalogLeafItem.CommitTimestamp"/>.</param>
     /// <param name="excludeRedundantLeaves">Only show the latest leaf concerning each package.</param>
-    public static List<CatalogLeafItem> GetLeavesInBounds(
-        this CatalogPage catalogPage,
-        DateTimeOffset minCommitTimestamp,
-        DateTimeOffset maxCommitTimestamp,
-        bool excludeRedundantLeaves)
+    public static List<CatalogLeafItem> GetLeavesInBounds(this CatalogPage catalogPage, DateTimeOffset minCommitTimestamp, DateTimeOffset maxCommitTimestamp, bool excludeRedundantLeaves)
     {
-        var leaves = catalogPage
+        IOrderedEnumerable<CatalogLeafItem> leaves = catalogPage
             .Items
             .Where(x => x.CommitTimestamp > minCommitTimestamp && x.CommitTimestamp <= maxCommitTimestamp)
             .OrderBy(x => x.CommitTimestamp);
@@ -44,10 +37,9 @@ public static class CatalogModelExtensions
                 .OrderBy(x => x.CommitTimestamp);
         }
 
-        return leaves
+        return [.. leaves
             .ThenBy(x => x.PackageId, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(x => x.ParsePackageVersion())
-            .ToList();
+            .ThenBy(x => x.ParsePackageVersion())];
     }
 
     /// <summary>
@@ -57,38 +49,28 @@ public static class CatalogModelExtensions
     /// <param name="catalogIndex">The catalog index to fetch pages from.</param>
     /// <param name="minCommitTimestamp">The exclusive lower time bound on <see cref="CatalogPageItem.CommitTimestamp"/>.</param>
     /// <param name="maxCommitTimestamp">The inclusive upper time bound on <see cref="CatalogPageItem.CommitTimestamp"/>.</param>
-    public static List<CatalogPageItem> GetPagesInBounds(
-        this CatalogIndex catalogIndex,
-        DateTimeOffset minCommitTimestamp,
-        DateTimeOffset maxCommitTimestamp)
+    public static List<CatalogPageItem> GetPagesInBounds(this CatalogIndex catalogIndex, DateTimeOffset minCommitTimestamp, DateTimeOffset maxCommitTimestamp)
     {
-        return catalogIndex
-            .GetPagesInBoundsLazy(minCommitTimestamp, maxCommitTimestamp)
-            .ToList();
+        return [.. catalogIndex.GetPagesInBoundsLazy(minCommitTimestamp, maxCommitTimestamp)];
     }
 
-    private static IEnumerable<CatalogPageItem> GetPagesInBoundsLazy(
-        this CatalogIndex catalogIndex,
-        DateTimeOffset minCommitTimestamp,
-        DateTimeOffset maxCommitTimestamp)
+    private static IEnumerable<CatalogPageItem> GetPagesInBoundsLazy(this CatalogIndex catalogIndex, DateTimeOffset minCommitTimestamp, DateTimeOffset maxCommitTimestamp)
     {
         // Filter out pages that fall entirely before the minimum commit timestamp and sort the remaining pages by
         // commit timestamp.
-        var upperRange = catalogIndex
+        IOrderedEnumerable<CatalogPageItem> upperRange = catalogIndex
             .Items
             .Where(x => x.CommitTimestamp > minCommitTimestamp)
             .OrderBy(x => x.CommitTimestamp);
 
         // Take pages from the sorted list until the commit timestamp goes past the maximum commit timestamp. This
         // essentially LINQ's TakeWhile plus one more element.
-        foreach (var page in upperRange)
+        foreach (CatalogPageItem? page in upperRange)
         {
             yield return page;
 
             if (page.CommitTimestamp > maxCommitTimestamp)
-            {
                 break;
-            }
         }
     }
 
@@ -110,9 +92,7 @@ public static class CatalogModelExtensions
     public static NuGetFramework ParseTargetFramework(this DependencyGroupItem packageDependencyGroup)
     {
         if (string.IsNullOrEmpty(packageDependencyGroup.TargetFramework))
-        {
             return NuGetFramework.AnyFramework;
-        }
 
         return NuGetFramework.Parse(packageDependencyGroup.TargetFramework);
     }
@@ -129,10 +109,8 @@ public static class CatalogModelExtensions
         // Client side treats empty string version ranges as the "all" range.
         // Source: https://github.com/NuGet/NuGet.Client/blob/849063018d8ee08625774a2dcd07ab84224dabb9/src/NuDepot.Core/NuGet.Protocol/DependencyInfo/RegistrationUtility.cs#L20-L30
         // Example: https://api.nuget.org/v3/catalog0/data/2016.03.14.21.19.28/servicestack.extras.serilog.2.0.1.json
-        if (!VersionRange.TryParse(packageDependency.Range ?? string.Empty, out var parsed))
-        {
+        if (!VersionRange.TryParse(packageDependency.Range ?? string.Empty, out VersionRange? parsed))
             return VersionRange.All;
-        }
 
         return parsed;
     }
@@ -185,9 +163,7 @@ public static class CatalogModelExtensions
     public static bool IsListed(this PackageDetailsCatalogLeaf leaf)
     {
         if (leaf.Listed.HasValue)
-        {
             return leaf.Listed.Value;
-        }
 
         // A published year of 1900 indicates that this package is unlisted, when the listed property itself is
         // not present (legacy behavior).
@@ -203,39 +179,31 @@ public static class CatalogModelExtensions
     /// <returns>True if the package is SemVer 2.0.0.</returns>
     public static bool IsSemVer2(this PackageDetailsCatalogLeaf leaf)
     {
-        var parsedPackageVersion = leaf.ParsePackageVersion();
+        NuGetVersion parsedPackageVersion = leaf.ParsePackageVersion();
         if (parsedPackageVersion.IsSemVer2)
-        {
             return true;
-        }
 
         if (leaf.VerbatimVersion != null)
         {
-            var parsedVerbatimVersion = NuGetVersion.Parse(leaf.VerbatimVersion);
+            NuGetVersion parsedVerbatimVersion = NuGetVersion.Parse(leaf.VerbatimVersion);
             if (parsedVerbatimVersion.IsSemVer2)
-            {
                 return true;
-            }
         }
 
         if (leaf.DependencyGroups != null)
         {
-            foreach (var dependencyGroup in leaf.DependencyGroups)
+            foreach (DependencyGroupItem dependencyGroup in leaf.DependencyGroups)
             {
                 // Example: https://api.nuget.org/v3/catalog0/data/2018.10.28.07.42.42/mvcsitemapprovider.3.3.0-pre1.json
                 if (dependencyGroup.Dependencies == null)
-                {
                     continue;
-                }
 
-                foreach (var dependency in dependencyGroup.Dependencies)
+                foreach (DependencyItem dependency in dependencyGroup.Dependencies)
                 {
-                    var versionRange = dependency.ParseRange();
+                    VersionRange versionRange = dependency.ParseRange();
                     if (versionRange.MaxVersion != null && versionRange.MaxVersion.IsSemVer2
                         || versionRange.MinVersion != null && versionRange.MinVersion.IsSemVer2)
-                    {
                         return true;
-                    }
                 }
             }
         }

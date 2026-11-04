@@ -1,65 +1,59 @@
-using System.Threading.Tasks;
+using NuDepot.Core.Models;
 using NuDepot.Core.Search;
 using NuDepot.Core.Tests.Support;
 using Xunit;
 
-namespace NuDepot.Core.Tests
+namespace NuDepot.Core.Tests;
+
+public class RawAutocompleteClientTests(ProtocolFixture fixture) : IClassFixture<ProtocolFixture>
 {
-    public class RawAutocompleteClientTests : IClassFixture<ProtocolFixture>
+    private RawAutocompleteClient Target { get; } = fixture.AutocompleteClient;
+
+    [Fact]
+    public async Task GetDefaultAutocompleteResults()
     {
-        private readonly RawAutocompleteClient _target;
+        AutocompleteResponse response = await Target.AutocompleteAsync();
 
-        public RawAutocompleteClientTests(ProtocolFixture fixture)
-        {
-            _target = fixture.AutocompleteClient;
-        }
+        Assert.NotNull(response);
+        Assert.Equal(1, response.TotalHits);
+        Assert.Equal("Test.Package", Assert.Single(response.Data));
+    }
 
-        [Fact]
-        public async Task GetDefaultAutocompleteResults()
-        {
-            var response = await _target.AutocompleteAsync();
+    [Fact]
+    public async Task AddsAutocompleteParameters()
+    {
+        await Task.Yield();
 
-            Assert.NotNull(response);
-            Assert.Equal(1, response.TotalHits);
-            Assert.Equal("Test.Package", Assert.Single(response.Data));
-        }
+        // TODO: Assert request URL query parameters.
+        // var response = await _target.AutocompleteAsync(
+        //     "query",
+        //     skip: 2,
+        //     take: 5,
+        //     includePrerelease: false,
+        //     includeSemVer2: false);
+    }
 
-        [Fact]
-        public async Task AddsAutocompleteParameters()
-        {
-            await Task.Yield();
+    [Fact]
+    public async Task ListsPackageVersions()
+    {
+        await Task.Yield();
 
-            // TODO: Assert request URL query parameters.
-            // var response = await _target.AutocompleteAsync(
-            //     "query",
-            //     skip: 2,
-            //     take: 5,
-            //     includePrerelease: false,
-            //     includeSemVer2: false);
-        }
+        // var response = await _target.ListPackageVersionsAsync("PackageId");
 
-        [Fact]
-        public async Task ListsPackageVersions()
-        {
-            await Task.Yield();
+        // Assert.NotNull(response);
+        // Assert.Equal(1, response.TotalHits);
+        // Assert.Equal("1.0.0", response.Data[0]);
+    }
 
-            // var response = await _target.ListPackageVersionsAsync("PackageId");
+    [Fact]
+    public async Task AddsListPackageVersionsParameters()
+    {
+        await Task.Yield();
 
-            // Assert.NotNull(response);
-            // Assert.Equal(1, response.TotalHits);
-            // Assert.Equal("1.0.0", response.Data[0]);
-        }
-
-        [Fact]
-        public async Task AddsListPackageVersionsParameters()
-        {
-            await Task.Yield();
-
-            // TODO: Assert request URL query parameters.
-            // var response = await _target.ListPackageVersionsAsync(
-            //     "query",
-            //     includePrerelease: false,
-            //     includeSemVer2: false);
-        }
+        // TODO: Assert request URL query parameters.
+        // var response = await _target.ListPackageVersionsAsync(
+        //     "query",
+        //     includePrerelease: false,
+        //     includeSemVer2: false);
     }
 }

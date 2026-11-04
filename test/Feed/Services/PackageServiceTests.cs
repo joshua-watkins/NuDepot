@@ -1,15 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Moq;
-using NuGet.Versioning;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Upstream;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using NuGet.Versioning;
 using Xunit;
 
 namespace NuDepot.Feed.Tests.Services;
@@ -23,7 +17,7 @@ public class PackageServiceTests
         {
             Setup();
 
-            var results = await _target.FindPackageVersionsAsync(
+            IReadOnlyList<NuGetVersion> results = await _target.FindPackageVersionsAsync(
                 "MyPackage",
                 _cancellationToken);
 
@@ -33,13 +27,13 @@ public class PackageServiceTests
         [Fact]
         public async Task ReturnsLocalVersions()
         {
-            Setup(localPackages: new List<Package>
-            {
-                new Package { Version = new NuGetVersion("1.0.0") },
-                new Package { Version = new NuGetVersion("2.0.0") },
-            });
+            Setup(localPackages:
+            [
+                new() { Version = new NuGetVersion("1.0.0") },
+                new() { Version = new NuGetVersion("2.0.0") },
+            ]);
 
-            var results = await _target.FindPackageVersionsAsync(
+            IReadOnlyList<NuGetVersion> results = await _target.FindPackageVersionsAsync(
                 "MyPackage",
                 _cancellationToken);
 
@@ -51,13 +45,13 @@ public class PackageServiceTests
         [Fact]
         public async Task ReturnsUpstreamVersions()
         {
-            Setup(upstreamPackages: new List<NuGetVersion>
-            {
-                new NuGetVersion("1.0.0"),
-                new NuGetVersion("2.0.0"),
-            });
+            Setup(upstreamPackages:
+            [
+                new("1.0.0"),
+                new("2.0.0"),
+            ]);
 
-            var results = await _target.FindPackageVersionsAsync(
+            IReadOnlyList<NuGetVersion> results = await _target.FindPackageVersionsAsync(
                 "MyPackage",
                 _cancellationToken);
 
@@ -70,22 +64,22 @@ public class PackageServiceTests
         public async Task MergesLocalAndUpstreamVersions()
         {
             Setup(
-                localPackages: new List<Package>
-                {
-                    new Package { Version = new NuGetVersion("1.0.0") },
-                    new Package { Version = new NuGetVersion("2.0.0") },
-                },
-                upstreamPackages: new List<NuGetVersion>
-                {
-                    new NuGetVersion("2.0.0"),
-                    new NuGetVersion("3.0.0"),
-                });
+                localPackages:
+                [
+                    new() { Version = new NuGetVersion("1.0.0") },
+                    new() { Version = new NuGetVersion("2.0.0") },
+                ],
+                upstreamPackages:
+                [
+                    new("2.0.0"),
+                    new("3.0.0"),
+                ]);
 
-            var results = await _target.FindPackageVersionsAsync(
+            IReadOnlyList<NuGetVersion> results = await _target.FindPackageVersionsAsync(
                 "MyPackage",
                 _cancellationToken);
 
-            var ordered = results.OrderBy(v => v).ToList();
+            List<NuGetVersion> ordered = [.. results.OrderBy(v => v)];
 
             Assert.Equal(3, ordered.Count);
             Assert.Equal("1.0.0", ordered[0].OriginalVersion);
@@ -93,12 +87,10 @@ public class PackageServiceTests
             Assert.Equal("3.0.0", ordered[2].OriginalVersion);
         }
 
-        private void Setup(
-            IReadOnlyList<Package>? localPackages = null,
-            IReadOnlyList<NuGetVersion>? upstreamPackages = null)
+        private void Setup(IReadOnlyList<Package>? localPackages = null, IReadOnlyList<NuGetVersion>? upstreamPackages = null)
         {
-            localPackages = localPackages ?? new List<Package>();
-            upstreamPackages = upstreamPackages ?? new List<NuGetVersion>();
+            localPackages = localPackages ?? [];
+            upstreamPackages = upstreamPackages ?? [];
 
             _db
                 .Setup(p => p.FindAsync(
@@ -122,7 +114,7 @@ public class PackageServiceTests
         {
             Setup();
 
-            var results = await _target.FindPackagesAsync("MyPackage", _cancellationToken);
+            IReadOnlyList<Package> results = await _target.FindPackagesAsync("MyPackage", _cancellationToken);
 
             Assert.Empty(results);
         }
@@ -130,13 +122,13 @@ public class PackageServiceTests
         [Fact]
         public async Task ReturnsLocalPackages()
         {
-            Setup(localPackages: new List<Package>
-            {
-                new Package { Version = new NuGetVersion("1.0.0") },
-                new Package { Version = new NuGetVersion("2.0.0") },
-            });
+            Setup(localPackages:
+            [
+                new() { Version = new NuGetVersion("1.0.0") },
+                new() { Version = new NuGetVersion("2.0.0") },
+            ]);
 
-            var results = await _target.FindPackagesAsync("MyPackage", _cancellationToken);
+            IReadOnlyList<Package> results = await _target.FindPackagesAsync("MyPackage", _cancellationToken);
 
             Assert.Equal(2, results.Count);
             Assert.Equal("1.0.0", results[0].Version.OriginalVersion);
@@ -146,13 +138,13 @@ public class PackageServiceTests
         [Fact]
         public async Task ReturnsUpstreamPackages()
         {
-            Setup(upstreamPackages: new List<Package>
-            {
-                new Package { Version = new NuGetVersion("1.0.0") },
-                new Package { Version = new NuGetVersion("2.0.0") },
-            });
+            Setup(upstreamPackages:
+            [
+                new() { Version = new NuGetVersion("1.0.0") },
+                new() { Version = new NuGetVersion("2.0.0") },
+            ]);
 
-            var results = await _target.FindPackagesAsync("MyPackage", _cancellationToken);
+            IReadOnlyList<Package> results = await _target.FindPackagesAsync("MyPackage", _cancellationToken);
 
             Assert.Equal(2, results.Count);
             Assert.Equal("1.0.0", results[0].Version.OriginalVersion);
@@ -163,19 +155,19 @@ public class PackageServiceTests
         public async Task MergesLocalAndUpstreamPackages()
         {
             Setup(
-                localPackages: new List<Package>
-                {
-                    new Package { Version = new NuGetVersion("1.0.0") },
-                    new Package { Version = new NuGetVersion("2.0.0") },
-                },
-                upstreamPackages: new List<Package>
-                {
-                    new Package { Version = new NuGetVersion("2.0.0") },
-                    new Package { Version = new NuGetVersion("3.0.0") },
-                });
+                localPackages:
+                [
+                    new() { Version = new NuGetVersion("1.0.0") },
+                    new() { Version = new NuGetVersion("2.0.0") },
+                ],
+                upstreamPackages:
+                [
+                    new() { Version = new NuGetVersion("2.0.0") },
+                    new() { Version = new NuGetVersion("3.0.0") },
+                ]);
 
-            var results = await _target.FindPackagesAsync("MyPackage", _cancellationToken);
-            var ordered = results.OrderBy(p => p.Version).ToList();
+            IReadOnlyList<Package> results = await _target.FindPackagesAsync("MyPackage", _cancellationToken);
+            List<Package> ordered = [.. results.OrderBy(p => p.Version)];
 
             Assert.Equal(3, ordered.Count);
             Assert.Equal("1.0.0", ordered[0].Version.OriginalVersion);
@@ -183,12 +175,10 @@ public class PackageServiceTests
             Assert.Equal("3.0.0", ordered[2].Version.OriginalVersion);
         }
 
-        private void Setup(
-            IReadOnlyList<Package>? localPackages = null,
-            IReadOnlyList<Package>? upstreamPackages = null)
+        private void Setup(IReadOnlyList<Package>? localPackages = null, IReadOnlyList<Package>? upstreamPackages = null)
         {
-            localPackages = localPackages ?? new List<Package>();
-            upstreamPackages = upstreamPackages ?? new List<Package>();
+            localPackages = localPackages ?? [];
+            upstreamPackages = upstreamPackages ?? [];
 
             _db
                 .Setup(p => p.FindAsync(
@@ -213,7 +203,7 @@ public class PackageServiceTests
         [Fact]
         public async Task ExistsInDatabase()
         {
-            var expected = new Package();
+            Package expected = new();
 
             _db
                 .Setup(p => p.ExistsAsync(_id, _version, _cancellationToken))
@@ -222,7 +212,7 @@ public class PackageServiceTests
                 .Setup(p => p.FindOrNullAsync(_id, _version,  /*includeUnlisted:*/ true, _cancellationToken))
                 .ReturnsAsync(expected);
 
-            var result = await _target.FindPackageOrNullAsync(_id, _version, _cancellationToken);
+            Package? result = await _target.FindPackageOrNullAsync(_id, _version, _cancellationToken);
 
             Assert.Same(expected, result);
         }
@@ -234,7 +224,7 @@ public class PackageServiceTests
                 .Setup(p => p.FindOrNullAsync(_id, _version,  /*includeUnlisted:*/ true, _cancellationToken))
                 .ReturnsAsync((Package?)null);
 
-            var result = await _target.FindPackageOrNullAsync(_id, _version, _cancellationToken);
+            Package? result = await _target.FindPackageOrNullAsync(_id, _version, _cancellationToken);
 
             Assert.Null(result);
         }
@@ -251,7 +241,7 @@ public class PackageServiceTests
                 .Setup(p => p.ExistsAsync(_id, _version, _cancellationToken))
                 .ReturnsAsync(true);
 
-            var result = await _target.ExistsAsync(_id, _version, _cancellationToken);
+            bool result = await _target.ExistsAsync(_id, _version, _cancellationToken);
 
             Assert.True(result);
         }
@@ -263,7 +253,7 @@ public class PackageServiceTests
                 .Setup(p => p.ExistsAsync(_id, _version, _cancellationToken))
                 .ReturnsAsync(false);
 
-            var result = await _target.ExistsAsync(_id, _version, _cancellationToken);
+            bool result = await _target.ExistsAsync(_id, _version, _cancellationToken);
 
             Assert.False(result);
         }
@@ -272,7 +262,7 @@ public class PackageServiceTests
     public abstract class MirrorAsync : FactsBase
     {
         protected readonly string _id = "MyPackage";
-        protected readonly NuGetVersion _version = new NuGetVersion("1.0.0");
+        protected readonly NuGetVersion _version = new("1.0.0");
 
         protected abstract Task TargetAsync();
 
@@ -333,7 +323,7 @@ public class PackageServiceTests
                 .Setup(p => p.ExistsAsync(_id, _version, _cancellationToken))
                 .ReturnsAsync(false);
 
-            using (var downloadStream = new MemoryStream())
+            using (MemoryStream downloadStream = new())
             {
                 _upstream
                     .Setup(u => u.DownloadPackageOrNullAsync(_id, _version, _cancellationToken))
@@ -353,8 +343,8 @@ public class PackageServiceTests
         [Fact]
         public async Task AddsDownload()
         {
-            var id = "Hello";
-            var version = new NuGetVersion("1.2.3");
+            string id = "Hello";
+            NuGetVersion version = new("1.2.3");
 
             await _target.AddDownloadAsync(id, version, _cancellationToken);
 

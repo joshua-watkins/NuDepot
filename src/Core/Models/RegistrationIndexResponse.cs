@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace NuDepot.Core.Models;
@@ -10,12 +9,12 @@ namespace NuDepot.Core.Models;
 /// </summary>
 public class RegistrationIndexResponse
 {
-    public static readonly IReadOnlyList<string> DefaultType = new List<string>
-    {
+    public static readonly IReadOnlyList<string> DefaultType =
+    [
         "catalog:CatalogRoot",
         "PackageRegistration",
         "catalog:Permalink"
-    };
+    ];
 
     /// <summary>
     /// The URL to the registration index.

@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using NuDepot.Feed.Authentication;
@@ -21,24 +18,17 @@ internal static class PackagePublishEndpoints
 
     // PUT api/v2/package
     // See: https://docs.microsoft.com/en-us/nuget/api/package-publish-resource#push-a-package
-    public static async Task<IResult> UploadPackageAsync(
-        HttpRequest request,
-        FeedAccess access,
-        IPackageIndexingService indexer,
-        ILoggerFactory loggerFactory,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> UploadPackageAsync(HttpRequest request, FeedAccess access, IPackageIndexingService indexer, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
         try
         {
-            using var uploadStream = await request.GetUploadStreamOrNullAsync(cancellationToken);
+            using Stream? uploadStream = await request.GetUploadStreamOrNullAsync(cancellationToken);
             if (uploadStream == null)
-            {
                 return Results.StatusCode(StatusCodes.Status400BadRequest);
-            }
 
             // Replacing a package deletes the original permanently.
-            var allowOverwrite = access.HasPermission(request.HttpContext.User, FeedPermissions.HardDelete);
-            var result = await indexer.IndexAsync(uploadStream, allowOverwrite, cancellationToken);
+            bool allowOverwrite = access.HasPermission(request.HttpContext.User, FeedPermissions.HardDelete);
+            PackageIndexingResult result = await indexer.IndexAsync(uploadStream, allowOverwrite, cancellationToken);
 
             return Results.StatusCode(result switch
             {
@@ -49,20 +39,19 @@ internal static class PackagePublishEndpoints
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            loggerFactory.CreateLogger(LoggerCategory).LogError(e, "Exception thrown during package upload");
+            loggerFactory
+                .CreateLogger(LoggerCategory)
+                .LogError(e, "Exception thrown during package upload");
 
             return Results.StatusCode(StatusCodes.Status500InternalServerError);
         }
     }
 
     // DELETE api/v2/package/{id}/{version}
-    public static async Task<IResult> DeleteAsync(
-        string id,
-        string version,
-        IPackageDeletionService deletionService,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> DeleteAsync(string id, string version, IPackageDeletionService deletionService, CancellationToken cancellationToken)
     {
-        if (!NuGetVersion.TryParse(version, out var nugetVersion)) return Results.NotFound();
+        if (!NuGetVersion.TryParse(version, out NuGetVersion? nugetVersion))
+            return Results.NotFound();
 
         return await deletionService.TryDeletePackageAsync(id, nugetVersion, cancellationToken)
             ? Results.NoContent()
@@ -70,13 +59,10 @@ internal static class PackagePublishEndpoints
     }
 
     // POST api/v2/package/{id}/{version}
-    public static async Task<IResult> RelistAsync(
-        string id,
-        string version,
-        IPackageDeletionService deletionService,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> RelistAsync(string id, string version, IPackageDeletionService deletionService, CancellationToken cancellationToken)
     {
-        if (!NuGetVersion.TryParse(version, out var nugetVersion)) return Results.NotFound();
+        if (!NuGetVersion.TryParse(version, out NuGetVersion? nugetVersion))
+            return Results.NotFound();
 
         return await deletionService.TryRelistPackageAsync(id, nugetVersion, cancellationToken)
             ? Results.Ok()
@@ -85,21 +71,15 @@ internal static class PackagePublishEndpoints
 
     // PUT api/v2/symbol
     // See: https://docs.microsoft.com/en-us/nuget/api/symbol-package-publish-resource
-    public static async Task<IResult> UploadSymbolPackageAsync(
-        HttpRequest request,
-        ISymbolIndexingService indexer,
-        ILoggerFactory loggerFactory,
-        CancellationToken cancellationToken)
+    public static async Task<IResult> UploadSymbolPackageAsync(HttpRequest request, ISymbolIndexingService indexer, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
         try
         {
-            using var uploadStream = await request.GetUploadStreamOrNullAsync(cancellationToken);
+            using Stream? uploadStream = await request.GetUploadStreamOrNullAsync(cancellationToken);
             if (uploadStream == null)
-            {
                 return Results.StatusCode(StatusCodes.Status400BadRequest);
-            }
 
-            var result = await indexer.IndexAsync(uploadStream, cancellationToken);
+            SymbolIndexingResult result = await indexer.IndexAsync(uploadStream, cancellationToken);
 
             return Results.StatusCode(result switch
             {
@@ -110,7 +90,9 @@ internal static class PackagePublishEndpoints
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            loggerFactory.CreateLogger(LoggerCategory).LogError(e, "Exception thrown during symbol upload");
+            loggerFactory
+                .CreateLogger(LoggerCategory)
+                .LogError(e, "Exception thrown during symbol upload");
 
             return Results.StatusCode(StatusCodes.Status500InternalServerError);
         }
@@ -119,11 +101,9 @@ internal static class PackagePublishEndpoints
     // GET api/download/symbols/{file}/{key}/{file2}
     public static async Task<IResult> DownloadSymbolsAsync(string file, string key, ISymbolStorageService storage)
     {
-        var pdbStream = await storage.GetPortablePdbContentStreamOrNullAsync(file, key);
+        Stream? pdbStream = await storage.GetPortablePdbContentStreamOrNullAsync(file, key);
         if (pdbStream == null)
-        {
             return Results.NotFound();
-        }
 
         return Results.Stream(pdbStream, "application/octet-stream");
     }

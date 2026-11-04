@@ -1,7 +1,3 @@
-using System;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Catalog;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
@@ -19,10 +15,10 @@ namespace NuDepot.Core;
 /// </summary>
 public partial class NuGetClientFactory
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _serviceIndexUrl;
+    private HttpClient HttpClient { get; }
+    private string ServiceIndexUrl { get; }
 
-    private readonly SemaphoreSlim _mutex;
+    private SemaphoreSlim Mutex { get; }
     private NuGetClients? _clients;
 
     /// <summary>
@@ -31,9 +27,9 @@ public partial class NuGetClientFactory
     /// </summary>
     protected NuGetClientFactory()
     {
-        _httpClient = null!;
-        _serviceIndexUrl = null!;
-        _mutex = new SemaphoreSlim(1, 1);
+        HttpClient = null!;
+        ServiceIndexUrl = null!;
+        Mutex = new SemaphoreSlim(1, 1);
     }
 
     /// <summary>
@@ -47,10 +43,10 @@ public partial class NuGetClientFactory
     /// </param>
     public NuGetClientFactory(HttpClient httpClient, string serviceIndexUrl)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _serviceIndexUrl = serviceIndexUrl ?? throw new ArgumentNullException(nameof(serviceIndexUrl));
+        HttpClient = httpClient;
+        ServiceIndexUrl = serviceIndexUrl;
 
-        _mutex = new SemaphoreSlim(1, 1);
+        Mutex = new SemaphoreSlim(1, 1);
         _clients = null;
     }
 
@@ -168,36 +164,36 @@ public partial class NuGetClientFactory
     {
         if (_clients == null)
         {
-            await _mutex.WaitAsync(cancellationToken);
+            await Mutex.WaitAsync(cancellationToken);
 
             try
             {
                 if (_clients == null)
                 {
-                    var serviceIndexClient = new RawServiceIndexClient(_httpClient, _serviceIndexUrl);
+                    RawServiceIndexClient serviceIndexClient = new(HttpClient, ServiceIndexUrl);
 
-                    var serviceIndex = await serviceIndexClient.GetAsync(cancellationToken);
+                    ServiceIndexResponse serviceIndex = await serviceIndexClient.GetAsync(cancellationToken);
 
-                    var contentResourceUrl = serviceIndex.GetPackageContentResourceUrl();
-                    var metadataResourceUrl = serviceIndex.GetPackageMetadataResourceUrl();
-                    var catalogResourceUrl = serviceIndex.GetCatalogResourceUrl();
-                    var searchResourceUrl = serviceIndex.GetSearchQueryResourceUrl();
-                    var autocompleteResourceUrl = serviceIndex.GetSearchAutocompleteResourceUrl();
+                    string contentResourceUrl = serviceIndex.GetPackageContentResourceUrl();
+                    string metadataResourceUrl = serviceIndex.GetPackageMetadataResourceUrl();
+                    string? catalogResourceUrl = serviceIndex.GetCatalogResourceUrl();
+                    string searchResourceUrl = serviceIndex.GetSearchQueryResourceUrl();
+                    string? autocompleteResourceUrl = serviceIndex.GetSearchAutocompleteResourceUrl();
 
                     // Create clients for required resources.
-                    var contentClient = new RawPackageContentClient(_httpClient, contentResourceUrl);
-                    var metadataClient = new RawPackageMetadataClient(_httpClient, metadataResourceUrl);
-                    var searchClient = new RawSearchClient(_httpClient, searchResourceUrl);
+                    RawPackageContentClient contentClient = new(HttpClient, contentResourceUrl);
+                    RawPackageMetadataClient metadataClient = new(HttpClient, metadataResourceUrl);
+                    RawSearchClient searchClient = new(HttpClient, searchResourceUrl);
 
                     // Create clients for optional resources.
-                    var catalogClient = catalogResourceUrl == null
+                    ICatalogClient catalogClient = catalogResourceUrl == null
                         ? new NullCatalogClient() as ICatalogClient
-                        : new RawCatalogClient(_httpClient, catalogResourceUrl);
-                    var autocompleteClient = autocompleteResourceUrl == null
+                        : new RawCatalogClient(HttpClient, catalogResourceUrl);
+                    IAutocompleteClient autocompleteClient = autocompleteResourceUrl == null
                         ? new NullAutocompleteClient() as IAutocompleteClient
-                        : new RawAutocompleteClient(_httpClient, autocompleteResourceUrl);
-                    var packageDetailsClient = new RawPackageDetailsClient(
-                        _httpClient,
+                        : new RawAutocompleteClient(HttpClient, autocompleteResourceUrl);
+                    RawPackageDetailsClient packageDetailsClient = new(
+                        HttpClient,
                         metadataResourceUrl,
                         serviceIndex.GetReadmeUriTemplate(),
                         serviceIndex.GetPackageDependentsResourceUrl());
@@ -217,7 +213,7 @@ public partial class NuGetClientFactory
             }
             finally
             {
-                _mutex.Release();
+                Mutex.Release();
             }
         }
 

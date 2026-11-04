@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Models;
 using NuGet.Versioning;
 
@@ -30,9 +28,5 @@ public interface IPackageMetadataService
     /// <param name="semVer2">Whether to include SemVer 2.0.0 packages (RegistrationsBaseUrl/3.6.0).</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The registration leaf, or null if the package does not exist.</returns>
-    Task<RegistrationLeafResponse?> GetRegistrationLeafOrNullAsync(
-        string packageId,
-        NuGetVersion packageVersion,
-        bool semVer2 = false,
-        CancellationToken cancellationToken = default);
+    Task<RegistrationLeafResponse?> GetRegistrationLeafOrNullAsync(string packageId, NuGetVersion packageVersion, bool semVer2 = false, CancellationToken cancellationToken = default);
 }

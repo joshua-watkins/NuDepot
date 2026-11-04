@@ -1,15 +1,11 @@
-using System;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using NuDepot.Core;
 using NuDepot.Core.Hosting;
+using System.Net;
 
 namespace NuDepot.Gallery;
 
@@ -21,49 +17,43 @@ public class FeedConnection
 {
     private const string DefaultServiceIndexPath = "v3/index.json";
 
-    private readonly NuDepotFeatures _features;
-    private readonly IServer? _server;
-    private readonly IHttpContextAccessor? _httpContextAccessor;
-    private readonly bool _isCoHosted;
-    private readonly Lazy<string> _serviceIndexUrl;
-    private readonly Lazy<NuGetClientFactory> _clientFactory;
+    private NuDepotFeatures Features { get; }
+    private IServer? Server { get; }
+    private IHttpContextAccessor? HttpContextAccessor { get; }
+    private bool IsCoHosted { get; }
+    private Lazy<string> LazyServiceIndexUrl { get; }
+    private Lazy<NuGetClientFactory> LazyClientFactory { get; }
 
-    public FeedConnection(
-        IOptions<GalleryOptions> options,
-        NuDepotFeatures features,
-        IServer? server,
-        IHttpContextAccessor? httpContextAccessor)
+    public FeedConnection(IOptions<GalleryOptions> options, NuDepotFeatures features, IServer? server, IHttpContextAccessor? httpContextAccessor)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        Features = features;
+        Server = server;
+        HttpContextAccessor = httpContextAccessor;
 
-        _features = features ?? throw new ArgumentNullException(nameof(features));
-        _server = server;
-        _httpContextAccessor = httpContextAccessor;
-
-        var configuredUrl = options.Value.ServiceIndexUrl;
+        string? configuredUrl = options.Value.ServiceIndexUrl;
 
         // The server's listening addresses are only known once the application has started,
         // so resolve them on first use.
-        _isCoHosted = string.IsNullOrEmpty(configuredUrl);
-        _serviceIndexUrl = new Lazy<string>(() => _isCoHosted ? GetLocalServiceIndexUrl() : configuredUrl!);
-        _clientFactory = new Lazy<NuGetClientFactory>(() => new NuGetClientFactory(CreateHttpClient(options.Value.ApiKey), ServiceIndexUrl));
+        IsCoHosted = string.IsNullOrEmpty(configuredUrl);
+        LazyServiceIndexUrl = new(() => IsCoHosted ? GetLocalServiceIndexUrl() : configuredUrl!);
+        LazyClientFactory = new(() => new(CreateHttpClient(options.Value.ApiKey), ServiceIndexUrl));
     }
 
     /// <summary>
     /// Whether people can sign in: the gallery is hosted with a feed whose users sign in with passkeys.
     /// Signed-in users read the feed as themselves, so they can browse a feed that's closed to anonymous users.
     /// </summary>
-    public bool SignInAvailable => _isCoHosted && _features.Passkeys;
+    public bool SignInAvailable => IsCoHosted && Features.Passkeys;
 
     /// <summary>
     /// The service index URL the website uses to call the feed.
     /// </summary>
-    public string ServiceIndexUrl => _serviceIndexUrl.Value;
+    public string ServiceIndexUrl => LazyServiceIndexUrl.Value;
 
     /// <summary>
     /// Creates clients for the feed's resources.
     /// </summary>
-    public NuGetClientFactory ClientFactory => _clientFactory.Value;
+    public NuGetClientFactory ClientFactory => LazyClientFactory.Value;
 
     /// <summary>
     /// Convert a URL returned by the feed into a URL the browser can use.
@@ -72,20 +62,24 @@ public class FeedConnection
     /// <returns>The URL to show in the page, or null if <paramref name="url"/> is empty.</returns>
     public string? ToPublicUrl(string? url)
     {
-        if (string.IsNullOrEmpty(url)) return null;
+        if (string.IsNullOrEmpty(url))
+            return null;
 
         // A feed configured explicitly is reached by browsers the same way the website reaches it.
-        if (!_isCoHosted) return url;
+        if (!IsCoHosted)
+            return url;
 
-        var request = _httpContextAccessor?.HttpContext?.Request;
-        if (request == null) return url;
+        HttpRequest? request = HttpContextAccessor?.HttpContext?.Request;
+        if (request == null)
+            return url;
 
         // The co-hosted server generates links using the local address the website called it on.
         // Swap that address for the one the browser used to reach this application.
-        var feedRoot = new Uri(ServiceIndexUrl).GetLeftPart(UriPartial.Authority);
-        if (!url.StartsWith(feedRoot + "/", StringComparison.OrdinalIgnoreCase)) return url;
+        string feedRoot = new Uri(ServiceIndexUrl).GetLeftPart(UriPartial.Authority);
+        if (!url.StartsWith(feedRoot + "/", StringComparison.OrdinalIgnoreCase))
+            return url;
 
-        var publicRoot = string.Concat(
+        string publicRoot = string.Concat(
             request.Scheme,
             "://",
             request.Host.ToUriComponent(),
@@ -96,7 +90,7 @@ public class FeedConnection
 
     private string GetLocalServiceIndexUrl()
     {
-        var addresses = _server?.Features.Get<IServerAddressesFeature>()?.Addresses;
+        ICollection<string>? addresses = Server?.Features.Get<IServerAddressesFeature>()?.Addresses;
         if (addresses == null || addresses.Count == 0)
         {
             throw new InvalidOperationException(
@@ -106,7 +100,7 @@ public class FeedConnection
         }
 
         // Prefer HTTP so the call isn't rejected by a certificate issued for the public host name.
-        var address = addresses.FirstOrDefault(a => a.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        string address = addresses.FirstOrDefault(a => a.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
             ?? addresses.First();
 
         // Kestrel reports wildcard bindings such as http://*:5000, http://+:5000 or http://[::]:5000.
@@ -114,11 +108,9 @@ public class FeedConnection
             .Replace("://*", "://localhost")
             .Replace("://+", "://localhost");
 
-        var builder = new UriBuilder(address);
+        UriBuilder builder = new(address);
         if (builder.Host is "0.0.0.0" or "[::]" or "::")
-        {
             builder.Host = "localhost";
-        }
 
         builder.Path = DefaultServiceIndexPath;
 
@@ -135,17 +127,13 @@ public class FeedConnection
             UseCookies = false,
         };
 
-        if (SignInAvailable && _httpContextAccessor != null)
-        {
-            handler = new ForwardCookiesHandler(_httpContextAccessor) { InnerHandler = handler };
-        }
+        if (SignInAvailable && HttpContextAccessor != null)
+            handler = new ForwardCookiesHandler(HttpContextAccessor) { InnerHandler = handler };
 
-        var client = new HttpClient(handler);
+        HttpClient client = new(handler);
 
         if (!string.IsNullOrEmpty(apiKey))
-        {
             client.DefaultRequestHeaders.Add("X-NuGet-ApiKey", apiKey);
-        }
 
         return client;
     }
@@ -158,11 +146,9 @@ public class FeedConnection
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var cookies = httpContextAccessor.HttpContext?.Request.Headers.Cookie;
+            StringValues? cookies = httpContextAccessor.HttpContext?.Request.Headers.Cookie;
             if (cookies is { Count: > 0 })
-            {
                 request.Headers.TryAddWithoutValidation("Cookie", cookies.ToString());
-            }
 
             return base.SendAsync(request, cancellationToken);
         }

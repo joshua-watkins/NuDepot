@@ -1,57 +1,57 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
+		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
+		<Description>A NuGet V3 package and symbol feed for ASP.NET Core applications, a replacement for NuGet.Server. Add it with services.AddNuDepotFeed() and app.UseNuDepotFeed(). Stores packages in SQLite and on the file system, with API keys, roles and passkey sign-in.</Description>
+		<IsAotCompatible>true</IsAotCompatible>
+		<EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+		<!-- Generates the minimal API endpoints' request handling at compile time instead of with reflection. -->
+		<EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+	</PropertyGroup>
 
-	  <AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
-	  <RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
-	  <Description>A NuGet V3 package and symbol feed for ASP.NET Core applications, a replacement for NuGet.Server. Add it with services.AddNuDepotFeed() and app.UseNuDepotFeed(). Stores packages in SQLite and on the file system, with API keys, roles and passkey sign-in.</Description>
-	  <IsAotCompatible>true</IsAotCompatible>
-	  <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
-	  <!-- Generates the minimal API endpoints' request handling at compile time instead of with reflection. -->
-	  <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
-  </PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Fido2" Version="4.3.2" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.403">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Fido2" Version="4.3.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-	  <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
-	  <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
-	  <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.403">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
-  </ItemGroup>
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Core\Core.csproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Core\Core.csproj" />
-  </ItemGroup>
+	<!--
+		Entity Framework's design-time package makes the build write a runtimeconfig.json, so "dotnet ef"
+		can run this library. Applications have their own, so leave it out of the package.
+	-->
+	<PropertyGroup>
+		<TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);ExcludeRuntimeConfigFromPackage</TargetsForTfmSpecificBuildOutput>
+	</PropertyGroup>
 
-  <!--
-    Entity Framework's design-time package makes the build write a runtimeconfig.json, so "dotnet ef"
-    can run this library. Applications have their own, so leave it out of the package.
-  -->
-  <PropertyGroup>
-    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);ExcludeRuntimeConfigFromPackage</TargetsForTfmSpecificBuildOutput>
-  </PropertyGroup>
+	<Target Name="ExcludeRuntimeConfigFromPackage">
+		<ItemGroup>
+			<BuiltProjectOutputGroupOutput Remove="@(BuiltProjectOutputGroupOutput)" Condition="$([System.String]::Copy('%(Filename)%(Extension)').EndsWith('.runtimeconfig.json'))" />
+		</ItemGroup>
+	</Target>
 
-  <Target Name="ExcludeRuntimeConfigFromPackage">
-    <ItemGroup>
-      <BuiltProjectOutputGroupOutput Remove="@(BuiltProjectOutputGroupOutput)" Condition="$([System.String]::Copy('%(Filename)%(Extension)').EndsWith('.runtimeconfig.json'))" />
-    </ItemGroup>
-  </Target>
-
-  <ItemGroup>
-    <!-- The tests use the feed's internal types. -->
-    <InternalsVisibleTo Include="$(AssemblyName).Tests" />
-  </ItemGroup>
+	<ItemGroup>
+		<!-- The tests use the feed's internal types. -->
+		<InternalsVisibleTo Include="$(AssemblyName).Tests" />
+	</ItemGroup>
 
 </Project>

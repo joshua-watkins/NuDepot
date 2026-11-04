@@ -1,6 +1,3 @@
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
 namespace NuDepot.Feed.Extensions;
@@ -18,11 +15,9 @@ public static class HttpRequestExtensions
         {
             if (request.HasFormContentType)
             {
-                var form = await request.ReadFormAsync(cancellationToken);
+                IFormCollection form = await request.ReadFormAsync(cancellationToken);
                 if (form.Files.Count > 0)
-                {
                     rawUploadStream = form.Files[0].OpenReadStream();
-                }
             }
 
             rawUploadStream ??= request.Body;

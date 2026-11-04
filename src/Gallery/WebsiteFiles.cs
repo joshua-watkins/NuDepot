@@ -27,13 +27,12 @@ internal static class WebsiteFiles
     // GET /_content/NuDepot.Gallery/{path}
     public static IResult GetFile(string path)
     {
-        var file = Files.GetFileInfo(path);
-        if (!file.Exists || file.IsDirectory) return Results.NotFound();
+        IFileInfo file = Files.GetFileInfo(path);
+        if (!file.Exists || file.IsDirectory)
+            return Results.NotFound();
 
-        if (!ContentTypes.TryGetContentType(file.Name, out var contentType))
-        {
+        if (!ContentTypes.TryGetContentType(file.Name, out string? contentType))
             contentType = "application/octet-stream";
-        }
 
         return Results.File(
             file.CreateReadStream(),

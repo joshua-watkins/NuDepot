@@ -1,4 +1,3 @@
-using System;
 using Microsoft.AspNetCore.Routing;
 using NuDepot.Core.Hosting;
 
@@ -17,13 +16,9 @@ public static class NuDepotApplicationBuilderExtensions
     /// </summary>
     public static NuDepotApplicationBuilder UseNuDepot<TApplication>(this TApplication application) where TApplication : IApplicationBuilder, IEndpointRouteBuilder
     {
-        ArgumentNullException.ThrowIfNull(application);
-
-        if (application.Properties.TryGetValue(ApplicationBuilderProperty, out var existing) &&
+        if (application.Properties.TryGetValue(ApplicationBuilderProperty, out object? existing) &&
             existing is NuDepotApplicationBuilder builder)
-        {
             return builder;
-        }
 
         application.UseCors();
         application.UseAuthentication();

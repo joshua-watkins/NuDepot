@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.AspNetCore.Http;
@@ -12,6 +5,8 @@ using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Extensions;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace NuDepot.Feed.Users;
 
@@ -20,17 +15,14 @@ namespace NuDepot.Feed.Users;
 /// gets options with a challenge, then sends back what the authenticator signed. Between the steps,
 /// the options are kept on the user's row, so each user has one ceremony in progress at a time.
 /// </summary>
-public class PasskeyService(
-    UserService users,
-    SystemTime time,
-    IOptionsMonitor<FeedOptions> options)
+public class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<FeedOptions> options)
 {
     private const string ServerName = "NuDepot";
     private const string ExpiredError = "The passkey request expired. Try again.";
 
-    private readonly UserService _users = users ?? throw new ArgumentNullException(nameof(users));
-    private readonly SystemTime _time = time ?? throw new ArgumentNullException(nameof(time));
-    private readonly IOptionsMonitor<FeedOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
+    private UserService Users { get; } = users;
+    private SystemTime Time { get; } = time;
+    private IOptionsMonitor<FeedOptions> Options { get; } = options;
 
     /// <summary>
     /// Start creating an account with a passkey.
@@ -38,10 +30,10 @@ public class PasskeyService(
     /// <returns>The options for the browser, or null if the user name is taken.</returns>
     public async Task<CredentialCreateOptions?> BeginSignUpAsync(HttpContext httpContext, string userName, string passkeyName, CancellationToken cancellationToken)
     {
-        var handle = RandomNumberGenerator.GetBytes(32);
-        var credentialOptions = RequestNewCredential(httpContext, userName, handle, Array.Empty<UserPasskey>());
+        byte[] handle = RandomNumberGenerator.GetBytes(32);
+        CredentialCreateOptions credentialOptions = RequestNewCredential(httpContext, userName, handle, []);
 
-        var user = await _users.StartSignUpAsync(userName, handle, credentialOptions.ToJson(), passkeyName, cancellationToken);
+        User? user = await Users.StartSignUpAsync(userName, handle, credentialOptions.ToJson(), passkeyName, cancellationToken);
 
         return user == null ? null : credentialOptions;
     }
@@ -52,10 +44,10 @@ public class PasskeyService(
     public async Task<CredentialCreateOptions> BeginAddPasskeyAsync(HttpContext httpContext, User user, string passkeyName, CancellationToken cancellationToken)
     {
         // The authenticator won't make a second passkey for an account it already has one for.
-        var existing = await _users.GetPasskeysAsync(user.Key, cancellationToken);
-        var credentialOptions = RequestNewCredential(httpContext, user.UserName, user.Handle, existing);
+        List<UserPasskey> existing = await Users.GetPasskeysAsync(user.Key, cancellationToken);
+        CredentialCreateOptions credentialOptions = RequestNewCredential(httpContext, user.UserName, user.Handle, existing);
 
-        await _users.StartCeremonyAsync(user, PasskeyCeremony.AddPasskey, credentialOptions.ToJson(), passkeyName, cancellationToken);
+        await Users.StartCeremonyAsync(user, PasskeyCeremony.AddPasskey, credentialOptions.ToJson(), passkeyName, cancellationToken);
 
         return credentialOptions;
     }
@@ -63,35 +55,30 @@ public class PasskeyService(
     /// <summary>
     /// Finish creating an account.
     /// </summary>
-    public async Task<PasskeyResult> CompleteSignUpAsync(
-        HttpContext httpContext,
-        string userName,
-        AuthenticatorAttestationRawResponse response,
-        CancellationToken cancellationToken)
+    public async Task<PasskeyResult> CompleteSignUpAsync(HttpContext httpContext, string userName, AuthenticatorAttestationRawResponse response, CancellationToken cancellationToken)
     {
-        var user = await _users.FindByNameAsync(userName, cancellationToken);
-        if (user == null || user.Passkeys.Count > 0) return PasskeyResult.Failed(ExpiredError);
+        User? user = await Users.FindByNameAsync(userName, cancellationToken);
+        if (user == null || user.Passkeys.Count > 0)
+            return PasskeyResult.Failed(ExpiredError);
 
-        var passkey = await CompleteRegistrationAsync(httpContext, user, PasskeyCeremony.SignUp, response, cancellationToken);
-        if (passkey.Error != null) return PasskeyResult.Failed(passkey.Error);
+        (UserPasskey? Passkey, string? Error) passkey = await CompleteRegistrationAsync(httpContext, user, PasskeyCeremony.SignUp, response, cancellationToken);
+        if (passkey.Error != null)
+            return PasskeyResult.Failed(passkey.Error);
 
-        await _users.CompleteSignUpAsync(user, passkey.Passkey!, cancellationToken);
+        await Users.CompleteSignUpAsync(user, passkey.Passkey!, cancellationToken);
         return PasskeyResult.Succeeded(user);
     }
 
     /// <summary>
     /// Finish adding a passkey to the signed-in user's account.
     /// </summary>
-    public async Task<PasskeyResult> CompleteAddPasskeyAsync(
-        HttpContext httpContext,
-        User user,
-        AuthenticatorAttestationRawResponse response,
-        CancellationToken cancellationToken)
+    public async Task<PasskeyResult> CompleteAddPasskeyAsync(HttpContext httpContext, User user, AuthenticatorAttestationRawResponse response, CancellationToken cancellationToken)
     {
-        var passkey = await CompleteRegistrationAsync(httpContext, user, PasskeyCeremony.AddPasskey, response, cancellationToken);
-        if (passkey.Error != null) return PasskeyResult.Failed(passkey.Error);
+        (UserPasskey? Passkey, string? Error) passkey = await CompleteRegistrationAsync(httpContext, user, PasskeyCeremony.AddPasskey, response, cancellationToken);
+        if (passkey.Error != null)
+            return PasskeyResult.Failed(passkey.Error);
 
-        await _users.AddPasskeyAsync(user.Key, passkey.Passkey!, cancellationToken);
+        await Users.AddPasskeyAsync(user.Key, passkey.Passkey!, cancellationToken);
         return PasskeyResult.Succeeded(user);
     }
 
@@ -101,16 +88,17 @@ public class PasskeyService(
     /// <returns>The options for the browser, or null if there's no account with the user name.</returns>
     public async Task<AssertionOptions?> BeginSignInAsync(HttpContext httpContext, string userName, CancellationToken cancellationToken)
     {
-        var user = await _users.FindByNameAsync(userName, cancellationToken);
-        if (user == null || user.Passkeys.Count == 0) return null;
+        User? user = await Users.FindByNameAsync(userName, cancellationToken);
+        if (user == null || user.Passkeys.Count == 0)
+            return null;
 
-        var assertionOptions = CreateFido2(httpContext.Request).GetAssertionOptions(new GetAssertionOptionsParams
+        AssertionOptions assertionOptions = CreateFido2(httpContext.Request).GetAssertionOptions(new GetAssertionOptionsParams
         {
-            AllowedCredentials = user.Passkeys.Select(ToDescriptor).ToList(),
+            AllowedCredentials = [.. user.Passkeys.Select(ToDescriptor)],
             UserVerification = UserVerificationRequirement.Required,
         });
 
-        await _users.StartCeremonyAsync(user, PasskeyCeremony.SignIn, assertionOptions.ToJson(), passkeyName: null, cancellationToken);
+        await Users.StartCeremonyAsync(user, PasskeyCeremony.SignIn, assertionOptions.ToJson(), passkeyName: null, cancellationToken);
 
         return assertionOptions;
     }
@@ -118,24 +106,17 @@ public class PasskeyService(
     /// <summary>
     /// Finish signing in.
     /// </summary>
-    public async Task<PasskeyResult> CompleteSignInAsync(
-        HttpContext httpContext,
-        AuthenticatorAssertionRawResponse response,
-        CancellationToken cancellationToken)
+    public async Task<PasskeyResult> CompleteSignInAsync(HttpContext httpContext, AuthenticatorAssertionRawResponse response, CancellationToken cancellationToken)
     {
-        var passkey = await _users.FindPasskeyAsync(response.RawId, cancellationToken);
+        UserPasskey? passkey = await Users.FindPasskeyAsync(response.RawId, cancellationToken);
         if (passkey == null)
-        {
             return PasskeyResult.Failed("This passkey isn't registered. It may have been removed from your account.");
-        }
 
         // The challenge is the passkey's user's, so another user's passkey can't answer it.
-        var user = passkey.User;
+        User user = passkey.User;
         if (!Answers(user, response.Response.ClientDataJson) ||
-            !await _users.TakeCeremonyAsync(user, PasskeyCeremony.SignIn, cancellationToken))
-        {
+            !await Users.TakeCeremonyAsync(user, PasskeyCeremony.SignIn, cancellationToken))
             return PasskeyResult.Failed("The sign-in request expired. Try again.");
-        }
 
         VerifyAssertionResult result;
         try
@@ -156,23 +137,16 @@ public class PasskeyService(
             return PasskeyResult.Failed($"The passkey couldn't be verified: {e.Message}");
         }
 
-        await _users.RecordSignInAsync(passkey, result.SignCount, result.IsBackedUp, cancellationToken);
+        await Users.RecordSignInAsync(passkey, result.SignCount, result.IsBackedUp, cancellationToken);
 
         return PasskeyResult.Succeeded(user);
     }
 
-    private async Task<(UserPasskey? Passkey, string? Error)> CompleteRegistrationAsync(
-        HttpContext httpContext,
-        User user,
-        PasskeyCeremony ceremony,
-        AuthenticatorAttestationRawResponse response,
-        CancellationToken cancellationToken)
+    private async Task<(UserPasskey? Passkey, string? Error)> CompleteRegistrationAsync(HttpContext httpContext, User user, PasskeyCeremony ceremony, AuthenticatorAttestationRawResponse response, CancellationToken cancellationToken)
     {
         if (!Answers(user, response.Response.ClientDataJson) ||
-            !await _users.TakeCeremonyAsync(user, ceremony, cancellationToken))
-        {
+            !await Users.TakeCeremonyAsync(user, ceremony, cancellationToken))
             return (null, ExpiredError);
-        }
 
         RegisteredPublicKeyCredential credential;
         try
@@ -182,7 +156,7 @@ public class PasskeyService(
                 {
                     AttestationResponse = response,
                     OriginalOptions = CredentialCreateOptions.FromJson(user.CeremonyOptions!),
-                    IsCredentialIdUniqueToUserCallback = async (args, token) => !await _users.PasskeyExistsAsync(args.CredentialId, token),
+                    IsCredentialIdUniqueToUserCallback = async (args, token) => !await Users.PasskeyExistsAsync(args.CredentialId, token),
                 },
                 cancellationToken);
         }
@@ -196,11 +170,11 @@ public class PasskeyService(
             CredentialId = credential.Id,
             PublicKey = credential.PublicKey,
             SignCount = credential.SignCount,
-            Transports = credential.Transports?.Select(t => t.ToEnumMemberValue()).ToArray() ?? Array.Empty<string>(),
+            Transports = credential.Transports?.Select(t => t.ToEnumMemberValue()).ToArray() ?? [],
             AaGuid = credential.AaGuid,
             IsBackedUp = credential.IsBackedUp,
             Name = user.CeremonyPasskeyName ?? "Passkey",
-            CreatedAt = _time.UtcNow,
+            CreatedAt = Time.UtcNow,
         }, null);
     }
 
@@ -209,7 +183,7 @@ public class PasskeyService(
         return CreateFido2(httpContext.Request).RequestNewCredential(new RequestNewCredentialParams
         {
             User = new Fido2User { Id = handle, Name = userName, DisplayName = userName },
-            ExcludeCredentials = existing.Select(ToDescriptor).ToList(),
+            ExcludeCredentials = [.. existing.Select(ToDescriptor)],
             AuthenticatorSelection = new AuthenticatorSelection
             {
                 // A discoverable credential lets the browser offer the passkey when the user name is typed.
@@ -226,12 +200,13 @@ public class PasskeyService(
     /// </summary>
     private static bool Answers(User user, byte[] clientDataJson)
     {
-        if (user.CeremonyOptions == null) return false;
+        if (user.CeremonyOptions == null)
+            return false;
 
         try
         {
-            using var options = JsonDocument.Parse(user.CeremonyOptions);
-            using var clientData = JsonDocument.Parse(clientDataJson);
+            using JsonDocument options = JsonDocument.Parse(user.CeremonyOptions);
+            using JsonDocument clientData = JsonDocument.Parse(clientDataJson);
 
             return options.RootElement.GetProperty("challenge").GetString() == clientData.RootElement.GetProperty("challenge").GetString();
         }
@@ -244,9 +219,7 @@ public class PasskeyService(
     private static PublicKeyCredentialDescriptor ToDescriptor(UserPasskey passkey)
     {
         // The transports tell the browser where to look for the passkey, like on a phone.
-        var transports = Enum.GetValues<AuthenticatorTransport>()
-            .Where(t => passkey.Transports?.Contains(t.ToEnumMemberValue()) == true)
-            .ToArray();
+        AuthenticatorTransport[] transports = [.. Enum.GetValues<AuthenticatorTransport>().Where(t => passkey.Transports?.Contains(t.ToEnumMemberValue()) == true)];
 
         return new PublicKeyCredentialDescriptor(PublicKeyCredentialType.PublicKey, passkey.CredentialId, transports);
     }
@@ -257,8 +230,8 @@ public class PasskeyService(
     /// </summary>
     private Fido2 CreateFido2(HttpRequest request)
     {
-        var settings = _options.CurrentValue.Authorization.Users;
-        var origins = settings.Origins.Count > 0
+        UserOptions settings = Options.CurrentValue.Authorization.Users;
+        HashSet<string> origins = settings.Origins.Count > 0
             ? new HashSet<string>(settings.Origins, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>(StringComparer.OrdinalIgnoreCase) { $"{request.Scheme}://{request.Host.ToUriComponent()}" };
 

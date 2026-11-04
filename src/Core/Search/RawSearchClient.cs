@@ -1,12 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
 using NuDepot.Core.Serialization;
+using System.Text;
 
 namespace NuDepot.Core.Search;
 
@@ -15,61 +10,39 @@ namespace NuDepot.Core.Search;
 ///
 /// See https://docs.microsoft.com/en-us/nuget/api/search-query-service-resource
 /// </summary>
-public class RawSearchClient : ISearchClient
+/// <param name="httpClient">The HTTP client used to send requests.</param>
+/// <param name="searchUrl">The NuGet server's search URL.</param>
+public class RawSearchClient(HttpClient httpClient, string searchUrl) : ISearchClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _searchUrl;
+    private HttpClient HttpClient { get; } = httpClient;
+    private string SearchUrl { get; } = searchUrl;
 
-    /// <summary>
-    /// Create a new Search client.
-    /// </summary>
-    /// <param name="httpClient">The HTTP client used to send requests.</param>
-    /// <param name="searchUrl">The NuGet server's search URL.</param>
-    public RawSearchClient(HttpClient httpClient, string searchUrl)
+    public async Task<SearchResponse> SearchAsync(string? query = null, int skip = 0, int take = 20, bool includePrerelease = true, bool includeSemVer2 = true, string? packageType = null, string? framework = null, CancellationToken cancellationToken = default)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _searchUrl = searchUrl ?? throw new ArgumentNullException(nameof(searchUrl));
+        string url = AddSearchQueryString(SearchUrl, query, skip, take, includePrerelease, includeSemVer2, "q", packageType, framework);
+
+        return await HttpClient.GetFromJsonAsync(url, NuGetJsonContext.Default.SearchResponse, cancellationToken);
     }
 
-    public async Task<SearchResponse> SearchAsync(
-        string? query = null,
-        int skip = 0,
-        int take = 20,
-        bool includePrerelease = true,
-        bool includeSemVer2 = true,
-        string? packageType = null,
-        string? framework = null,
-        CancellationToken cancellationToken = default)
+    internal static string AddSearchQueryString(string uri, string? query, int? skip, int? take, bool includePrerelease, bool includeSemVer2, string queryParamName, string? packageType = null, string? framework = null)
     {
-        var url = AddSearchQueryString(_searchUrl, query, skip, take, includePrerelease, includeSemVer2, "q", packageType, framework);
+        Dictionary<string, string> queryString = [];
 
-        return await _httpClient.GetFromJsonAsync(url, NuGetJsonContext.Default.SearchResponse, cancellationToken);
-    }
-
-    internal static string AddSearchQueryString(
-        string uri,
-        string? query,
-        int? skip,
-        int? take,
-        bool includePrerelease,
-        bool includeSemVer2,
-        string queryParamName,
-        string? packageType = null,
-        string? framework = null)
-    {
-        var queryString = new Dictionary<string, string>();
-
-        if (skip.HasValue && skip.Value > 0) queryString["skip"] = skip.Value.ToString();
-        if (take.HasValue) queryString["take"] = take.Value.ToString();
-        if (includePrerelease) queryString["prerelease"] = true.ToString();
-        if (includeSemVer2) queryString["semVerLevel"] = "2.0.0";
-        if (!string.IsNullOrEmpty(packageType)) queryString["packageType"] = packageType;
-        if (!string.IsNullOrEmpty(framework)) queryString["framework"] = framework;
+        if (skip.HasValue && skip.Value > 0)
+            queryString["skip"] = skip.Value.ToString();
+        if (take.HasValue)
+            queryString["take"] = take.Value.ToString();
+        if (includePrerelease)
+            queryString["prerelease"] = true.ToString();
+        if (includeSemVer2)
+            queryString["semVerLevel"] = "2.0.0";
+        if (!string.IsNullOrEmpty(packageType))
+            queryString["packageType"] = packageType;
+        if (!string.IsNullOrEmpty(framework))
+            queryString["framework"] = framework;
 
         if (!string.IsNullOrEmpty(query))
-        {
             queryString[queryParamName] = query;
-        }
 
         return AddQueryString(uri, queryString);
     }
@@ -77,13 +50,15 @@ public class RawSearchClient : ISearchClient
     // See: https://github.com/aspnet/AspNetCore/blob/8c02467b4a218df3b1b0a69bceb50f5b64f482b1/src/Http/WebUtilities/src/QueryHelpers.cs#L63
     private static string AddQueryString(string uri, Dictionary<string, string> queryString)
     {
-        if (uri.IndexOf('#') != -1) throw new InvalidOperationException("URL anchors are not supported");
-        if (uri.IndexOf('?') != -1) throw new InvalidOperationException("Adding query strings to URL with query strings is not supported");
+        if (uri.IndexOf('#') != -1)
+            throw new InvalidOperationException("URL anchors are not supported");
+        if (uri.IndexOf('?') != -1)
+            throw new InvalidOperationException("Adding query strings to URL with query strings is not supported");
 
-        var builder = new StringBuilder(uri);
-        var hasQuery = false;
+        StringBuilder builder = new(uri);
+        bool hasQuery = false;
 
-        foreach (var parameter in queryString)
+        foreach (KeyValuePair<string, string> parameter in queryString)
         {
             builder.Append(hasQuery ? '&' : '?');
             builder.Append(Uri.EscapeDataString(parameter.Key));

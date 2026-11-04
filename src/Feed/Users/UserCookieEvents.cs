@@ -1,12 +1,10 @@
-using System;
-using System.Globalization;
-using System.Security.Claims;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using NuDepot.Feed.Authentication;
+using System.Globalization;
+using System.Security.Claims;
 
 namespace NuDepot.Feed.Users;
 
@@ -39,11 +37,12 @@ internal sealed class UserCookieEvents : CookieAuthenticationEvents
 
     public static (int Key, string Token)? GetSession(AuthenticationProperties properties)
     {
-        var value = properties.GetString(SessionItem);
-        var separator = value?.IndexOf(':') ?? -1;
-        if (separator < 0) return null;
+        string? value = properties.GetString(SessionItem);
+        int separator = value?.IndexOf(':') ?? -1;
+        if (separator < 0)
+            return null;
 
-        return int.TryParse(value.AsSpan(0, separator), NumberStyles.None, CultureInfo.InvariantCulture, out var key)
+        return int.TryParse(value.AsSpan(0, separator), NumberStyles.None, CultureInfo.InvariantCulture, out int key)
             ? (key, value![(separator + 1)..])
             : null;
     }
@@ -55,8 +54,8 @@ internal sealed class UserCookieEvents : CookieAuthenticationEvents
     /// </summary>
     public override async Task ValidatePrincipal(CookieValidatePrincipalContext context)
     {
-        var session = GetSession(context.Properties);
-        var result = session == null
+        (int Key, string Token)? session = GetSession(context.Properties);
+        SessionValidation result = session == null
             ? SessionValidation.SignedOut
             : await context.HttpContext.RequestServices.GetRequiredService<UserService>()
                 .ValidateSessionAsync(session.Value.Key, session.Value.Token, context.HttpContext.RequestAborted);
@@ -73,7 +72,7 @@ internal sealed class UserCookieEvents : CookieAuthenticationEvents
         if (result.NewToken != null)
         {
             // Renewing keeps the cookie's lifetime from when it was issued, so this makes it the full lifetime from now.
-            var now = (context.Options.TimeProvider ?? TimeProvider.System).GetUtcNow();
+            DateTimeOffset now = (context.Options.TimeProvider ?? TimeProvider.System).GetUtcNow();
             SetSession(context.Properties, session!.Value.Key, result.NewToken);
             context.Properties.IssuedUtc = now;
             context.Properties.ExpiresUtc = now + UserService.SessionLifetime;

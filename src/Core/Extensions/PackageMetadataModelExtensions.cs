@@ -27,9 +27,7 @@ public static class RegistrationModelExtensions
     public static bool IsListed(this Models.PackageMetadata package)
     {
         if (package.Listed.HasValue)
-        {
             return package.Listed.Value;
-        }
 
         // A published year of 1900 indicates that this package is unlisted, when the listed property itself is
         // not present (legacy behavior).

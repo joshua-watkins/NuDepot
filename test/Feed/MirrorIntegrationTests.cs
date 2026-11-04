@@ -1,42 +1,38 @@
-using System;
-using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using NuDepot.Feed.Tests.Support;
+using System.Net;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NuDepot.Feed.Tests
+namespace NuDepot.Feed.Tests;
+
+public class MirrorIntegrationTests : IDisposable
 {
-    public class MirrorIntegrationTests : IDisposable
+    private NuDepotTestApplication Upstream { get; }
+    private NuDepotTestApplication Downstream { get; }
+    private HttpClient DownstreamClient { get; }
+    private Stream PackageStream { get; }
+
+    public MirrorIntegrationTests(ITestOutputHelper output)
     {
-        private readonly NuDepotTestApplication _upstream;
-        private readonly NuDepotTestApplication _downstream;
-        private readonly HttpClient _downstreamClient;
-        private readonly Stream _packageStream;
+        Upstream = new NuDepotTestApplication(output);
+        Downstream = new NuDepotTestApplication(output, Upstream.CreateClient());
 
-        public MirrorIntegrationTests(ITestOutputHelper output)
-        {
-            _upstream = new NuDepotTestApplication(output);
-            _downstream = new NuDepotTestApplication(output, _upstream.CreateClient());
+        DownstreamClient = Downstream.CreateClient();
+        PackageStream = TestResources.GetResourceStream(TestResources.Package);
+    }
 
-            _downstreamClient = _downstream.CreateClient();
-            _packageStream = TestResources.GetResourceStream(TestResources.Package);
-        }
+    [Fact]
+    public async Task SearchExcludesUpstream()
+    {
+        await Upstream.AddPackageAsync(PackageStream);
 
-        [Fact]
-        public async Task SearchExcludesUpstream()
-        {
-            await _upstream.AddPackageAsync(_packageStream);
+        using HttpResponseMessage downstreamResponse = await DownstreamClient.GetAsync("v3/search");
+        Stream downstreamContent = await downstreamResponse.Content.ReadAsStreamAsync();
+        string downstreamJson = downstreamContent.ToPrettifiedJson();
 
-            using var downstreamResponse = await _downstreamClient.GetAsync("v3/search");
-            var downstreamContent = await downstreamResponse.Content.ReadAsStreamAsync();
-            var downstreamJson = downstreamContent.ToPrettifiedJson();
-
-            // The downstream package source should not have the package.
-            Assert.Equal(HttpStatusCode.OK, downstreamResponse.StatusCode);
-            Assert.Equal(@"{
+        // The downstream package source should not have the package.
+        Assert.Equal(HttpStatusCode.OK, downstreamResponse.StatusCode);
+        Assert.Equal(@"{
   ""@context"": {
     ""@vocab"": ""http://schema.nuget.org/schema#"",
     ""@base"": ""http://localhost/v3/registration""
@@ -44,52 +40,52 @@ namespace NuDepot.Feed.Tests
   ""totalHits"": 0,
   ""data"": []
 }", downstreamJson);
-        }
+    }
 
-        [Fact]
-        public async Task VersionListIncludesUpstream()
-        {
-            await _upstream.AddPackageAsync(_packageStream);
+    [Fact]
+    public async Task VersionListIncludesUpstream()
+    {
+        await Upstream.AddPackageAsync(PackageStream);
 
-            var response = await _downstreamClient.GetAsync("v3/package/TestData/index.json");
-            var content = await response.Content.ReadAsStringAsync();
+        HttpResponseMessage response = await DownstreamClient.GetAsync("v3/package/TestData/index.json");
+        string content = await response.Content.ReadAsStringAsync();
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal(@"{""versions"":[""1.2.3""]}", content);
-        }
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(@"{""versions"":[""1.2.3""]}", content);
+    }
 
-        [Fact]
-        public async Task PackageDownloadIncludesUpstream()
-        {
-            await _upstream.AddPackageAsync(_packageStream);
+    [Fact]
+    public async Task PackageDownloadIncludesUpstream()
+    {
+        await Upstream.AddPackageAsync(PackageStream);
 
-            using var response = await _downstreamClient.GetAsync("v3/package/TestData/1.2.3/TestData.1.2.3.nupkg");
+        using HttpResponseMessage response = await DownstreamClient.GetAsync("v3/package/TestData/1.2.3/TestData.1.2.3.nupkg");
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
 
-        [Fact]
-        public async Task NuspecDownloadIncludesUpstream()
-        {
-            await _upstream.AddPackageAsync(_packageStream);
+    [Fact]
+    public async Task NuspecDownloadIncludesUpstream()
+    {
+        await Upstream.AddPackageAsync(PackageStream);
 
-            using var response = await _downstreamClient.GetAsync(
-                "v3/package/TestData/1.2.3/TestData.1.2.3.nuspec");
+        using HttpResponseMessage response = await DownstreamClient.GetAsync(
+            "v3/package/TestData/1.2.3/TestData.1.2.3.nuspec");
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
 
-        [Fact]
-        public async Task PackageMetadataIncludesUpstream()
-        {
-            await _upstream.AddPackageAsync(_packageStream);
+    [Fact]
+    public async Task PackageMetadataIncludesUpstream()
+    {
+        await Upstream.AddPackageAsync(PackageStream);
 
-            using var response = await _downstreamClient.GetAsync("v3/registration/TestData/index.json");
-            var content = await response.Content.ReadAsStreamAsync();
-            var json = content.ToPrettifiedJson();
+        using HttpResponseMessage response = await DownstreamClient.GetAsync("v3/registration/TestData/index.json");
+        Stream content = await response.Content.ReadAsStreamAsync();
+        string json = content.ToPrettifiedJson();
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal(@"{
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(@"{
   ""@id"": ""http://localhost/v3/registration/testdata/index.json"",
   ""@type"": [
     ""catalog:CatalogRoot"",
@@ -141,19 +137,19 @@ namespace NuDepot.Feed.Tests
   ],
   ""totalDownloads"": 0
 }", json);
-        }
+    }
 
-        [Fact]
-        public async Task PackageMetadataLeafIncludesUpstream()
-        {
-            await _upstream.AddPackageAsync(_packageStream);
+    [Fact]
+    public async Task PackageMetadataLeafIncludesUpstream()
+    {
+        await Upstream.AddPackageAsync(PackageStream);
 
-            using var response = await _downstreamClient.GetAsync("v3/registration/TestData/1.2.3.json");
-            var content = await response.Content.ReadAsStreamAsync();
-            var json = content.ToPrettifiedJson();
+        using HttpResponseMessage response = await DownstreamClient.GetAsync("v3/registration/TestData/1.2.3.json");
+        Stream content = await response.Content.ReadAsStreamAsync();
+        string json = content.ToPrettifiedJson();
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal(@"{
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(@"{
   ""@id"": ""http://localhost/v3/registration/testdata/1.2.3.json"",
   ""@type"": [
     ""Package"",
@@ -165,12 +161,11 @@ namespace NuDepot.Feed.Tests
   ""registration"": ""http://localhost/v3/registration/testdata/index.json"",
   ""catalogEntry"": ""http://localhost/v3/catalog/data/1/testdata.1.2.3.json""
 }", json);
-        }
+    }
 
-        public void Dispose()
-        {
-            _upstream.Dispose();
-            _downstream.Dispose();
-        }
+    public void Dispose()
+    {
+        Upstream.Dispose();
+        Downstream.Dispose();
     }
 }

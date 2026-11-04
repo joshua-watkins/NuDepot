@@ -1,6 +1,3 @@
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -12,7 +9,7 @@ namespace NuDepot.Feed.Entities;
 /// The package database, in SQLite at <see cref="Configuration.DatabaseOptions.ConnectionString"/>.
 /// Settings that only apply to one provider are behind checks like <see cref="SqliteDatabaseFacadeExtensions.IsSqlite"/>.
 /// </summary>
-public class NuDepotContext : DbContext
+public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContext(options)
 {
     public const int DefaultMaxStringLength = 4000;
 
@@ -47,10 +44,6 @@ public class NuDepotContext : DbContext
     /// </summary>
     private const int SqliteUniqueConstraintViolationErrorCode = 19;
 
-    public NuDepotContext(DbContextOptions<NuDepotContext> options)
-        : base(options)
-    { }
-
     public DbSet<Package> Packages { get; set; }
     public DbSet<PackageDependency> PackageDependencies { get; set; }
     public DbSet<PackageType> PackageTypes { get; set; }
@@ -82,15 +75,13 @@ public class NuDepotContext : DbContext
         if (Database.IsSqlite())
         {
             // SQLite creates the database file, but not the folder it lives in.
-            var connectionString = new SqliteConnectionStringBuilder(Database.GetConnectionString());
-            var dataSource = connectionString.DataSource;
+            SqliteConnectionStringBuilder connectionString = new(Database.GetConnectionString());
+            string dataSource = connectionString.DataSource;
             if (!string.IsNullOrEmpty(dataSource) && dataSource != ":memory:" && connectionString.Mode != SqliteOpenMode.Memory)
             {
-                var directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
+                string? directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
                 if (!string.IsNullOrEmpty(directory))
-                {
                     Directory.CreateDirectory(directory);
-                }
             }
         }
 
@@ -111,77 +102,112 @@ public class NuDepotContext : DbContext
         builder.Entity<UserSession>(BuildUserSessionEntity);
 
         if (Database.IsSqlite())
-        {
             BuildSqliteColumns(builder);
-        }
     }
 
     private void BuildPackageEntity(EntityTypeBuilder<Package> package)
     {
         package.HasKey(p => p.Key);
         package.HasIndex(p => p.Id);
-        package.HasIndex(p => new { p.Id, p.NormalizedVersionString })
+        package
+            .HasIndex(p => new { p.Id, p.NormalizedVersionString })
             .IsUnique();
 
-        package.Property(p => p.Id)
+        package
+            .Property(p => p.Id)
             .HasMaxLength(MaxPackageIdLength)
             .IsRequired();
 
-        package.Property(p => p.NormalizedVersionString)
+        package
+            .Property(p => p.NormalizedVersionString)
             .HasColumnName("Version")
             .HasMaxLength(MaxPackageVersionLength)
             .IsRequired();
 
-        package.Property(p => p.OriginalVersionString)
+        package
+            .Property(p => p.OriginalVersionString)
             .HasColumnName("OriginalVersion")
             .HasMaxLength(MaxPackageVersionLength);
 
-        package.Property(p => p.ReleaseNotes)
+        package
+            .Property(p => p.ReleaseNotes)
             .HasColumnName("ReleaseNotes");
 
-        package.Property(p => p.Authors)
+        package
+            .Property(p => p.Authors)
             .HasMaxLength(DefaultMaxStringLength)
             .HasConversion(StringArrayToJsonConverter.Instance)
-            .Metadata.SetValueComparer(StringArrayComparer.Instance);
+            .Metadata
+            .SetValueComparer(StringArrayComparer.Instance);
 
-        package.Property(p => p.IconUrl)
+        package
+            .Property(p => p.IconUrl)
             .HasConversion(UriToStringConverter.Instance)
             .HasMaxLength(DefaultMaxStringLength);
 
-        package.Property(p => p.LicenseUrl)
+        package
+            .Property(p => p.LicenseUrl)
             .HasConversion(UriToStringConverter.Instance)
             .HasMaxLength(DefaultMaxStringLength);
 
-        package.Property(p => p.ProjectUrl)
+        package
+            .Property(p => p.ProjectUrl)
             .HasConversion(UriToStringConverter.Instance)
             .HasMaxLength(DefaultMaxStringLength);
 
-        package.Property(p => p.RepositoryUrl)
+        package
+            .Property(p => p.RepositoryUrl)
             .HasConversion(UriToStringConverter.Instance)
             .HasMaxLength(DefaultMaxStringLength);
 
-        package.Property(p => p.Tags)
+        package
+            .Property(p => p.Tags)
             .HasMaxLength(DefaultMaxStringLength)
             .HasConversion(StringArrayToJsonConverter.Instance)
-            .Metadata.SetValueComparer(StringArrayComparer.Instance);
+            .Metadata
+            .SetValueComparer(StringArrayComparer.Instance);
 
-        package.Property(p => p.Description).HasMaxLength(DefaultMaxStringLength);
-        package.Property(p => p.Language).HasMaxLength(MaxPackageLanguageLength);
-        package.Property(p => p.MinClientVersion).HasMaxLength(MaxPackageMinClientVersionLength);
-        package.Property(p => p.Summary).HasMaxLength(DefaultMaxStringLength);
-        package.Property(p => p.Title).HasMaxLength(MaxPackageTitleLength);
-        package.Property(p => p.RepositoryType).HasMaxLength(MaxRepositoryTypeLength);
-        package.Property(p => p.LicenseExpression).HasMaxLength(DefaultMaxStringLength);
-        package.Property(p => p.PackageHash).HasMaxLength(MaxPackageHashLength);
+        package
+            .Property(p => p.Description)
+            .HasMaxLength(DefaultMaxStringLength);
+        package
+            .Property(p => p.Language)
+            .HasMaxLength(MaxPackageLanguageLength);
+        package
+            .Property(p => p.MinClientVersion)
+            .HasMaxLength(MaxPackageMinClientVersionLength);
+        package
+            .Property(p => p.Summary)
+            .HasMaxLength(DefaultMaxStringLength);
+        package
+            .Property(p => p.Title)
+            .HasMaxLength(MaxPackageTitleLength);
+        package
+            .Property(p => p.RepositoryType)
+            .HasMaxLength(MaxRepositoryTypeLength);
+        package
+            .Property(p => p.LicenseExpression)
+            .HasMaxLength(DefaultMaxStringLength);
+        package
+            .Property(p => p.PackageHash)
+            .HasMaxLength(MaxPackageHashLength);
 
-        package.Property(p => p.DeprecationReasons)
+        package
+            .Property(p => p.DeprecationReasons)
             .HasMaxLength(MaxDeprecationReasonsLength)
             .HasConversion(StringArrayToJsonConverter.Instance)
-            .Metadata.SetValueComparer(StringArrayComparer.Instance);
+            .Metadata
+            .SetValueComparer(StringArrayComparer.Instance);
 
-        package.Property(p => p.DeprecationMessage).HasMaxLength(DefaultMaxStringLength);
-        package.Property(p => p.AlternatePackageId).HasMaxLength(MaxPackageIdLength);
-        package.Property(p => p.AlternatePackageVersionRange).HasMaxLength(MaxPackageDependencyVersionRangeLength);
+        package
+            .Property(p => p.DeprecationMessage)
+            .HasMaxLength(DefaultMaxStringLength);
+        package
+            .Property(p => p.AlternatePackageId)
+            .HasMaxLength(MaxPackageIdLength);
+        package
+            .Property(p => p.AlternatePackageVersionRange)
+            .HasMaxLength(MaxPackageDependencyVersionRangeLength);
 
         package.Ignore(p => p.IsDeprecated);
         package.Ignore(p => p.Version);
@@ -198,15 +224,19 @@ public class NuDepotContext : DbContext
         //    .WithOne(d => d.Package)
         //    .IsRequired();
 
-        package.HasMany(p => p.PackageTypes)
+        package
+            .HasMany(p => p.PackageTypes)
             .WithOne(d => d.Package)
             .IsRequired();
 
-        package.HasMany(p => p.TargetFrameworks)
+        package
+            .HasMany(p => p.TargetFrameworks)
             .WithOne(d => d.Package)
             .IsRequired();
 
-        package.Property(p => p.RowVersion).IsRowVersion();
+        package
+            .Property(p => p.RowVersion)
+            .IsRowVersion();
     }
 
     private void BuildPackageDependencyEntity(EntityTypeBuilder<PackageDependency> dependency)
@@ -214,9 +244,15 @@ public class NuDepotContext : DbContext
         dependency.HasKey(d => d.Key);
         dependency.HasIndex(d => d.Id);
 
-        dependency.Property(d => d.Id).HasMaxLength(MaxPackageIdLength);
-        dependency.Property(d => d.VersionRange).HasMaxLength(MaxPackageDependencyVersionRangeLength);
-        dependency.Property(d => d.TargetFramework).HasMaxLength(MaxTargetFrameworkLength);
+        dependency
+            .Property(d => d.Id)
+            .HasMaxLength(MaxPackageIdLength);
+        dependency
+            .Property(d => d.VersionRange)
+            .HasMaxLength(MaxPackageDependencyVersionRangeLength);
+        dependency
+            .Property(d => d.TargetFramework)
+            .HasMaxLength(MaxTargetFrameworkLength);
     }
 
     private void BuildPackageTypeEntity(EntityTypeBuilder<PackageType> type)
@@ -224,8 +260,12 @@ public class NuDepotContext : DbContext
         type.HasKey(d => d.Key);
         type.HasIndex(d => d.Name);
 
-        type.Property(d => d.Name).HasMaxLength(MaxPackageTypeNameLength);
-        type.Property(d => d.Version).HasMaxLength(MaxPackageTypeVersionLength);
+        type
+            .Property(d => d.Name)
+            .HasMaxLength(MaxPackageTypeNameLength);
+        type
+            .Property(d => d.Version)
+            .HasMaxLength(MaxPackageTypeVersionLength);
     }
 
     private void BuildTargetFrameworkEntity(EntityTypeBuilder<TargetFramework> targetFramework)
@@ -233,17 +273,30 @@ public class NuDepotContext : DbContext
         targetFramework.HasKey(f => f.Key);
         targetFramework.HasIndex(f => f.Moniker);
 
-        targetFramework.Property(f => f.Moniker).HasMaxLength(MaxTargetFrameworkLength);
+        targetFramework
+            .Property(f => f.Moniker)
+            .HasMaxLength(MaxTargetFrameworkLength);
     }
 
     private void BuildVulnerabilityAdvisoryEntity(EntityTypeBuilder<VulnerabilityAdvisory> advisory)
     {
         advisory.HasKey(a => a.Key);
-        advisory.HasIndex(a => new { a.PackageId, a.AdvisoryUrl }).IsUnique();
+        advisory
+            .HasIndex(a => new { a.PackageId, a.AdvisoryUrl })
+            .IsUnique();
 
-        advisory.Property(a => a.PackageId).HasMaxLength(MaxPackageIdLength).IsRequired();
-        advisory.Property(a => a.VersionRange).HasMaxLength(MaxPackageDependencyVersionRangeLength).IsRequired();
-        advisory.Property(a => a.AdvisoryUrl).HasMaxLength(DefaultMaxStringLength).IsRequired();
+        advisory
+            .Property(a => a.PackageId)
+            .HasMaxLength(MaxPackageIdLength)
+            .IsRequired();
+        advisory
+            .Property(a => a.VersionRange)
+            .HasMaxLength(MaxPackageDependencyVersionRangeLength)
+            .IsRequired();
+        advisory
+            .Property(a => a.AdvisoryUrl)
+            .HasMaxLength(DefaultMaxStringLength)
+            .IsRequired();
     }
 
     private void BuildCatalogEntryEntity(EntityTypeBuilder<CatalogEntry> entry)
@@ -252,37 +305,71 @@ public class NuDepotContext : DbContext
         entry.HasIndex(e => e.CommittedAt);
         entry.HasIndex(e => new { e.PackageId, e.PackageVersion });
 
-        entry.Property(e => e.CommitId).HasMaxLength(MaxCommitIdLength).IsRequired();
-        entry.Property(e => e.Type).HasMaxLength(MaxCatalogEntryTypeLength).IsRequired();
-        entry.Property(e => e.PackageId).HasMaxLength(MaxPackageIdLength).IsRequired();
-        entry.Property(e => e.PackageVersion).HasMaxLength(MaxPackageVersionLength).IsRequired();
+        entry
+            .Property(e => e.CommitId)
+            .HasMaxLength(MaxCommitIdLength)
+            .IsRequired();
+        entry
+            .Property(e => e.Type)
+            .HasMaxLength(MaxCatalogEntryTypeLength)
+            .IsRequired();
+        entry
+            .Property(e => e.PackageId)
+            .HasMaxLength(MaxPackageIdLength)
+            .IsRequired();
+        entry
+            .Property(e => e.PackageVersion)
+            .HasMaxLength(MaxPackageVersionLength)
+            .IsRequired();
     }
 
     private void BuildUserEntity(EntityTypeBuilder<User> user)
     {
         user.HasKey(u => u.Key);
-        user.HasIndex(u => u.UserName).IsUnique();
-        user.HasIndex(u => u.Handle).IsUnique();
+        user
+            .HasIndex(u => u.UserName)
+            .IsUnique();
+        user
+            .HasIndex(u => u.Handle)
+            .IsUnique();
 
-        user.Property(u => u.UserName).HasMaxLength(MaxUserNameLength).IsRequired();
-        user.Property(u => u.Role).HasConversion<string>().HasMaxLength(MaxUserRoleLength).IsRequired();
-        user.Property(u => u.Handle).HasMaxLength(MaxUserHandleLength).IsRequired();
-        user.Property(u => u.Ceremony).HasConversion<string>().HasMaxLength(MaxCeremonyLength);
-        user.Property(u => u.CeremonyPasskeyName).HasMaxLength(MaxCredentialNameLength);
+        user
+            .Property(u => u.UserName)
+            .HasMaxLength(MaxUserNameLength)
+            .IsRequired();
+        user
+            .Property(u => u.Role)
+            .HasConversion<string>()
+            .HasMaxLength(MaxUserRoleLength)
+            .IsRequired();
+        user
+            .Property(u => u.Handle)
+            .HasMaxLength(MaxUserHandleLength)
+            .IsRequired();
+        user
+            .Property(u => u.Ceremony)
+            .HasConversion<string>()
+            .HasMaxLength(MaxCeremonyLength);
+        user
+            .Property(u => u.CeremonyPasskeyName)
+            .HasMaxLength(MaxCredentialNameLength);
 
-        user.HasMany(u => u.Passkeys)
+        user
+            .HasMany(u => u.Passkeys)
             .WithOne(p => p.User)
             .HasForeignKey(p => p.UserKey)
             .IsRequired()
             .OnDelete(DeleteBehavior.Cascade);
 
-        user.HasMany(u => u.ApiKeys)
+        user
+            .HasMany(u => u.ApiKeys)
             .WithOne(k => k.User)
             .HasForeignKey(k => k.UserKey)
             .IsRequired()
             .OnDelete(DeleteBehavior.Cascade);
 
-        user.HasMany(u => u.Sessions)
+        user
+            .HasMany(u => u.Sessions)
             .WithOne(s => s.User)
             .HasForeignKey(s => s.UserKey)
             .IsRequired()
@@ -293,71 +380,108 @@ public class NuDepotContext : DbContext
     {
         session.HasKey(s => s.Key);
 
-        session.Property(s => s.TokenHash).HasMaxLength(MaxSessionTokenHashLength).IsRequired();
-        session.Property(s => s.PreviousTokenHash).HasMaxLength(MaxSessionTokenHashLength);
+        session
+            .Property(s => s.TokenHash)
+            .HasMaxLength(MaxSessionTokenHashLength)
+            .IsRequired();
+        session
+            .Property(s => s.PreviousTokenHash)
+            .HasMaxLength(MaxSessionTokenHashLength);
     }
 
     private void BuildUserPasskeyEntity(EntityTypeBuilder<UserPasskey> passkey)
     {
         passkey.HasKey(p => p.Key);
-        passkey.HasIndex(p => p.CredentialId).IsUnique();
+        passkey
+            .HasIndex(p => p.CredentialId)
+            .IsUnique();
 
-        passkey.Property(p => p.CredentialId).HasMaxLength(MaxCredentialIdLength).IsRequired();
-        passkey.Property(p => p.PublicKey).IsRequired();
-        passkey.Property(p => p.Name).HasMaxLength(MaxCredentialNameLength).IsRequired();
+        passkey
+            .Property(p => p.CredentialId)
+            .HasMaxLength(MaxCredentialIdLength)
+            .IsRequired();
+        passkey
+            .Property(p => p.PublicKey)
+            .IsRequired();
+        passkey
+            .Property(p => p.Name)
+            .HasMaxLength(MaxCredentialNameLength)
+            .IsRequired();
 
-        passkey.Property(p => p.Transports)
+        passkey
+            .Property(p => p.Transports)
             .HasMaxLength(MaxCredentialNameLength)
             .HasConversion(StringArrayToJsonConverter.Instance)
-            .Metadata.SetValueComparer(StringArrayComparer.Instance);
+            .Metadata
+            .SetValueComparer(StringArrayComparer.Instance);
     }
 
     private void BuildUserApiKeyEntity(EntityTypeBuilder<UserApiKey> apiKey)
     {
         apiKey.HasKey(k => k.Key);
-        apiKey.HasIndex(k => k.Hash).IsUnique();
+        apiKey
+            .HasIndex(k => k.Hash)
+            .IsUnique();
 
-        apiKey.Property(k => k.Name).HasMaxLength(MaxCredentialNameLength).IsRequired();
-        apiKey.Property(k => k.Prefix).HasMaxLength(MaxApiKeyPrefixLength).IsRequired();
-        apiKey.Property(k => k.Hash).HasMaxLength(MaxApiKeyHashLength).IsRequired();
+        apiKey
+            .Property(k => k.Name)
+            .HasMaxLength(MaxCredentialNameLength)
+            .IsRequired();
+        apiKey
+            .Property(k => k.Prefix)
+            .HasMaxLength(MaxApiKeyPrefixLength)
+            .IsRequired();
+        apiKey
+            .Property(k => k.Hash)
+            .HasMaxLength(MaxApiKeyHashLength)
+            .IsRequired();
     }
 
     // Package IDs and versions, and user names, are compared without case.
     private static void BuildSqliteColumns(ModelBuilder builder)
     {
-        builder.Entity<User>()
+        builder
+            .Entity<User>()
             .Property(u => u.UserName)
             .HasColumnType("TEXT COLLATE NOCASE");
 
-        builder.Entity<Package>()
+        builder
+            .Entity<Package>()
             .Property(p => p.Id)
             .HasColumnType("TEXT COLLATE NOCASE");
 
-        builder.Entity<Package>()
+        builder
+            .Entity<Package>()
             .Property(p => p.NormalizedVersionString)
             .HasColumnType("TEXT COLLATE NOCASE");
 
-        builder.Entity<PackageDependency>()
+        builder
+            .Entity<PackageDependency>()
             .Property(d => d.Id)
             .HasColumnType("TEXT COLLATE NOCASE");
 
-        builder.Entity<PackageType>()
+        builder
+            .Entity<PackageType>()
             .Property(t => t.Name)
             .HasColumnType("TEXT COLLATE NOCASE");
 
-        builder.Entity<TargetFramework>()
+        builder
+            .Entity<TargetFramework>()
             .Property(f => f.Moniker)
             .HasColumnType("TEXT COLLATE NOCASE");
 
-        builder.Entity<VulnerabilityAdvisory>()
+        builder
+            .Entity<VulnerabilityAdvisory>()
             .Property(a => a.PackageId)
             .HasColumnType("TEXT COLLATE NOCASE");
 
-        builder.Entity<CatalogEntry>()
+        builder
+            .Entity<CatalogEntry>()
             .Property(e => e.PackageId)
             .HasColumnType("TEXT COLLATE NOCASE");
 
-        builder.Entity<CatalogEntry>()
+        builder
+            .Entity<CatalogEntry>()
             .Property(e => e.PackageVersion)
             .HasColumnType("TEXT COLLATE NOCASE");
     }

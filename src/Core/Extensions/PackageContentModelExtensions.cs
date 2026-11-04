@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
 using NuDepot.Core.Models;
 using NuGet.Versioning;
 
@@ -17,9 +15,8 @@ public static class PackageContentModelExtensions
     /// <returns>The package versions.</returns>
     public static IReadOnlyList<NuGetVersion> ParseVersions(this PackageVersionsResponse response)
     {
-        return response
+        return [.. response
             .Versions
-            .Select(NuGetVersion.Parse)
-            .ToList();
+            .Select(NuGetVersion.Parse)];
     }
 }

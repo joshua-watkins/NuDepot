@@ -1,10 +1,8 @@
-using System;
-using System.Collections.Generic;
+using Microsoft.Extensions.Options;
+using NuDepot.Feed.Configuration;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Extensions.Options;
-using NuDepot.Feed.Configuration;
 
 namespace NuDepot.Feed.Authentication;
 
@@ -15,22 +13,22 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options)
 {
     private const string LegacyApiKeyName = "ApiKey";
 
-    private readonly IOptionsMonitor<FeedOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
+    private IOptionsMonitor<FeedOptions> Options { get; } = options;
 
     /// <summary>
     /// Whether anyone may do anything: the feed has no API keys, and users aren't enabled.
     /// </summary>
-    public bool IsOpen => !HasApiKeys(_options.CurrentValue) && !UsersEnabled;
+    public bool IsOpen => !HasApiKeys(Options.CurrentValue) && !UsersEnabled;
 
     /// <summary>
     /// Whether people can sign in with passkeys, and create their own API keys.
     /// </summary>
-    public bool UsersEnabled => _options.CurrentValue.Authorization.Users.Enabled;
+    public bool UsersEnabled => Options.CurrentValue.Authorization.Users.Enabled;
 
     /// <summary>
     /// The role of requests without a valid API key or a signed-in user. Only used when the feed isn't open.
     /// </summary>
-    public FeedRole AnonymousRole => _options.CurrentValue.Authorization.AnonymousRole ?? FeedRole.ReadOnly;
+    public FeedRole AnonymousRole => Options.CurrentValue.Authorization.AnonymousRole ?? FeedRole.ReadOnly;
 
     /// <summary>
     /// What the user may do. An API key or a signed-in user adds their role to what requests without
@@ -40,20 +38,16 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options)
     {
         ArgumentNullException.ThrowIfNull(user);
 
-        var permissions = IsOpen ? FeedPermissions.All : AnonymousRole.GetPermissions();
-        foreach (var claim in user.FindAll(ClaimTypes.Role))
+        FeedPermissions permissions = IsOpen ? FeedPermissions.All : AnonymousRole.GetPermissions();
+        foreach (Claim claim in user.FindAll(ClaimTypes.Role))
         {
             if (claim.Issuer == ApiKeyAuthenticationHandler.Issuer &&
-                Enum.TryParse<FeedRole>(claim.Value, out var role))
-            {
+                Enum.TryParse<FeedRole>(claim.Value, out FeedRole role))
                 permissions |= role.GetPermissions();
-            }
         }
 
-        if (_options.CurrentValue.IsReadOnlyMode)
-        {
+        if (Options.CurrentValue.IsReadOnlyMode)
             permissions &= FeedPermissions.Read;
-        }
 
         return permissions;
     }
@@ -68,7 +62,7 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options)
     /// The permission needed to delete a package, which depends on whether deleting unlists it.
     /// </summary>
     public FeedPermissions PackageDeletionPermission
-        => _options.CurrentValue.PackageDeletionBehavior == PackageDeletionBehavior.HardDelete
+        => Options.CurrentValue.PackageDeletionBehavior == PackageDeletionBehavior.HardDelete
             ? FeedPermissions.HardDelete
             : FeedPermissions.Unlist;
 
@@ -78,18 +72,17 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options)
     /// <returns>The key's name and role, or null if no key matches.</returns>
     public (string Name, FeedRole Role)? FindApiKey(string? key)
     {
-        if (string.IsNullOrEmpty(key)) return null;
+        if (string.IsNullOrEmpty(key))
+            return null;
 
-        var presented = Encoding.UTF8.GetBytes(key);
+        byte[] presented = Encoding.UTF8.GetBytes(key);
         (string Name, FeedRole Role)? match = null;
 
         // Compare against every key in constant time, so the response time doesn't reveal a key.
-        foreach (var (name, apiKey, role) in GetApiKeys(_options.CurrentValue))
+        foreach ((string? name, string? apiKey, FeedRole role) in GetApiKeys(Options.CurrentValue))
         {
             if (CryptographicOperations.FixedTimeEquals(presented, Encoding.UTF8.GetBytes(apiKey)))
-            {
                 match ??= (name, role);
-            }
         }
 
         return match;
@@ -106,22 +99,21 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options)
     /// </summary>
     internal static List<(string Name, string Key, FeedRole Role)> GetApiKeys(FeedOptions options)
     {
-        var authorization = options.Authorization;
-        var keys = new List<(string Name, string Key, FeedRole Role)>();
+        FeedAuthorizationOptions authorization = options.Authorization;
+        List<(string Name, string Key, FeedRole Role)> keys = [];
 
         // The original single API key may do everything, as it always could.
         if (!string.IsNullOrEmpty(options.ApiKey))
-        {
             keys.Add((LegacyApiKeyName, options.ApiKey, FeedRole.Admin));
-        }
 
-        for (var i = 0; i < authorization.ApiKeys.Count; i++)
+        for (int i = 0; i < authorization.ApiKeys.Count; i++)
         {
-            var apiKey = authorization.ApiKeys[i];
-            if (string.IsNullOrEmpty(apiKey.Key)) continue;
+            ApiKeyOptions apiKey = authorization.ApiKeys[i];
+            if (string.IsNullOrEmpty(apiKey.Key))
+                continue;
 
             // Keys without a role don't pass validation, so the feed doesn't start with one.
-            var name = string.IsNullOrWhiteSpace(apiKey.Name) ? $"{nameof(FeedAuthorizationOptions.ApiKeys)}:{i}" : apiKey.Name;
+            string name = string.IsNullOrWhiteSpace(apiKey.Name) ? $"{nameof(FeedAuthorizationOptions.ApiKeys)}:{i}" : apiKey.Name;
             keys.Add((name, apiKey.Key, apiKey.Role ?? FeedRole.Admin));
         }
 

@@ -1,9 +1,6 @@
 using System.Net;
-using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NuDepot.Core.Extensions;
 
@@ -19,13 +16,9 @@ internal static class HttpClientExtensions
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The deserialized JSON content</returns>
     /// <exception cref="JsonException">The response's content is the JSON <c>null</c>.</exception>
-    public static async Task<TResult> GetFromJsonAsync<TResult>(
-        this HttpClient httpClient,
-        string requestUri,
-        JsonTypeInfo<TResult> jsonTypeInfo,
-        CancellationToken cancellationToken = default)
+    public static async Task<TResult> GetFromJsonAsync<TResult>(this HttpClient httpClient, string requestUri, JsonTypeInfo<TResult> jsonTypeInfo, CancellationToken cancellationToken = default)
     {
-        using (var response = await httpClient.GetAsync(
+        using (HttpResponseMessage response = await httpClient.GetAsync(
             requestUri,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken))
@@ -48,22 +41,16 @@ internal static class HttpClientExtensions
     /// <param name="jsonTypeInfo">The JSON metadata of <typeparamref name="TResult"/>.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The JSON content, or, the default value if the HTTP response status code is 404.</returns>
-    public static async Task<TResult?> GetFromJsonOrDefaultAsync<TResult>(
-        this HttpClient httpClient,
-        string requestUri,
-        JsonTypeInfo<TResult> jsonTypeInfo,
-        CancellationToken cancellationToken = default)
+    public static async Task<TResult?> GetFromJsonOrDefaultAsync<TResult>(this HttpClient httpClient, string requestUri, JsonTypeInfo<TResult> jsonTypeInfo, CancellationToken cancellationToken = default)
         where TResult : class
     {
-        using (var response = await httpClient.GetAsync(
+        using (HttpResponseMessage response = await httpClient.GetAsync(
             requestUri,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken))
         {
             if (response.StatusCode == HttpStatusCode.NotFound)
-            {
                 return default;
-            }
 
             response.EnsureSuccessStatusCode();
 
@@ -71,13 +58,9 @@ internal static class HttpClientExtensions
         }
     }
 
-    private static async Task<TResult> ReadContentAsync<TResult>(
-        HttpResponseMessage response,
-        string requestUri,
-        JsonTypeInfo<TResult> jsonTypeInfo,
-        CancellationToken cancellationToken)
+    private static async Task<TResult> ReadContentAsync<TResult>(HttpResponseMessage response, string requestUri, JsonTypeInfo<TResult> jsonTypeInfo, CancellationToken cancellationToken)
     {
-        using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
+        using (Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken))
         {
             return await JsonSerializer.DeserializeAsync(stream, jsonTypeInfo, cancellationToken)
                 ?? throw new JsonException($"The response from '{requestUri}' is empty.");

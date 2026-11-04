@@ -1,8 +1,5 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using NuDepot.Core.Models;
 using NuDepot.Core.Serialization;
 using NuDepot.Feed.Content;
 using NuGet.Versioning;
@@ -18,11 +15,9 @@ internal static class PackageContentEndpoints
     // GET v3/package/{id}/index.json
     public static async Task<IResult> GetPackageVersionsAsync(string id, IPackageContentService content, CancellationToken cancellationToken)
     {
-        var versions = await content.GetPackageVersionsOrNullAsync(id, cancellationToken);
+        PackageVersionsResponse? versions = await content.GetPackageVersionsOrNullAsync(id, cancellationToken);
         if (versions == null)
-        {
             return Results.NotFound();
-        }
 
         return Results.Json(versions, NuGetJsonContext.Default.PackageVersionsResponse);
     }
@@ -53,16 +48,12 @@ internal static class PackageContentEndpoints
 
     private static async Task<IResult> DownloadAsync(string version, string contentType, Func<NuGetVersion, Task<Stream?>> getStreamOrNullAsync)
     {
-        if (!NuGetVersion.TryParse(version, out var nugetVersion))
-        {
+        if (!NuGetVersion.TryParse(version, out NuGetVersion? nugetVersion))
             return Results.NotFound();
-        }
 
-        var stream = await getStreamOrNullAsync(nugetVersion);
+        Stream? stream = await getStreamOrNullAsync(nugetVersion);
         if (stream == null)
-        {
             return Results.NotFound();
-        }
 
         return Results.Stream(stream, contentType);
     }

@@ -1,8 +1,6 @@
+using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 
 namespace NuDepot.Feed.Endpoints;
 
@@ -11,10 +9,7 @@ internal static class EndpointHelpers
     /// <summary>
     /// Read the request's JSON body, or null if it is missing or isn't valid JSON.
     /// </summary>
-    public static async Task<T?> ReadJsonOrNullAsync<T>(
-        HttpRequest request,
-        JsonTypeInfo<T> jsonTypeInfo,
-        CancellationToken cancellationToken)
+    public static async Task<T?> ReadJsonOrNullAsync<T>(HttpRequest request, JsonTypeInfo<T> jsonTypeInfo, CancellationToken cancellationToken)
         where T : class
     {
         try

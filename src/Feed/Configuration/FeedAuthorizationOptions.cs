@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using NuDepot.Feed.Authentication;
 
 namespace NuDepot.Feed.Configuration;
@@ -21,7 +20,7 @@ public class FeedAuthorizationOptions
     /// The API keys that grant access to the feed. <see cref="FeedOptions.ApiKey"/>, if set,
     /// is also an <see cref="FeedRole.Admin"/> key.
     /// </summary>
-    public List<ApiKeyOptions> ApiKeys { get; set; } = new();
+    public List<ApiKeyOptions> ApiKeys { get; set; } = [];
 
     /// <summary>
     /// People who sign in with passkeys.
@@ -58,7 +57,7 @@ public class UserOptions
     /// The origins the website is reached at, like "https://nuget.example.com". If unset,
     /// the origin the browser used.
     /// </summary>
-    public List<string> Origins { get; set; } = new();
+    public List<string> Origins { get; set; } = [];
 }
 
 public class ApiKeyOptions

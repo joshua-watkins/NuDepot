@@ -4,7 +4,7 @@ namespace NuDepot.Core.Models;
 
 public class AutocompleteContext
 {
-    public static readonly AutocompleteContext Default = new AutocompleteContext
+    public static readonly AutocompleteContext Default = new()
     {
         Vocab = "http://schema.nuget.org/schema#"
     };
