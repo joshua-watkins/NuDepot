@@ -25,7 +25,7 @@ Installation of NuDepot on Linux comprises the following steps:
 ```sh
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin nudepot
 sudo cp -r out /usr/share/nudepot
-sudo chmod 0755 /usr/share/nudepot/NuDepot.Linux
+sudo chmod 0755 /usr/share/nudepot/NuDepot
 sudo vi /usr/share/nudepot/appsettings.json
 sudo vi /usr/share/nudepot/nudepot.service
 sudo cp /usr/share/nudepot/nudepot.service /etc/systemd/system/nudepot.service

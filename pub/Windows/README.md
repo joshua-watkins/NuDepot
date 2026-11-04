@@ -36,7 +36,7 @@ From an elevated PowerShell prompt:
 ```powershell
 Copy-Item out "C:\Program Files\NuDepot" -Recurse
 notepad "C:\Program Files\NuDepot\appsettings.json"
-sc.exe create NuDepot binPath= "\"C:\Program Files\NuDepot\NuDepot.Windows.exe\"" start= auto DisplayName= "NuDepot"
+sc.exe create NuDepot binPath= "\"C:\Program Files\NuDepot\NuDepot.exe\"" start= auto DisplayName= "NuDepot"
 sc.exe description NuDepot "A lightweight NuGet and symbol server."
 sc.exe start NuDepot
 ```

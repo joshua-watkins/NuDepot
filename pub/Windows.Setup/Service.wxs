@@ -3,7 +3,7 @@
   <Fragment>
     <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
       <Component>
-        <File Id="NuDepotExe" Name="NuDepot.Windows.exe" Source="!(bindpath.Windows)NuDepot.Windows.exe" KeyPath="yes" />
+        <File Id="NuDepotExe" Name="NuDepot.exe" Source="!(bindpath.Windows)NuDepot.exe" KeyPath="yes" />
 
         <ServiceInstall Name="NuDepot"
                         DisplayName="NuDepot"
@@ -44,7 +44,7 @@
 
     <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
       <Files Include="!(bindpath.Windows)**">
-        <Exclude Files="!(bindpath.Windows)NuDepot.Windows.exe" />
+        <Exclude Files="!(bindpath.Windows)NuDepot.exe" />
         <Exclude Files="!(bindpath.Windows)appsettings.json" />
         <Exclude Files="!(bindpath.Windows)appsettings.Development.json" />
         <Exclude Files="!(bindpath.Windows)**\*.pdb" />

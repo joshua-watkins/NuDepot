@@ -6,7 +6,7 @@
 
 1. Install the [.NET SDK]
 2. Download and extract the [latest release]
-3. Start `NuDepot.Windows.exe` on Windows, or `./NuDepot.Linux` on Linux
+3. Start `NuDepot.exe` on Windows, or `./NuDepot` on Linux
 4. Browse `http://localhost:5000/` in your browser
 
 ## Features

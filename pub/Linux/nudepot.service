@@ -7,7 +7,7 @@ StartLimitIntervalSec=10
 # The application reports start-up and shutdown to systemd (UseSystemd/AddSystemd).
 Type=notify
 WorkingDirectory=/usr/share/nudepot/
-ExecStart=/usr/share/nudepot/NuDepot.Linux
+ExecStart=/usr/share/nudepot/NuDepot
 Environment="NUDEPOT_CONFIG_ROOT=/usr/share/nudepot"
 # Uncomment this to listen on all network interfaces instead of localhost:5000.
 #Environment="ASPNETCORE_URLS=http://0.0.0.0:5000"

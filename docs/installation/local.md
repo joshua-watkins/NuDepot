@@ -4,7 +4,7 @@
 
 1. Install the [.NET Core SDK](https://www.microsoft.com/net/download)
 1. Download and extract [NuDepot's latest release](https://github.com/joshua-watkins/NuDepot/releases)
-1. Start `NuDepot.Windows.exe` on Windows, or `./NuDepot.Linux` on Linux
+1. Start `NuDepot.exe` on Windows, or `./NuDepot` on Linux
 1. Browse `http://localhost:5000/` in your browser
 
 ## Configure NuDepot

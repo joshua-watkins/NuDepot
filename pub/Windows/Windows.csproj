@@ -4,7 +4,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
+		<AssemblyName>$(SolutionName)</AssemblyName>
 		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
 		<IsAotCompatible>true</IsAotCompatible>
 		<!-- The installer (pub/Windows.Setup) publishes a self-contained win-x64 build. -->

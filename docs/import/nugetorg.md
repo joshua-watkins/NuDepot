@@ -17,10 +17,10 @@ You can import package downloads from nuget.org. Stop the service, then run the 
 `import downloads` command from its folder:
 
 ```
-.\NuDepot.Windows.exe import downloads
+.\NuDepot.exe import downloads
 ```
 
-On Linux, run `./NuDepot.Linux import downloads`.
+On Linux, run `./NuDepot import downloads`.
 
 ## Importing all nuget.org packages
 
