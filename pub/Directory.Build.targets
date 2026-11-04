@@ -1,5 +1,10 @@
 <Project>
 
+	<!-- The hosts are applications, not packages. "dotnet pack NuDepot.slnx" packs the libraries without warning about them. -->
+	<PropertyGroup>
+		<WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>
+	</PropertyGroup>
+
 	<!--
 		The hosts reference the runnable Feed and Gallery projects, which have their own appsettings files.
 		Build already prefers the host's file when a referenced project has a file at the same path;

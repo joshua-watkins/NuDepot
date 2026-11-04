@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
-using NuDepot.Core.Hosting;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Search;
 using NuDepot.Feed.Storage;

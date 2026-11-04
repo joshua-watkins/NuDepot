@@ -1,7 +1,29 @@
 # NuDepot.Gallery
 
-A nuget.org-style website for browsing a NuGet V3 feed. It only reads the feed through the
-NuGet V3 protocol, so it can show this solution's server or any other V3 feed.
+A nuget.org-style website for browsing a NuGet V3 feed, for ASP.NET Core applications. It only reads
+the feed through the NuGet V3 protocol, so it can show [NuDepot.Feed](https://www.nuget.org/packages/NuDepot.Feed)
+hosted in the same application, or any other V3 feed.
+
+## Use it
+
+```sh
+dotnet add package NuDepot.Gallery
+```
+
+```csharp
+builder.Services.AddNuDepotGallery(options => options.ServiceIndexUrl = "https://api.nuget.org/v3/index.json");
+
+var app = builder.Build();
+app.UseNuDepotGallery();
+```
+
+The gallery reads its settings from the `Gallery` configuration section. Without a `ServiceIndexUrl`,
+it shows the feed hosted in the same application:
+`services.AddNuDepot().AddFeed().AddGallery()` and `app.UseNuDepot().UseFeed().UseGallery()`.
+`AddNuDepotGallery()` is `services.AddNuDepot().AddGallery()`, and `UseNuDepotGallery()` is
+`app.UseNuDepot().UseGallery()`.
+
+## Developing it
 
 The pages are [Razor Slices](https://github.com/DamianEdwards/RazorSlices) in the `Slices` folder,
 served by minimal API endpoints. Each page's data comes from a model in the `Pages` folder.

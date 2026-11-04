@@ -11,12 +11,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Moq;
-using NuDepot.Core.Hosting;
 using NuDepot.Core.Models;
 using NuDepot.Core.PackageDetails;
 using NuDepot.Core.Search;
 using NuDepot.Core.ServiceIndex;
-using NuDepot.Gallery.Extensions;
 using NuGet.Versioning;
 using Xunit;
 
@@ -49,13 +47,13 @@ public class WebsitePageTests : IDisposable
             { "Gallery:ServiceIndexUrl", ServiceIndexUrl },
         });
 
-        builder.Services.AddNuDepot().AddGallery();
+        builder.Services.AddNuDepotGallery();
         builder.Services.AddSingleton(_search.Object);
         builder.Services.AddSingleton(_packages.Object);
         builder.Services.AddSingleton(_serviceIndex.Object);
 
         _app = builder.Build();
-        _app.UseNuDepot().UseGallery();
+        _app.UseNuDepotGallery();
         _app.StartAsync().GetAwaiter().GetResult();
 
         _search

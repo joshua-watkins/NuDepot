@@ -1,10 +1,41 @@
 # NuDepot.Feed
 
-The backend that implements the [NuGet service APIs](https://docs.microsoft.com/en-us/nuget/api/overview)
-and persists packages. It's a library: the Windows and Linux hosts in `pub` run it, with the gallery,
-by calling `services.AddNuDepot().AddFeed()` and `app.UseNuDepot().UseFeed()`. To run it
-during development, start the Windows host (`pub/Windows`). Hosts can also support the server's command
-line commands, like `import downloads`, with `NuDepotCommands`.
+A NuGet V3 package and symbol feed for ASP.NET Core applications, and a replacement for NuGet.Server.
+It implements the [NuGet service APIs](https://docs.microsoft.com/en-us/nuget/api/overview), and stores
+packages in SQLite and on the file system.
+
+## Use it
+
+```sh
+dotnet add package NuDepot.Feed
+```
+
+```csharp
+builder.Services.AddNuDepotFeed();
+
+var app = builder.Build();
+app.UseNuDepotFeed();
+
+await app.RunMigrationsAsync();
+await app.RunAsync();
+```
+
+The feed reads its settings from the `Feed` configuration section. Only `Feed:Database:ConnectionString`
+is required, like `Data Source=nudepot.db`. Pass a lambda to change the settings in code:
+`AddNuDepotFeed(options => options.Storage.Path = "packages")`. The feed is open until you configure
+API keys or users; see [the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md).
+
+`AddNuDepotFeed()` is `services.AddNuDepot().AddFeed()`, and `UseNuDepotFeed()` is
+`app.UseNuDepot().UseFeed().UseApiKeys().UsePasskeys()`. Use the builders to choose, or to add
+[NuDepot.Gallery](https://www.nuget.org/packages/NuDepot.Gallery) to the same application:
+`services.AddNuDepot().AddFeed().AddGallery()`. The methods are in the `Microsoft.Extensions.DependencyInjection`,
+`Microsoft.AspNetCore.Builder` and `Microsoft.Extensions.Hosting` namespaces, so they don't need a `using`.
+
+## Developing it
+
+The Windows and Linux hosts in `pub` run the feed with the gallery. To run it during development,
+start the Windows host (`pub/Windows`). Hosts can also support the feed's command line commands, like
+`import downloads`, with `NuDepotCommands`.
 The important folders are:
 
 * Endpoints - The NuGet V3 API endpoints, as minimal APIs
@@ -14,7 +45,7 @@ The important folders are:
 * Vulnerabilities - Known vulnerabilities, served to NuGet Audit
 * Authentication - API keys and their roles. Each endpoint requires a `FeedPermissions`. The feed is
   open until its options have API keys or users, which the host accepts with `UseApiKeys()` and
-  `UsePasskeys()`; see `FeedAccess` and [the configuration guide](../../docs/configuration.md#require-an-api-key)
+  `UsePasskeys()`; see `FeedAccess` and [the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#require-an-api-key)
 * Signing - Repository signing of pushed packages
 * Entities - The package database (SQLite by default)
 * Storage - Stores the content of packages and symbols on the file system

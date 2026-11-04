@@ -1,7 +1,4 @@
-using NuDepot.Core.Hosting;
 using NuDepot.Feed;
-using NuDepot.Feed.Extensions;
-using NuDepot.Gallery.Extensions;
 
 // Runs the NuGet feed server and website as a Windows Service.
 // When started from a console instead, it runs as a normal console application.

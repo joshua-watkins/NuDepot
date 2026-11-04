@@ -26,4 +26,7 @@
 						  AdditionalProperties="RuntimeIdentifier=win-x64;SelfContained=true" />
 	</ItemGroup>
 
+	<!-- The installer isn't a NuGet package. This lets "dotnet pack NuDepot.slnx" pack the libraries. -->
+	<Target Name="Pack" />
+
 </Project>

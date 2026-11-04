@@ -1,0 +1,30 @@
+<Project>
+
+	<!--
+		The libraries are published as NuGet packages, so applications can host the feed and the gallery
+		themselves. Pack them with "dotnet pack NuDepot.slnx -c Release", and set the version with
+		-p:Version=1.2.3 when releasing.
+	-->
+	<PropertyGroup>
+		<VersionPrefix>0.1.0</VersionPrefix>
+		<Authors>NuDepot</Authors>
+		<Copyright>Copyright (c) 2026 NuDepot</Copyright>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/joshua-watkins/NuDepot</PackageProjectUrl>
+		<PackageIcon>packageIcon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageTags>nuget;nuget-server;nuget-feed;package-feed;symbol-server;aspnetcore</PackageTags>
+
+		<!-- Source Link: the packages record the repository, and their symbols point at its source. -->
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<ContinuousIntegrationBuild Condition="'$(CI)' == 'true' Or '$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="$(MSBuildThisFileDirectory)..\docs\packageIcon.png" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+</Project>

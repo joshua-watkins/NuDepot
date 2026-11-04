@@ -5,6 +5,7 @@
 		<Nullable>enable</Nullable>
 		<AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
 		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
+		<Description>A nuget.org-style website for browsing a NuGet V3 feed, for ASP.NET Core applications. Add it with services.AddNuDepotGallery() and app.UseNuDepotGallery(), next to NuDepot.Feed or pointed at any V3 feed.</Description>
 		<IsAotCompatible>true</IsAotCompatible>
 		<EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
 		<!-- Generates the minimal API endpoints' request handling at compile time instead of with reflection. -->
@@ -44,6 +45,8 @@
 	<ItemGroup>
 		<Content Remove="wwwroot\**" />
 		<EmbeddedResource Include="wwwroot\**" />
+		<!-- How the libraries in wwwroot\lib are restored. Not for applications that use the package. -->
+		<Content Update="libman.json" Pack="false" CopyToPublishDirectory="Never" />
 	</ItemGroup>
 
 	<ItemGroup>

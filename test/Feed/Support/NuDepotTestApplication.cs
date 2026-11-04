@@ -8,7 +8,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NuDepot.Core;
-using NuDepot.Core.Hosting;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;

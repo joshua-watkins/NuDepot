@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Configuration;
@@ -11,9 +10,10 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NuDepot.Feed.Extensions;
+// In the namespace of IHost, so applications see RunMigrationsAsync() without a using.
+namespace Microsoft.Extensions.Hosting;
 
-public static class IHostExtensions
+public static class FeedHostExtensions
 {
     /// <summary>
     /// The environment variable that holds the folder to read appsettings.json from,

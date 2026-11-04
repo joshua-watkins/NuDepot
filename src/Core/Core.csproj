@@ -5,6 +5,7 @@
 		<Nullable>enable</Nullable>
 		<AssemblyName>$(SolutionName).$(MSBuildProjectName)</AssemblyName>
 		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
+		<Description>The NuGet V3 protocol's models and a client for NuGet feeds. Shared by NuDepot.Feed and NuDepot.Gallery, with the builders they add themselves to.</Description>
 		<IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
 

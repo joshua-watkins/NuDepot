@@ -1,7 +1,4 @@
-using NuDepot.Core.Hosting;
 using NuDepot.Feed;
-using NuDepot.Feed.Extensions;
-using NuDepot.Gallery.Extensions;
 
 // --port 3333 --proxy, everything else through NuDepot.ini
 // maybe "secret" --migrate/upgrade/initialize switch for updating sqlite schema file.

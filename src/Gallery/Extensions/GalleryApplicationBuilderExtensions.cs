@@ -1,46 +1,26 @@
 using System;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using NuDepot.Core;
 using NuDepot.Core.Hosting;
-using NuDepot.Core.PackageDetails;
-using NuDepot.Core.Search;
-using NuDepot.Core.ServiceIndex;
-using NuDepot.Gallery.Pages;
+using NuDepot.Gallery;
 
-namespace NuDepot.Gallery.Extensions;
+// In the namespace of IApplicationBuilder, so applications see UseNuDepotGallery() without a using.
+namespace Microsoft.AspNetCore.Builder;
 
-public static class GalleryHostingExtensions
+public static class GalleryApplicationBuilderExtensions
 {
     /// <summary>
-    /// Adds the gallery website. It reads packages from the feed at <see cref="GalleryOptions.ServiceIndexUrl"/>,
-    /// or from a feed hosted in the same application. Its <see cref="GalleryOptions"/> are bound from the
-    /// <see cref="GalleryOptions.Section"/> configuration section, then changed by <paramref name="configure"/>.
+    /// Maps the gallery's pages and files, like <c>app.UseNuDepot().UseGallery()</c>.
     /// </summary>
-    public static NuDepotBuilder AddGallery(this NuDepotBuilder builder, Action<GalleryOptions>? configure = null)
+    public static NuDepotApplicationBuilder UseNuDepotGallery<TApplication>(this TApplication application)
+        where TApplication : IApplicationBuilder, IEndpointRouteBuilder
     {
-        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(application);
 
-        var services = builder.Services;
-
-        var options = services.AddOptions<GalleryOptions>().BindConfiguration(GalleryOptions.Section);
-        if (configure != null)
-        {
-            options.Configure(configure);
-        }
-
-        services.AddSingleton<FeedConnection>();
-        services.AddSingleton<IServiceIndexClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateServiceIndexClient());
-        services.AddSingleton<ISearchClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateSearchClient());
-        services.AddSingleton<IPackageDetailsClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreatePackageDetailsClient());
-
-        services.AddTransient<IndexModel>();
-        services.AddTransient<PackageModel>();
-        services.AddTransient<UploadModel>();
-
-        return builder;
+        return application.UseNuDepot().UseGallery();
     }
 
     /// <summary>

@@ -77,6 +77,11 @@ app.UseNuDepot()
     .UseGallery();  // The gallery's pages.
 ```
 
+An application that only hosts one part can use the shortcuts: `services.AddNuDepotFeed()` with
+`app.UseNuDepotFeed()`, which uses API keys and passkeys too, or `services.AddNuDepotGallery()` with
+`app.UseNuDepotGallery()`. Both take the same options lambda as `AddFeed` and `AddGallery`. The
+libraries are on NuGet as `NuDepot.Feed` and `NuDepot.Gallery`.
+
 The settings decide what's on: the feed is open until it has API keys or users. The application
 doesn't start if the settings turn on something its pipeline doesn't use: API keys without
 `UseApiKeys()`, users without `UsePasskeys()`, or users without `UseApiKeys()`, since users create

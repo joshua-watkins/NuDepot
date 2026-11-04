@@ -11,17 +11,18 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NuDepot.Core;
 using NuDepot.Core.Hosting;
+using NuDepot.Feed;
 using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Content;
 using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Metadata;
 using NuDepot.Feed.Search;
@@ -34,9 +35,10 @@ using NuDepot.Feed.Users;
 using NuDepot.Feed.Validation;
 using NuDepot.Feed.Vulnerabilities;
 
-namespace NuDepot.Feed.Extensions;
+// In the namespace of IServiceCollection, so applications see AddNuDepotFeed() without a using.
+namespace Microsoft.Extensions.DependencyInjection;
 
-public static class FeedHostingExtensions
+public static class FeedServiceCollectionExtensions
 {
     private const string UserCookieName = "NuDepot.User";
 
@@ -60,53 +62,16 @@ public static class FeedHostingExtensions
     }
 
     /// <summary>
-    /// Maps the NuGet V3 API endpoints. Each requires the permission for what it does, which
-    /// anyone has while the feed is open.
+    /// Adds the NuGet feed, like <c>services.AddNuDepot().AddFeed(configure)</c>. Its <see cref="FeedOptions"/>
+    /// are bound from the <see cref="FeedOptions.Section"/> configuration section, then changed by
+    /// <paramref name="configure"/>. Use it with <see cref="FeedApplicationBuilderExtensions.UseNuDepotFeed{TApplication}"/>.
     /// </summary>
-    public static NuDepotApplicationBuilder UseFeed(this NuDepotApplicationBuilder app)
+    public static NuDepotBuilder AddNuDepotFeed(this IServiceCollection services, Action<FeedOptions>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(app);
+        ArgumentNullException.ThrowIfNull(services);
 
-        app.Application.UseMiddleware<OperationCancelledMiddleware>();
-        new NuDepotEndpointBuilder().MapEndpoints(app.Endpoints);
-        GetPipeline(app).UsesFeed = true;
-
-        return app;
+        return services.AddNuDepot().AddFeed(configure);
     }
-
-    /// <summary>
-    /// Accepts API keys: the configured keys, and the keys users create. Without it, requests are anonymous.
-    /// </summary>
-    public static NuDepotApplicationBuilder UseApiKeys(this NuDepotApplicationBuilder app)
-    {
-        ArgumentNullException.ThrowIfNull(app);
-
-        GetPipeline(app).UsesApiKeys = true;
-
-        return app;
-    }
-
-    /// <summary>
-    /// Lets people sign in with passkeys and create their own API keys, if
-    /// <see cref="UserOptions.Enabled"/> is true. Maps the account endpoints the gallery uses.
-    /// </summary>
-    public static NuDepotApplicationBuilder UsePasskeys(this NuDepotApplicationBuilder app)
-    {
-        ArgumentNullException.ThrowIfNull(app);
-
-        GetPipeline(app).UsesPasskeys = true;
-
-        if (app.Services.GetRequiredService<FeedAccess>().UsersEnabled)
-        {
-            NuDepotEndpointBuilder.MapAccountRoutes(app.Endpoints);
-            app.Features.Passkeys = true;
-        }
-
-        return app;
-    }
-
-    private static FeedPipeline GetPipeline(NuDepotApplicationBuilder app)
-        => app.Services.GetRequiredService<FeedPipeline>();
 
     private static void AddOptions(IServiceCollection services, Action<FeedOptions>? configure)
     {
@@ -271,7 +236,7 @@ public static class FeedHostingExtensions
     {
         var options = GetOptions(provider).Mirror;
 
-        var assembly = Assembly.GetEntryAssembly() ?? typeof(FeedHostingExtensions).Assembly;
+        var assembly = Assembly.GetEntryAssembly() ?? typeof(FeedServiceCollectionExtensions).Assembly;
         var assemblyName = assembly.GetName().Name;
         var assemblyVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 
