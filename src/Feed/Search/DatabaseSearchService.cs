@@ -19,6 +19,11 @@ namespace NuDepot.Feed.Search;
 /// </summary>
 public class DatabaseSearchService : ISearchService
 {
+    /// <summary>
+    /// The most dependents returned for a package, ordered by their total downloads.
+    /// </summary>
+    public const int MaxDependents = 20;
+
     private readonly NuDepotContext _context;
     private readonly IFrameworkCompatibilityService _frameworks;
     private readonly IVulnerabilityService _vulnerabilities;
@@ -178,22 +183,39 @@ public class DatabaseSearchService : ISearchService
 
     public async Task<DependentsResponse> FindDependentsAsync(string packageId, CancellationToken cancellationToken)
     {
-        var dependents = await _context
-            .Packages
-            .Where(p => p.Listed)
-            .OrderByDescending(p => p.Downloads)
-            .Where(p => p.Dependencies.Any(d => d.Id == packageId))
-            .Take(20)
-            .Select(r => new PackageDependent
+        // A dependent is a package with a listed version that depends on the package. Its downloads
+        // are the total across all its versions, and its description is its latest listed version's.
+        var dependentIds = _context.Packages
+            .Where(p => p.Listed && p.Dependencies.Any(d => d.Id == packageId))
+            .Select(p => p.Id);
+
+        var dependents = await _context.Packages
+            .Where(p => dependentIds.Contains(p.Id))
+            .GroupBy(p => p.Id)
+            .Select(g => new
             {
-                Id = r.Id,
-                Description = r.Description,
-                TotalDownloads = r.Downloads
+                Id = g.Key,
+                TotalDownloads = g.Sum(p => p.Downloads),
+                LatestListedKey = g.Where(p => p.Listed).Max(p => (int?)p.Key),
             })
-            .Distinct()
+            .OrderByDescending(d => d.TotalDownloads)
+            .ThenBy(d => d.Id)
+            .Take(MaxDependents)
             .ToListAsync(cancellationToken);
 
-        return _searchBuilder.BuildDependents(dependents);
+        var latestKeys = dependents.Select(d => d.LatestListedKey).ToList();
+        var descriptions = await _context.Packages
+            .Where(p => latestKeys.Contains(p.Key))
+            .ToDictionaryAsync(p => p.Key, p => p.Description, cancellationToken);
+
+        return _searchBuilder.BuildDependents(dependents
+            .Select(d => new PackageDependent
+            {
+                Id = d.Id,
+                Description = d.LatestListedKey is int key ? descriptions.GetValueOrDefault(key) : null,
+                TotalDownloads = d.TotalDownloads,
+            })
+            .ToList());
     }
 
     /// <summary>
