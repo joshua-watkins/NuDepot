@@ -4,26 +4,27 @@ using NuDepot.Feed.Authentication;
 namespace NuDepot.Feed.Configuration;
 
 /// <summary>
-/// Who may do what on the feed. Clients present an API key in the X-NuGet-ApiKey header, or as the
-/// password of HTTP Basic authentication, which is how NuGet sends a package source's credentials
-/// from a nuget.config file. The application must add the feed's authentication for these settings,
-/// and its authorization policies for the roles (see <see cref="FeedAccessMode"/>).
+/// Who may do what on the feed. The feed is open, so anyone may do anything, until it has API keys
+/// or users. Clients present an API key in the X-NuGet-ApiKey header, or as the password of HTTP
+/// Basic authentication, which is how NuGet sends a package source's credentials from a nuget.config
+/// file. The application accepts API keys with <c>UseApiKeys()</c>, and users with <c>UsePasskeys()</c>.
 /// </summary>
 public class FeedAuthorizationOptions
 {
     /// <summary>
-    /// What requests without a valid API key may do. If unset, <see cref="FeedRole.ReadOnly"/>.
+    /// What requests without a valid API key or a signed-in user may do, once the feed has API keys
+    /// or users. If unset, <see cref="FeedRole.ReadOnly"/>.
     /// </summary>
     public FeedRole? AnonymousRole { get; set; }
 
     /// <summary>
-    /// The API keys that grant access to the feed. <see cref="NuDepotOptions.ApiKey"/>, if set,
+    /// The API keys that grant access to the feed. <see cref="FeedOptions.ApiKey"/>, if set,
     /// is also an <see cref="FeedRole.Admin"/> key.
     /// </summary>
     public List<ApiKeyOptions> ApiKeys { get; set; } = new();
 
     /// <summary>
-    /// People who sign in with passkeys. They only apply if the application adds the feed's users.
+    /// People who sign in with passkeys.
     /// </summary>
     public UserOptions Users { get; set; } = new();
 }
@@ -31,8 +32,8 @@ public class FeedAuthorizationOptions
 public class UserOptions
 {
     /// <summary>
-    /// Whether people can sign in with passkeys. The Windows and Linux hosts add the feed's users
-    /// when this is true.
+    /// Whether people can sign in with passkeys and create their own API keys. The application
+    /// must use the feed's users, with <c>UsePasskeys()</c>.
     /// </summary>
     public bool Enabled { get; set; }
 
@@ -73,8 +74,7 @@ public class ApiKeyOptions
     public string? Key { get; set; }
 
     /// <summary>
-    /// What the key may do. Required with the feed's authorization policies. Without them,
-    /// any key may do everything, so only <see cref="FeedRole.Admin"/> is allowed.
+    /// What the key may do. Required.
     /// </summary>
     public FeedRole? Role { get; set; }
 }

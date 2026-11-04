@@ -193,17 +193,17 @@ namespace NuDepot.Feed.Tests.Services
         public class FactsBase : IDisposable
         {
             protected readonly string _storePath;
-            protected readonly Mock<IOptionsSnapshot<FileSystemStorageOptions>> _options;
+            protected readonly Mock<IOptionsSnapshot<FeedOptions>> _options;
             protected readonly FileStorageService _target;
 
             public FactsBase()
             {
                 _storePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-                _options = new Mock<IOptionsSnapshot<FileSystemStorageOptions>>();
+                _options = new Mock<IOptionsSnapshot<FeedOptions>>();
 
                 _options
                     .Setup(o => o.Value)
-                    .Returns(() => new FileSystemStorageOptions { Path = _storePath });
+                    .Returns(() => new FeedOptions { Storage = { Path = _storePath } });
 
                 _target = new FileStorageService(_options.Object);
             }

@@ -34,9 +34,11 @@ Ensure that the configuration's storage `Path` has the appropriate forward slash
 
 ```javascript
 ...
-  "Storage": {
-    "Type": "FileSystem",
-    "Path": "C://AnotherFolder/Packages"
+  "Feed": {
+    "Storage": {
+      "Type": "FileSystem",
+      "Path": "C://AnotherFolder/Packages"
+    }
   },
 ...
 ```

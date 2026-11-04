@@ -1,17 +1,26 @@
 namespace NuDepot.Feed.Configuration;
 
-public class NuDepotOptions
+/// <summary>
+/// The feed's options, bound from the <see cref="Section"/> configuration section.
+/// </summary>
+public class FeedOptions
 {
     /// <summary>
+    /// The configuration section the feed's options are bound from.
+    /// </summary>
+    public const string Section = "Feed";
+
+    /// <summary>
     /// An API key that may do everything, like an <see cref="Authentication.FeedRole.Admin"/> key in
-    /// <see cref="Authorization"/>. If no API keys are set, anyone may do anything.
+    /// <see cref="Authorization"/>. If no API keys are set and users aren't enabled, anyone may do anything.
     /// </summary>
     public string? ApiKey { get; set; }
 
     /// <summary>
-    /// The API keys and their roles, and what requests without a key may do.
+    /// The API keys and their roles, the users who sign in with passkeys, and what requests without
+    /// a key or a user may do.
     /// </summary>
-    public FeedAuthorizationOptions? Authorization { get; set; }
+    public FeedAuthorizationOptions Authorization { get; set; } = new();
 
     /// <summary>
     /// The application root URL for usage in reverse proxy scenarios.
@@ -41,15 +50,9 @@ public class NuDepotOptions
     public bool IsReadOnlyMode { get; set; } = false;
 
     /// <summary>
-    /// The URLs the NuDepot server will use.
-    /// As per documentation <a href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/web-host?view=aspnetcore-3.1#server-urls">here (Server URLs)</a>.
-    /// </summary>
-    public string? Urls { get; set; }
-
-    /// <summary>
     /// The web page where users can see a package's details, with {id} and {version}
-    /// placeholders, for example "packages/{id}/{version}" when the website is hosted with
-    /// the server. A relative template is resolved against the server's address. If empty,
+    /// placeholders, for example "packages/{id}/{version}" when the gallery is hosted with
+    /// the feed. A relative template is resolved against the feed's address. If empty,
     /// clients aren't given a link. Only advertised over HTTPS, as the protocol requires.
     /// See: https://learn.microsoft.com/en-us/nuget/api/package-details-template-resource
     /// </summary>
@@ -58,13 +61,13 @@ public class NuDepotOptions
     /// <summary>
     /// The certificate used to repository sign pushed packages. Signing is off if no certificate is set.
     /// </summary>
-    public RepositorySigningOptions? RepositorySigning { get; set; }
+    public RepositorySigningOptions RepositorySigning { get; set; } = new();
 
-    public DatabaseOptions? Database { get; set; }
+    public DatabaseOptions Database { get; set; } = new();
 
-    public StorageOptions? Storage { get; set; }
+    public StorageOptions Storage { get; set; } = new();
 
-    public SearchOptions? Search { get; set; }
+    public SearchOptions Search { get; set; } = new();
 
-    public MirrorOptions? Mirror { get; set; }
+    public MirrorOptions Mirror { get; set; } = new();
 }

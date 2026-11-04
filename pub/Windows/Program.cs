@@ -1,3 +1,4 @@
+using NuDepot.Core.Hosting;
 using NuDepot.Feed;
 using NuDepot.Feed.Extensions;
 using NuDepot.Gallery.Extensions;
@@ -32,33 +33,12 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = null;
 });
 
-builder.Services.AddNuDepot(feed =>
-{
-    // Use SQLite as the database and store packages on the local file system.
-    feed.AddSqliteDatabase();
-    feed.AddFileStorage();
-});
-
-// The feed is open until API keys or users are configured. Then each key and user may do what its role allows.
-var users = builder.Configuration.HasNuDepotUsers();
-if (users || builder.Configuration.HasNuDepotApiKeys())
-{
-    var authentication = builder.Services.AddAuthentication().AddNuDepotApiKey();
-    if (users)
-    {
-        authentication.AddNuDepotUsers();
-    }
-
-    builder.Services.AddAuthorizationBuilder().AddNuDepotPolicies();
-}
-
-builder.Services.AddNuDepotUI();
+// The feed reads its settings from the "Feed" section, and the gallery from "Gallery".
+builder.Services.AddNuDepot()
+    .AddFeed()
+    .AddGallery();
 
 var app = builder.Build();
-if (!app.ValidateStartupOptions())
-{
-    return;
-}
 
 // Commands like "import downloads" run instead of the server.
 if (await app.TryRunCommandAsync(args))
@@ -66,16 +46,12 @@ if (await app.TryRunCommandAsync(args))
     return;
 }
 
-app.UseNuDepot();
-app.UseRouting();
-
-app.UseCors(ConfigureNuDepotOptions.CorsPolicy);
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseOperationCancelledMiddleware();
-
-app.MapNuDepot();
-app.MapNuDepotUI();
+// The feed is open until API keys or users are configured. Then each key and user may do what its role allows.
+app.UseNuDepot()
+    .UseFeed()
+    .UseApiKeys()
+    .UsePasskeys()
+    .UseGallery();
 
 await app.RunMigrationsAsync();
 await app.RunAsync();

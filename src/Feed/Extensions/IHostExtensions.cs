@@ -6,7 +6,6 @@ using Microsoft.Extensions.Options;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
-using NuDepot.Feed.Validation;
 using System;
 using System.IO;
 using System.Threading;
@@ -61,7 +60,7 @@ public static class IHostExtensions
         CancellationToken cancellationToken = default)
     {
         // Run migrations if necessary.
-        var options = host.Services.GetRequiredService<IOptions<NuDepotOptions>>();
+        var options = host.Services.GetRequiredService<IOptions<FeedOptions>>();
 
         if (options.Value.RunMigrationsAtStartup)
         {
@@ -81,18 +80,5 @@ public static class IHostExtensions
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Validates the startup options for the passed <see cref="IHost"/> instance
-    /// </summary>
-    /// <param name="host"></param>
-    /// <returns></returns>
-    public static bool ValidateStartupOptions(this IHost host)
-    {
-        return host
-            .Services
-            .GetRequiredService<ValidateStartupOptions>()
-            .Validate();
     }
 }

@@ -8,6 +8,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NuDepot.Core;
+using NuDepot.Core.Hosting;
+using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;
 using System;
@@ -31,32 +33,28 @@ internal sealed class NuDepotTestApplication : IDisposable
     private readonly ITestOutputHelper _output;
     private readonly HttpClient? _upstreamClient;
     private readonly IReadOnlyDictionary<string, string?> _configuration;
-    private readonly bool _useAuthentication;
-    private readonly bool _useAuthorization;
-    private readonly bool _useUsers;
+    private readonly bool _useApiKeys;
+    private readonly bool _usePasskeys;
     private readonly Lazy<WebApplication> _app;
 
     /// <param name="output">Receives the server's logs.</param>
     /// <param name="upstreamClient">If set, the server mirrors the upstream feed this client reaches.</param>
-    /// <param name="configuration">Configuration that overrides the test defaults.</param>
-    /// <param name="useAuthentication">Whether the application adds the feed's API key authentication. Without it, the feed is open.</param>
-    /// <param name="useAuthorization">Whether the application adds the feed's authorization policies, for API key roles.</param>
-    /// <param name="useUsers">Whether the application adds the feed's users, who sign in with passkeys.</param>
+    /// <param name="configuration">The feed's configuration, which overrides the test defaults. Keys are in the "Feed" section, like "Authorization:ApiKeys:0:Key".</param>
+    /// <param name="useApiKeys">Whether the application calls UseApiKeys(), like the hosts.</param>
+    /// <param name="usePasskeys">Whether the application calls UsePasskeys(), like the hosts.</param>
     public NuDepotTestApplication(
         ITestOutputHelper output,
         HttpClient? upstreamClient = null,
         IReadOnlyDictionary<string, string>? configuration = null,
-        bool useAuthentication = false,
-        bool useAuthorization = false,
-        bool useUsers = false)
+        bool useApiKeys = true,
+        bool usePasskeys = true)
     {
         _output = output ?? throw new ArgumentNullException(nameof(output));
         _upstreamClient = upstreamClient;
-        _useAuthentication = useAuthentication;
-        _useAuthorization = useAuthorization;
-        _useUsers = useUsers;
+        _useApiKeys = useApiKeys;
+        _usePasskeys = usePasskeys;
         _configuration = (configuration ?? new Dictionary<string, string>())
-            .ToDictionary(setting => setting.Key, setting => (string?)setting.Value);
+            .ToDictionary(setting => $"{FeedOptions.Section}:{setting.Key}", setting => (string?)setting.Value);
         _app = new Lazy<WebApplication>(Start);
     }
 
@@ -127,25 +125,20 @@ internal sealed class NuDepotTestApplication : IDisposable
         // Setup the integration test configuration.
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            { "ApiKey", "" },
-            { "PackageDeletionBehavior", "HardDelete" },
-            { "AllowPackageOverwrites", "true" },
-            { "Database:Type", "Sqlite" },
-            { "Database:ConnectionString", $"Data Source=NuDepotTests-{testId};Mode=Memory;Cache=Shared" },
-            { "Storage:Type", "FileSystem" },
-            { "Storage:Path", storagePath },
-            { "Search:Type", "Database" },
-            { "Mirror:Enabled", _upstreamClient != null ? "true": "false" },
-            { "Mirror:PackageSource", "http://localhost/v3/index.json" },
+            { "Feed:ApiKey", "" },
+            { "Feed:PackageDeletionBehavior", "HardDelete" },
+            { "Feed:AllowPackageOverwrites", "true" },
+            { "Feed:Database:ConnectionString", $"Data Source=NuDepotTests-{testId};Mode=Memory;Cache=Shared" },
+            { "Feed:Storage:Type", "FileSystem" },
+            { "Feed:Storage:Path", storagePath },
+            { "Feed:Search:Type", "Database" },
+            { "Feed:Mirror:Enabled", _upstreamClient != null ? "true": "false" },
+            { "Feed:Mirror:PackageSource", "http://localhost/v3/index.json" },
         });
 
         builder.Configuration.AddInMemoryCollection(_configuration);
 
-        builder.Services.AddNuDepot(feed =>
-        {
-            feed.AddSqliteDatabase();
-            feed.AddFileStorage();
-        });
+        builder.Services.AddNuDepot().AddFeed();
 
         // Make time deterministic for testing purposes. Tests can move it forward with the clock.
         var time = new Mock<SystemTime>();
@@ -154,19 +147,10 @@ internal sealed class NuDepotTestApplication : IDisposable
             .Returns(() => new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc) + Clock.Advanced);
 
         builder.Services.AddSingleton(time.Object);
-        if (_useAuthentication)
-        {
-            var authentication = builder.Services.AddAuthentication().AddNuDepotApiKey();
-            if (_useUsers)
-            {
-                authentication.AddNuDepotUsers();
-                builder.Services.Configure<CookieAuthenticationOptions>(
-                    NuDepotAuthenticationSchemes.User,
-                    options => options.TimeProvider = Clock);
-            }
-        }
+        builder.Services.Configure<CookieAuthenticationOptions>(
+            NuDepotAuthenticationSchemes.User,
+            options => options.TimeProvider = Clock);
 
-        if (_useAuthorization) builder.Services.AddAuthorizationBuilder().AddNuDepotPolicies();
         if (_upstreamClient != null)
         {
             builder.Services.AddSingleton(_upstreamClient);
@@ -174,15 +158,9 @@ internal sealed class NuDepotTestApplication : IDisposable
 
         var app = builder.Build();
 
-        app.UseNuDepot();
-        app.UseRouting();
-
-        app.UseCors(ConfigureNuDepotOptions.CorsPolicy);
-        app.UseAuthentication();
-        app.UseAuthorization();
-        app.UseOperationCancelledMiddleware();
-
-        app.MapNuDepot();
+        var nuDepot = app.UseNuDepot().UseFeed();
+        if (_useApiKeys) nuDepot.UseApiKeys();
+        if (_usePasskeys) nuDepot.UsePasskeys();
 
         try
         {

@@ -4,12 +4,12 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using NuDepot.Core;
+using NuDepot.Core.Hosting;
 
 namespace NuDepot.Gallery;
 
@@ -21,6 +21,7 @@ public class FeedConnection
 {
     private const string DefaultServiceIndexPath = "v3/index.json";
 
+    private readonly NuDepotFeatures _features;
     private readonly IServer? _server;
     private readonly IHttpContextAccessor? _httpContextAccessor;
     private readonly bool _isCoHosted;
@@ -28,14 +29,14 @@ public class FeedConnection
     private readonly Lazy<NuGetClientFactory> _clientFactory;
 
     public FeedConnection(
-        IOptions<NuGetWebsiteOptions> options,
-        IOptions<AuthenticationOptions> authentication,
+        IOptions<GalleryOptions> options,
+        NuDepotFeatures features,
         IServer? server,
         IHttpContextAccessor? httpContextAccessor)
     {
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(authentication);
 
+        _features = features ?? throw new ArgumentNullException(nameof(features));
         _server = server;
         _httpContextAccessor = httpContextAccessor;
 
@@ -46,15 +47,13 @@ public class FeedConnection
         _isCoHosted = string.IsNullOrEmpty(configuredUrl);
         _serviceIndexUrl = new Lazy<string>(() => _isCoHosted ? GetLocalServiceIndexUrl() : configuredUrl!);
         _clientFactory = new Lazy<NuGetClientFactory>(() => new NuGetClientFactory(CreateHttpClient(options.Value.ApiKey), ServiceIndexUrl));
-
-        SignInAvailable = _isCoHosted && authentication.Value.SchemeMap.ContainsKey(NuDepotAuthenticationSchemes.User);
     }
 
     /// <summary>
-    /// Whether people can sign in: the website is hosted with a feed server that has users.
+    /// Whether people can sign in: the gallery is hosted with a feed whose users sign in with passkeys.
     /// Signed-in users read the feed as themselves, so they can browse a feed that's closed to anonymous users.
     /// </summary>
-    public bool SignInAvailable { get; }
+    public bool SignInAvailable => _isCoHosted && _features.Passkeys;
 
     /// <summary>
     /// The service index URL the website uses to call the feed.
@@ -102,7 +101,7 @@ public class FeedConnection
         {
             throw new InvalidOperationException(
                 "Could not determine the address this application listens on. " +
-                $"Set '{NuGetWebsiteOptions.DefaultSection}:{nameof(NuGetWebsiteOptions.ServiceIndexUrl)}' " +
+                $"Set '{GalleryOptions.Section}:{nameof(GalleryOptions.ServiceIndexUrl)}' " +
                 "to the feed's service index URL.");
         }
 

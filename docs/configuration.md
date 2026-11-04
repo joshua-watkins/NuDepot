@@ -1,11 +1,31 @@
 # Configuration
 
-You can modify NuDepot's configuration by editing the `appsettings.json` file.
+You can modify NuDepot's configuration by editing the `appsettings.json` file. The feed's settings
+are in the `Feed` section, and the gallery's in the `Gallery` section. ASP.NET Core's own settings,
+like `Logging`, `Kestrel` and `IISServerOptions`, stay at the top level:
+
+```json
+{
+    "Feed": {
+        "Database": { "ConnectionString": "Data Source=nudepot.db" },
+        "Storage": { "Path": "packages" },
+        ...
+    },
+    "Gallery": {
+        ...
+    },
+    "Logging": { ... }
+}
+```
+
+Environment variables and command line arguments set the same settings with the section in front,
+like `Feed__Database__ConnectionString` or `--Feed:Database:ConnectionString=...`. The examples
+below show the `Feed` section's contents.
 
 ## Require an API key
 
-The feed is open until you add API keys: anyone can read, push and delete packages. The Windows
-and Linux hosts check keys, with their roles, as soon as any are configured. Each key has a role:
+The feed is open until you add API keys or users: anyone can read, push and delete packages. Once
+any are configured, the feed checks keys, with their roles. Each key has a role:
 
 | Role | May |
 | --- | --- |
@@ -15,7 +35,7 @@ and Linux hosts check keys, with their roles, as soon as any are configured. Eac
 | `None` | Nothing. Only useful as the `AnonymousRole`. |
 
 ```json
-{
+"Feed": {
     "Authorization": {
         // What requests without a valid key may do. If unset, ReadOnly.
         "AnonymousRole": "ReadOnly",
@@ -29,8 +49,8 @@ and Linux hosts check keys, with their roles, as soon as any are configured. Eac
 }
 ```
 
-The `ApiKey` setting still works, and is an `Admin` key. A key never takes away what anonymous
-requests may do. In `IsReadOnlyMode`, nobody may change the feed, whatever their key.
+Every key needs a `Role`. The `ApiKey` setting still works, and is an `Admin` key. A key never takes
+away what anonymous requests may do. In `IsReadOnlyMode`, nobody may change the feed, whatever their key.
 
 Which permission deleting a package needs depends on `PackageDeletionBehavior`: `Unlist` (the
 default) is a soft delete that `ReadWrite` keys may do, and `HardDelete` needs an `Admin` key.
@@ -41,19 +61,27 @@ role isn't enough.
 
 ### Applications that host the feed
 
-An application that hosts the server library chooses whether it checks keys, by what it adds:
+An application adds NuDepot's parts to its services and its request pipeline:
 
-| The application adds | The feed |
-| --- | --- |
-| Neither | Is open. |
-| `services.AddAuthentication().AddNuDepotApiKey()` | Requires a valid API key to do what anonymous requests can't. Any key may do everything. |
-| That, and `services.AddAuthorizationBuilder().AddNuDepotPolicies()` | Gives each API key its role. |
-| Those, and `.AddNuDepotUsers()` after `AddNuDepotApiKey()` | Also lets people sign in with passkeys. See [Users and passkeys](#users-and-passkeys). |
+```csharp
+builder.Services.AddNuDepot()
+    .AddFeed()      // Binds the "Feed" section. Pass a lambda to change the options in code.
+    .AddGallery();  // Binds the "Gallery" section.
 
-The application calls `app.UseAuthentication()` and `app.UseAuthorization()` after `app.UseRouting()`.
-The application doesn't start if the settings don't match what it adds: keys or an `AnonymousRole`
-it would ignore, authentication without keys or users, roles without the policies, policies without
-roles, or users without the policies. The Windows and Linux hosts add what the settings ask for.
+var app = builder.Build();
+
+app.UseNuDepot()
+    .UseFeed()      // The NuGet V3 API.
+    .UseApiKeys()   // Accepts API keys.
+    .UsePasskeys()  // Lets users sign in, if they're enabled.
+    .UseGallery();  // The gallery's pages.
+```
+
+The settings decide what's on: the feed is open until it has API keys or users. The application
+doesn't start if the settings turn on something its pipeline doesn't use: API keys without
+`UseApiKeys()`, users without `UsePasskeys()`, or users without `UseApiKeys()`, since users create
+their own API keys. It also doesn't start with an `AnonymousRole` but no keys or users, since the
+open feed would ignore it. The Windows and Linux hosts use everything, so only the settings matter.
 
 ### Using a key
 
@@ -114,18 +142,18 @@ Which to use:
 Use HTTPS, since the key travels with every request. For an `http://` source, NuGet needs
 `allowInsecureConnections="true"` on the package source.
 
-If the website is hosted with a feed that anonymous users can't read, give it a `ReadOnly` key in
-`Website:ApiKey`. Everyone who can open the website sees what that key can read. With users, signed-in
+If the gallery is hosted with a feed that anonymous users can't read, give it a `ReadOnly` key in
+`Gallery:ApiKey`. Everyone who can open the gallery sees what that key can read. With users, signed-in
 people browse the feed as themselves instead.
 
 ## Users and passkeys
 
-People can also have accounts on the feed, which they sign in to on the website with a passkey
+People can also have accounts on the feed, which they sign in to in the gallery with a passkey
 instead of a password. Each user has a role, like an API key, and can create their own API keys
 for NuGet clients and Visual Studio.
 
 ```json
-{
+"Feed": {
     "Authorization": {
         "Users": {
             "Enabled": true,
@@ -139,7 +167,7 @@ for NuGet clients and Visual Studio.
 }
 ```
 
-The website shows "Sign in" in its navigation bar. The first person to sign up becomes an `Admin`, so
+The gallery shows "Sign in" in its navigation bar. The first person to sign up becomes an `Admin`, so
 set up your account before sharing the feed's address, or turn `AllowSignUp` off afterwards. Everyone
 after that gets the `DefaultRole`. Users don't need configured API keys: requests without a key or
 a signed-in user get the `AnonymousRole`, `ReadOnly` unless set.
@@ -152,7 +180,7 @@ On their account page, users can:
 - Revoke their API keys.
 
 People sign in with their user name and a passkey, and stay signed in for a year after they last
-use the website or feed. Each signed-in browser has a session in the `UserSessions` table, which is
+use the gallery or feed. Each signed-in browser has a session in the `UserSessions` table, which is
 checked with each request, so changing a user's role in the database, or deleting their account,
 applies straight away. Deleting a session's row signs that browser out.
 
@@ -164,7 +192,7 @@ old cookie for a minute.
 Each user can have one passkey request in progress at a time, and the browser has 5 minutes to
 answer it. Starting another, like signing in from a second tab, replaces it.
 
-Passkeys belong to the website's domain, and only work over HTTPS or on `localhost`. Behind a reverse
+Passkeys belong to the gallery's domain, and only work over HTTPS or on `localhost`. Behind a reverse
 proxy, set the domain and origins the browser sees, if they differ from what the feed sees:
 
 ```json
@@ -175,8 +203,8 @@ proxy, set the domain and origins the browser sees, if they differ from what the
 }
 ```
 
-Applications that host the feed add users with `services.AddAuthentication().AddNuDepotApiKey().AddNuDepotUsers()`,
-together with `services.AddAuthorizationBuilder().AddNuDepotPolicies()`. The website only offers sign-in
+The application must call `UseApiKeys()` and `UsePasskeys()` for users (see
+[Applications that host the feed](#applications-that-host-the-feed)). The gallery only offers sign-in
 when it's hosted with the feed.
 
 ## Enable read-through caching
@@ -190,14 +218,11 @@ caching to:
 The following `Mirror` setting configures NuDepot to index packages from [nuget.org](https://nuget.org):
 
 ```json
-{
-    ...
-
+"Feed": {
     "Mirror": {
         "Enabled":  true,
         "PackageSource": "https://api.nuget.org/v3/index.json"
     },
-
     ...
 }
 ```
@@ -214,11 +239,8 @@ downloaded if you know the package's id and version. You can override this behav
 `PackageDeletionBehavior`:
 
 ```json
-{
-    ...
-
+"Feed": {
     "PackageDeletionBehavior": "HardDelete",
-
     ...
 }
 ```
@@ -229,11 +251,8 @@ Normally, NuDepot will reject a package upload if the id and version are already
 to overwrite the already existing package by setting `AllowPackageOverwrites`:
 
 ```json
-{
-    ...
-
+"Feed": {
     "AllowPackageOverwrites": true,
-
     ...
 }
 ```
@@ -244,45 +263,38 @@ A private feed requires users to authenticate before accessing packages. Set the
 `Authorization:AnonymousRole` to `None`, and give people API keys or accounts.
 See [Require an API key](#require-an-api-key) and [Users and passkeys](#users-and-passkeys).
 
-## Database configuration
+## Database, storage and search
 
-NuDepot stores package information in a SQLite database (`Sqlite`). Set its connection string to
-choose where the database file is; see [SQLite connection strings](https://learn.microsoft.com/dotnet/standard/data/sqlite/connection-strings).
-
-You may configure the database either using environment variables or by editing the `appsettings.json` file.
-
-### Environment Variables
-
-There are two environment variables related to database configuration. These are:
-
-- **Database__Type**: The database engine to use: `Sqlite`.
-- **Database__ConnectionString**: The connection string for your database engine.
-
-### `appsettings.json`
-
-The database settings are located under the `Database` key in the `appsettings.json` configuration file:
+NuDepot stores package information in a SQLite database. Set its connection string to choose where
+the database file is; see [SQLite connection strings](https://learn.microsoft.com/dotnet/standard/data/sqlite/connection-strings).
+Package and symbol files are stored in a folder, and searches query the database:
 
 ```json
-{
-    ...
-
+"Feed": {
     "Database": {
-        "Type": "Sqlite",
+        // Required.
         "ConnectionString": "Data Source=nudepot.db"
     },
-
+    "Storage": {
+        // FileSystem (the default) or Null, which doesn't store files.
+        "Type": "FileSystem",
+        // The folder files are stored in. Defaults to the working directory.
+        "Path": "packages"
+    },
+    "Search": {
+        // Database (the default) or Null, which finds nothing.
+        "Type": "Database"
+    },
     ...
 }
 ```
 
-There are two settings related to the database configuration:
-
-- **Type**: The database engine to use: `Sqlite`.
-- **ConnectionString**: The connection string for your database engine.
+As environment variables, these are `Feed__Database__ConnectionString`, `Feed__Storage__Type`,
+`Feed__Storage__Path` and `Feed__Search__Type`.
 
 ## IIS server options
 
-IIS Server options can be configured under the `IISServerOptions` key. The available options are detailed at [docs.microsoft.com](https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.builder.iisserveroptions)
+IIS Server options can be configured under the top-level `IISServerOptions` key. The available options are detailed at [docs.microsoft.com](https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.builder.iisserveroptions)
 Note: If not specified, the MaxRequestBodySize in NuDepot defaults to 250MB (262144000 bytes), rather than the ASP.NET Core default of 30MB
 
 ```json

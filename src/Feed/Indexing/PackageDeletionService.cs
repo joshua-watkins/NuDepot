@@ -15,14 +15,14 @@ public class PackageDeletionService : IPackageDeletionService
     private readonly IPackageDatabase _packages;
     private readonly IPackageStorageService _storage;
     private readonly ICatalogService _catalog;
-    private readonly NuDepotOptions _options;
+    private readonly FeedOptions _options;
     private readonly ILogger<PackageDeletionService> _logger;
 
     public PackageDeletionService(
         IPackageDatabase packages,
         IPackageStorageService storage,
         ICatalogService catalog,
-        IOptionsSnapshot<NuDepotOptions> options,
+        IOptionsSnapshot<FeedOptions> options,
         ILogger<PackageDeletionService> logger)
     {
         _packages = packages ?? throw new ArgumentNullException(nameof(packages));

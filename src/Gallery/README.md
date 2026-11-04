@@ -9,14 +9,14 @@ served by minimal API endpoints. Each page's data comes from a model in the `Pag
 ## Hosting it
 
 The website is a Razor class library. The Windows and Linux hosts in `pub` add it to the server's
-application with `services.AddNuDepotUI()` and `endpoints.MapNuDepotUI()`. To run it during
+application with `services.AddNuDepot().AddGallery()` and `app.UseNuDepot().UseGallery()`. To run it during
 development, start the Windows host (`pub/Windows`), which runs the server and the website together.
 
 The website's files in `wwwroot` (scripts, styles, images and libraries) are embedded in the
-assembly, so the library is a single DLL. `MapNuDepotUI()` serves them under
+assembly, so the library is a single DLL. `UseGallery()` serves them under
 `_content/NuDepot.Gallery`; hosts don't copy or serve them. After changing a file, rebuild to see it.
 
-The website reads the feed from its own application. Set `Website:ServiceIndexUrl` to the service
+The website reads the feed from its own application. Set `Gallery:ServiceIndexUrl` to the service
 index of another feed to show that feed instead, for example `https://api.nuget.org/v3/index.json`.
-If the feed doesn't let anonymous users read it, set `Website:ApiKey` to a `ReadOnly` key.
+If the feed doesn't let anonymous users read it, set `Gallery:ApiKey` to a `ReadOnly` key.
 If the website can't read the feed, its pages explain that instead of failing.

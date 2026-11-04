@@ -403,30 +403,47 @@ public class UserIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void UsersWithoutTheFeedsUsersStopStartup()
+    public void UsersWithoutUsePasskeysStopStartup()
     {
-        var app = new NuDepotTestApplication(
-            _output,
-            configuration: new Dictionary<string, string> { { "Authorization:Users:Enabled", "true" } });
+        var app = new NuDepotTestApplication(_output, configuration: UsersEnabled(), usePasskeys: false);
 
         var exception = Assert.Throws<OptionsValidationException>(() => app.Services);
 
-        Assert.Contains(exception.Failures, f => f.Contains("doesn't add the feed's users"));
+        Assert.Contains(exception.Failures, f => f.Contains("Call UsePasskeys()"));
     }
 
     [Fact]
-    public void UsersWithoutRolesStopStartup()
+    public void UsersWithoutUseApiKeysStopStartup()
     {
-        var app = new NuDepotTestApplication(_output, useAuthentication: true, useUsers: true);
+        var app = new NuDepotTestApplication(_output, configuration: UsersEnabled(), useApiKeys: false);
 
         var exception = Assert.Throws<OptionsValidationException>(() => app.Services);
 
-        Assert.Contains(exception.Failures, f => f.Contains("users, who need roles"));
+        Assert.Contains(exception.Failures, f => f.Contains("who create their own API keys, but doesn't accept API keys"));
+    }
+
+    [Fact]
+    public async Task AccountsArentMappedWithoutUsers()
+    {
+        var app = new NuDepotTestApplication(_output);
+        _disposables.Add(app);
+        using var client = app.CreateClient();
+
+        using var response = await client.GetAsync("api/account");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private static Dictionary<string, string> UsersEnabled(Dictionary<string, string>? configuration = null)
+    {
+        var settings = new Dictionary<string, string>(configuration ?? new Dictionary<string, string>());
+        settings["Authorization:Users:Enabled"] = "true";
+        return settings;
     }
 
     private NuDepotTestApplication CreateApp(Dictionary<string, string>? configuration = null)
     {
-        var app = new NuDepotTestApplication(_output, configuration: configuration, useAuthentication: true, useAuthorization: true, useUsers: true);
+        var app = new NuDepotTestApplication(_output, configuration: UsersEnabled(configuration));
         _disposables.Add(app);
         return app;
     }

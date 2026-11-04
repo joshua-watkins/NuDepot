@@ -6,8 +6,7 @@ using NuDepot.Core;
 namespace NuDepot.Feed.Authentication;
 
 /// <summary>
-/// The authorization policies that give API keys and users their roles. Add them with
-/// <c>AddAuthorizationBuilder().AddNuDepotPolicies()</c>.
+/// The authorization policies that give API keys and users their roles. <c>AddFeed()</c> adds them.
 /// </summary>
 public static class FeedPolicies
 {

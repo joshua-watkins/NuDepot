@@ -18,12 +18,12 @@ public class FileStorageService : IStorageService
 
     private readonly string _storePath;
 
-    public FileStorageService(IOptionsSnapshot<FileSystemStorageOptions> options)
+    public FileStorageService(IOptionsSnapshot<FeedOptions> options)
     {
         if (options == null) throw new ArgumentNullException(nameof(options));
 
         // Resolve relative path components ('.'/'..') and ensure there is a trailing slash.
-        _storePath = Path.GetFullPath(options.Value.Path ?? Directory.GetCurrentDirectory());
+        _storePath = Path.GetFullPath(options.Value.Storage.Path ?? Directory.GetCurrentDirectory());
         if (!_storePath.EndsWith(Path.DirectorySeparatorChar.ToString()))
             _storePath += Path.DirectorySeparatorChar;
     }

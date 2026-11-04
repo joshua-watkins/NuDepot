@@ -9,8 +9,7 @@ using NuDepot.Feed.Entities.Converters;
 namespace NuDepot.Feed.Entities;
 
 /// <summary>
-/// The package database. The database provider is chosen by the "Database:Type" configuration,
-/// see <see cref="Extensions.DependencyInjectionExtensions.AddNuDepotDatabaseProvider"/>.
+/// The package database, in SQLite at <see cref="Configuration.DatabaseOptions.ConnectionString"/>.
 /// Settings that only apply to one provider are behind checks like <see cref="SqliteDatabaseFacadeExtensions.IsSqlite"/>.
 /// </summary>
 public class NuDepotContext : DbContext

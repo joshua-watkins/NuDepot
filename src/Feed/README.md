@@ -2,7 +2,7 @@
 
 The backend that implements the [NuGet service APIs](https://docs.microsoft.com/en-us/nuget/api/overview)
 and persists packages. It's a library: the Windows and Linux hosts in `pub` run it, with the gallery,
-by calling `services.AddNuDepot(...)`, `app.UseNuDepot()` and `endpoints.MapNuDepot()`. To run it
+by calling `services.AddNuDepot().AddFeed()` and `app.UseNuDepot().UseFeed()`. To run it
 during development, start the Windows host (`pub/Windows`). Hosts can also support the server's command
 line commands, like `import downloads`, with `NuDepotCommands`.
 The important folders are:
@@ -13,9 +13,8 @@ The important folders are:
 * Catalog - The append-only record of package changes, served as the catalog resource
 * Vulnerabilities - Known vulnerabilities, served to NuGet Audit
 * Authentication - API keys and their roles. Each endpoint requires a `FeedPermissions`. The feed is
-  open unless the host adds `AddAuthentication().AddNuDepotApiKey()` (a valid key is required) and
-  `AddAuthorizationBuilder().AddNuDepotPolicies()` (each key has its role); see `FeedAccessMode` and
-  [the configuration guide](../../docs/configuration.md#require-an-api-key)
+  open until its options have API keys or users, which the host accepts with `UseApiKeys()` and
+  `UsePasskeys()`; see `FeedAccess` and [the configuration guide](../../docs/configuration.md#require-an-api-key)
 * Signing - Repository signing of pushed packages
 * Entities - The package database (SQLite by default)
 * Storage - Stores the content of packages and symbols on the file system
@@ -78,10 +77,12 @@ repository signature, like packages from nuget.org, keep it. `allRepositorySigne
 every package carries this server's signature.
 
 ```json
-"RepositorySigning": {
-  "CertificatePath": "signing.pfx",
-  "CertificatePassword": "",
-  "TimestampServerUrl": "http://timestamp.digicert.com"
+"Feed": {
+  "RepositorySigning": {
+    "CertificatePath": "signing.pfx",
+    "CertificatePassword": "",
+    "TimestampServerUrl": "http://timestamp.digicert.com"
+  }
 }
 ```
 

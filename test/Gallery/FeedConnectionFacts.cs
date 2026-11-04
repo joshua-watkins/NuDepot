@@ -1,12 +1,11 @@
 using System.Collections.Generic;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Options;
 using Moq;
-using NuDepot.Core;
+using NuDepot.Core.Hosting;
 using Xunit;
 
 namespace NuDepot.Gallery.Tests;
@@ -16,8 +15,8 @@ public class FeedConnectionFacts
     public static FeedConnection CreateRemoteFeed(string serviceIndexUrl = "https://feed.test/v3/index.json")
     {
         return new FeedConnection(
-            Options.Create(new NuGetWebsiteOptions { ServiceIndexUrl = serviceIndexUrl }),
-            Options.Create(new AuthenticationOptions()),
+            Options.Create(new GalleryOptions { ServiceIndexUrl = serviceIndexUrl }),
+            new NuDepotFeatures(),
             server: null,
             httpContextAccessor: null);
     }
@@ -81,22 +80,21 @@ public class FeedConnectionFacts
     [InlineData(false, true, false)]
     public void SignInIsAvailableWhenCoHostedWithUsers(bool coHosted, bool users, bool expected)
     {
-        var authentication = new AuthenticationOptions();
-        if (users) authentication.AddScheme(NuDepotAuthenticationSchemes.User, scheme => scheme.HandlerType = typeof(Mock<IAuthenticationHandler>));
+        var features = new NuDepotFeatures { Passkeys = users };
 
         var target = coHosted
-            ? CreateCoHostedFeed(new[] { "http://localhost:5000" }, authentication)
+            ? CreateCoHostedFeed(new[] { "http://localhost:5000" }, features)
             : new FeedConnection(
-                Options.Create(new NuGetWebsiteOptions { ServiceIndexUrl = "https://feed.test/v3/index.json" }),
-                Options.Create(authentication),
+                Options.Create(new GalleryOptions { ServiceIndexUrl = "https://feed.test/v3/index.json" }),
+                features,
                 server: null,
                 httpContextAccessor: null);
 
-        // A remote feed has its own users: the website can't sign people in to it.
+        // A remote feed has its own users: the gallery can't sign people in to it.
         Assert.Equal(expected, target.SignInAvailable);
     }
 
-    private static FeedConnection CreateCoHostedFeed(IEnumerable<string> addresses, AuthenticationOptions? authentication = null)
+    private static FeedConnection CreateCoHostedFeed(IEnumerable<string> addresses, NuDepotFeatures? nuDepotFeatures = null)
     {
         var addressesFeature = new ServerAddressesFeature();
         foreach (var address in addresses)
@@ -116,8 +114,8 @@ public class FeedConnectionFacts
         context.Request.PathBase = "/feed";
 
         return new FeedConnection(
-            Options.Create(new NuGetWebsiteOptions()),
-            Options.Create(authentication ?? new AuthenticationOptions()),
+            Options.Create(new GalleryOptions()),
+            nuDepotFeatures ?? new NuDepotFeatures(),
             server.Object,
             new HttpContextAccessor { HttpContext = context });
     }

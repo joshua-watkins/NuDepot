@@ -2,9 +2,9 @@ using System;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using NuDepot.Core;
+using NuDepot.Core.Hosting;
 using NuDepot.Core.PackageDetails;
 using NuDepot.Core.Search;
 using NuDepot.Core.ServiceIndex;
@@ -12,22 +12,24 @@ using NuDepot.Gallery.Pages;
 
 namespace NuDepot.Gallery.Extensions;
 
-public static class WebsiteExtensions
+public static class GalleryHostingExtensions
 {
     /// <summary>
-    /// Adds the NuGet feed website. The website reads packages from the feed configured by
-    /// <see cref="NuGetWebsiteOptions.ServiceIndexUrl"/>, or from a server hosted in the same application.
+    /// Adds the gallery website. It reads packages from the feed at <see cref="GalleryOptions.ServiceIndexUrl"/>,
+    /// or from a feed hosted in the same application. Its <see cref="GalleryOptions"/> are bound from the
+    /// <see cref="GalleryOptions.Section"/> configuration section, then changed by <paramref name="configure"/>.
     /// </summary>
-    public static IServiceCollection AddNuDepotUI(this IServiceCollection services)
+    public static NuDepotBuilder AddGallery(this NuDepotBuilder builder, Action<GalleryOptions>? configure = null)
     {
-        if (services == null) throw new ArgumentNullException(nameof(services));
+        ArgumentNullException.ThrowIfNull(builder);
 
-        services.AddRouting(options => options.LowercaseUrls = true);
-        services.AddHttpContextAccessor();
+        var services = builder.Services;
 
-        services
-            .AddOptions<NuGetWebsiteOptions>()
-            .BindConfiguration(NuGetWebsiteOptions.DefaultSection);
+        var options = services.AddOptions<GalleryOptions>().BindConfiguration(GalleryOptions.Section);
+        if (configure != null)
+        {
+            options.Configure(configure);
+        }
 
         services.AddSingleton<FeedConnection>();
         services.AddSingleton<IServiceIndexClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateServiceIndexClient());
@@ -38,15 +40,17 @@ public static class WebsiteExtensions
         services.AddTransient<PackageModel>();
         services.AddTransient<UploadModel>();
 
-        return services;
+        return builder;
     }
 
     /// <summary>
-    /// Maps the NuGet feed website's pages and files.
+    /// Maps the gallery's pages and files.
     /// </summary>
-    public static IEndpointRouteBuilder MapNuDepotUI(this IEndpointRouteBuilder endpoints)
+    public static NuDepotApplicationBuilder UseGallery(this NuDepotApplicationBuilder app)
     {
-        if (endpoints == null) throw new ArgumentNullException(nameof(endpoints));
+        ArgumentNullException.ThrowIfNull(app);
+
+        var endpoints = app.Endpoints;
 
         endpoints.MapGet("/", WebsiteEndpoints.IndexAsync).WithSignedInUser();
         endpoints.MapGet("/packages/{id}/{version?}", WebsiteEndpoints.PackageAsync).WithSignedInUser();
@@ -55,11 +59,11 @@ public static class WebsiteExtensions
         endpoints.MapGet("/account", WebsiteEndpoints.Account).WithSignedInUser();
         endpoints.MapGet(WebsiteFiles.RequestPath + "/{**path}", WebsiteFiles.GetFile);
 
-        return endpoints;
+        return app;
     }
 
     /// <summary>
-    /// Shows who's signed in, when the website is hosted with a feed server that has users.
+    /// Shows who's signed in, when the gallery is hosted with a feed whose users sign in with passkeys.
     /// </summary>
     private static RouteHandlerBuilder WithSignedInUser(this RouteHandlerBuilder builder)
     {

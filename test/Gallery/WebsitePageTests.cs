@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Moq;
+using NuDepot.Core.Hosting;
 using NuDepot.Core.Models;
 using NuDepot.Core.PackageDetails;
 using NuDepot.Core.Search;
@@ -35,7 +36,7 @@ public class WebsitePageTests : IDisposable
 
     public WebsitePageTests()
     {
-        // Host the website in memory, the way the Windows and Linux hosts do, without the server.
+        // Host the gallery in memory, the way the Windows and Linux hosts do, without the feed.
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = Environments.Production,
@@ -45,17 +46,16 @@ public class WebsitePageTests : IDisposable
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            { "Website:ServiceIndexUrl", ServiceIndexUrl },
+            { "Gallery:ServiceIndexUrl", ServiceIndexUrl },
         });
 
-        builder.Services.AddNuDepotUI();
+        builder.Services.AddNuDepot().AddGallery();
         builder.Services.AddSingleton(_search.Object);
         builder.Services.AddSingleton(_packages.Object);
         builder.Services.AddSingleton(_serviceIndex.Object);
 
         _app = builder.Build();
-        _app.UseRouting();
-        _app.MapNuDepotUI();
+        _app.UseNuDepot().UseGallery();
         _app.StartAsync().GetAwaiter().GetResult();
 
         _search

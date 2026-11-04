@@ -21,13 +21,15 @@ namespace NuDepot.Feed.Authentication;
 /// when pushing or deleting (the push command's -k option, or nuget.config's apikeys), and send a
 /// package source's credentials from nuget.config with HTTP Basic authentication. Either works:
 /// the key is the header's value, or the Basic password. The Basic user name isn't used.
-/// The key is a configured key, or one a user created if the application adds the feed's users.
+/// The key is a configured key, or one a user created if users are enabled. Keys are only accepted
+/// if the application calls <c>UseApiKeys()</c>.
 /// </summary>
 internal sealed class ApiKeyAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder,
-    FeedAccess access) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+    FeedAccess access,
+    FeedPipeline pipeline) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = NuDepotAuthenticationSchemes.ApiKey;
 
@@ -37,11 +39,12 @@ internal sealed class ApiKeyAuthenticationHandler(
     public const string Issuer = "NuDepot";
 
     private readonly FeedAccess _access = access ?? throw new ArgumentNullException(nameof(access));
+    private readonly FeedPipeline _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var presentedKeys = GetPresentedKeys(Request);
-        if (presentedKeys.Count == 0)
+        if (presentedKeys.Count == 0 || !_pipeline.UsesApiKeys)
         {
             return AuthenticateResult.NoResult();
         }

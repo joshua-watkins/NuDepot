@@ -20,16 +20,16 @@ namespace NuDepot.Feed.Tests.Services
         private readonly Mock<IPackageDatabase> _packages;
         private readonly Mock<IPackageStorageService> _storage;
 
-        private readonly NuDepotOptions _options;
+        private readonly FeedOptions _options;
         private readonly PackageDeletionService _target;
 
         public PackageDeletionServiceTests()
         {
             _packages = new Mock<IPackageDatabase>();
             _storage = new Mock<IPackageStorageService>();
-            _options = new NuDepotOptions();
+            _options = new FeedOptions();
 
-            var optionsSnapshot = new Mock<IOptionsSnapshot<NuDepotOptions>>();
+            var optionsSnapshot = new Mock<IOptionsSnapshot<FeedOptions>>();
             optionsSnapshot.Setup(o => o.Value).Returns(_options);
 
             _target = new PackageDeletionService(

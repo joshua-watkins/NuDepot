@@ -24,7 +24,7 @@ namespace NuDepot.Feed.Users;
 public partial class UserService(
     NuDepotContext context,
     SystemTime time,
-    IOptionsMonitor<FeedAuthorizationOptions> options,
+    IOptionsMonitor<FeedOptions> options,
     ILogger<UserService> logger)
 {
     /// <summary>
@@ -51,7 +51,7 @@ public partial class UserService(
 
     private readonly NuDepotContext _context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly SystemTime _time = time ?? throw new ArgumentNullException(nameof(time));
-    private readonly IOptionsMonitor<FeedAuthorizationOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly IOptionsMonitor<FeedOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly ILogger<UserService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>
@@ -65,7 +65,7 @@ public partial class UserService(
     /// Whether someone may create an account. The first account can always be created.
     /// </summary>
     public async Task<bool> CanSignUpAsync(CancellationToken cancellationToken)
-        => _options.CurrentValue.Users.AllowSignUp || !await AnyAsync(cancellationToken);
+        => _options.CurrentValue.Authorization.Users.AllowSignUp || !await AnyAsync(cancellationToken);
 
     /// <summary>
     /// Whether anyone has an account.
@@ -112,7 +112,7 @@ public partial class UserService(
             user = new User
             {
                 UserName = userName,
-                Role = _options.CurrentValue.Users.DefaultRole,
+                Role = _options.CurrentValue.Authorization.Users.DefaultRole,
                 CreatedAt = now,
             };
 
@@ -143,7 +143,7 @@ public partial class UserService(
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
         var isFirst = !await AnyAsync(cancellationToken);
-        user.Role = isFirst ? FeedRole.Admin : _options.CurrentValue.Users.DefaultRole;
+        user.Role = isFirst ? FeedRole.Admin : _options.CurrentValue.Authorization.Users.DefaultRole;
         user.CreatedAt = _time.UtcNow;
         user.Passkeys.Add(passkey);
 

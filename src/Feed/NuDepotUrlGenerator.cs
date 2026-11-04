@@ -12,12 +12,12 @@ public class NuDepotUrlGenerator : IUrlGenerator
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly LinkGenerator _linkGenerator;
-    private readonly IOptions<NuDepotOptions> _options;
+    private readonly IOptions<FeedOptions> _options;
 
     public NuDepotUrlGenerator(
         IHttpContextAccessor httpContextAccessor,
         LinkGenerator linkGenerator,
-        IOptions<NuDepotOptions> options)
+        IOptions<FeedOptions> options)
     {
         _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         _linkGenerator = linkGenerator ?? throw new ArgumentNullException(nameof(linkGenerator));

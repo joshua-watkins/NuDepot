@@ -23,14 +23,14 @@ namespace NuDepot.Feed.Users;
 public class PasskeyService(
     UserService users,
     SystemTime time,
-    IOptionsMonitor<FeedAuthorizationOptions> options)
+    IOptionsMonitor<FeedOptions> options)
 {
     private const string ServerName = "NuDepot";
     private const string ExpiredError = "The passkey request expired. Try again.";
 
     private readonly UserService _users = users ?? throw new ArgumentNullException(nameof(users));
     private readonly SystemTime _time = time ?? throw new ArgumentNullException(nameof(time));
-    private readonly IOptionsMonitor<FeedAuthorizationOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly IOptionsMonitor<FeedOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
 
     /// <summary>
     /// Start creating an account with a passkey.
@@ -257,7 +257,7 @@ public class PasskeyService(
     /// </summary>
     private Fido2 CreateFido2(HttpRequest request)
     {
-        var settings = _options.CurrentValue.Users;
+        var settings = _options.CurrentValue.Authorization.Users;
         var origins = settings.Origins.Count > 0
             ? new HashSet<string>(settings.Origins, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>(StringComparer.OrdinalIgnoreCase) { $"{request.Scheme}://{request.Host.ToUriComponent()}" };

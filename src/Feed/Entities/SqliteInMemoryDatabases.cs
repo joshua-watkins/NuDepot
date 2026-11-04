@@ -1,40 +1,8 @@
 using System;
 using System.Collections.Concurrent;
 using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using NuDepot.Feed.Configuration;
-using NuDepot.Feed.Extensions;
 
-namespace NuDepot.Feed;
-
-public static class SqliteApplicationExtensions
-{
-    public static NuDepotApplication AddSqliteDatabase(this NuDepotApplication app)
-    {
-        app.Services.AddSingleton<SqliteInMemoryDatabases>();
-        app.Services.AddNuDepotDatabaseProvider("Sqlite", (provider, options) =>
-        {
-            var databaseOptions = provider.GetRequiredService<IOptionsSnapshot<DatabaseOptions>>();
-            var connectionString = databaseOptions.Value.ConnectionString;
-
-            provider.GetRequiredService<SqliteInMemoryDatabases>().KeepAlive(connectionString);
-            options.UseSqlite(connectionString);
-        });
-
-        return app;
-    }
-
-    public static NuDepotApplication AddSqliteDatabase(
-        this NuDepotApplication app,
-        Action<DatabaseOptions> configure)
-    {
-        app.AddSqliteDatabase();
-        app.Services.Configure(configure);
-        return app;
-    }
-}
+namespace NuDepot.Feed.Entities;
 
 /// <summary>
 /// Keeps in-memory SQLite databases, like "Data Source=NuDepot;Mode=Memory;Cache=Shared",

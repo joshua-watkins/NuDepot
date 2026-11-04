@@ -36,7 +36,7 @@ namespace NuDepot.Feed.Tests.Services
                 Mock.Of<IRepositorySigningService>(),
                 Mock.Of<IUrlGenerator>(),
                 _time.Object,
-                Mock.Of<IOptionsSnapshot<NuDepotOptions>>(),
+                Mock.Of<IOptionsSnapshot<FeedOptions>>(),
                 Mock.Of<ILogger<PackageIndexingService>>());
         }
 

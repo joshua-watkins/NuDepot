@@ -1,0 +1,83 @@
+using System;
+using System.Collections.Generic;
+using Microsoft.Extensions.Options;
+using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Configuration;
+
+namespace NuDepot.Feed.Validation;
+
+/// <summary>
+/// Validates the feed's options. Whether the application uses what the options turn on is checked
+/// when it starts, by <see cref="ValidateFeedPipeline"/>.
+/// </summary>
+public class ValidateFeedOptions : IValidateOptions<FeedOptions>
+{
+    public ValidateOptionsResult Validate(string? name, FeedOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var failures = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(options.Database.ConnectionString))
+        {
+            failures.Add($"'{Field(nameof(FeedOptions.Database), nameof(DatabaseOptions.ConnectionString))}' is required.");
+        }
+
+        if (options.Mirror.PackageDownloadTimeoutSeconds < 0)
+        {
+            failures.Add(
+                $"'{Field(nameof(FeedOptions.Mirror), nameof(MirrorOptions.PackageDownloadTimeoutSeconds))}' " +
+                $"must be between 0 and {int.MaxValue}.");
+        }
+
+        if (options.Mirror.Enabled && options.Mirror.PackageSource == null)
+        {
+            failures.Add(
+                $"'{Field(nameof(FeedOptions.Mirror), nameof(MirrorOptions.PackageSource))}' is required " +
+                $"when '{Field(nameof(FeedOptions.Mirror), nameof(MirrorOptions.Enabled))}' is true.");
+        }
+
+        ValidateAuthorization(options, failures);
+
+        return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
+    }
+
+    private static void ValidateAuthorization(FeedOptions options, List<string> failures)
+    {
+        var authorization = options.Authorization;
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+
+        for (var i = 0; i < authorization.ApiKeys.Count; i++)
+        {
+            var apiKey = authorization.ApiKeys[i];
+            var field = Field(nameof(FeedOptions.Authorization), nameof(FeedAuthorizationOptions.ApiKeys), i.ToString());
+
+            if (string.IsNullOrWhiteSpace(apiKey.Key))
+            {
+                failures.Add($"'{field}:{nameof(ApiKeyOptions.Key)}' is required.");
+            }
+            else if (!keys.Add(apiKey.Key))
+            {
+                failures.Add($"'{field}:{nameof(ApiKeyOptions.Key)}' is the same as another API key.");
+            }
+
+            if (apiKey.Role == null)
+            {
+                failures.Add($"'{field}:{nameof(ApiKeyOptions.Role)}' is required. Allowed values: {string.Join(", ", Enum.GetNames<FeedRole>())}");
+            }
+        }
+
+        // Without API keys or users, the feed is open, and would ignore what anonymous requests may do.
+        if (authorization.AnonymousRole != null &&
+            FeedAccess.GetApiKeys(options).Count == 0 &&
+            !authorization.Users.Enabled)
+        {
+            failures.Add(
+                $"'{Field(nameof(FeedOptions.Authorization), nameof(FeedAuthorizationOptions.AnonymousRole))}' is set, " +
+                "but the feed has no API keys or users, so it's open and anyone may do anything. Add API keys, " +
+                "enable users, or remove the setting.");
+        }
+    }
+
+    private static string Field(params string[] path) => $"{FeedOptions.Section}:{string.Join(':', path)}";
+}

@@ -97,9 +97,9 @@ public class AuthorizationIntegrationTests : IDisposable
     [Theory]
     [InlineData(null)]
     [InlineData("any-key")]
-    public async Task FeedIsOpenWithoutAuthentication(string? apiKey)
+    public async Task FeedIsOpenWithoutApiKeysOrUsers(string? apiKey)
     {
-        var app = CreateApp(useAuthentication: false, useAuthorization: false);
+        var app = CreateApp();
         await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
         using var client = app.CreateClient();
 
@@ -243,76 +243,52 @@ public class AuthorizationIntegrationTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
     }
 
-    [Theory]
-    [InlineData(false, false, FeedAccessMode.Open)]
-    [InlineData(true, false, FeedAccessMode.ApiKey)]
-    [InlineData(true, true, FeedAccessMode.Roles)]
-    public void WhatTheApplicationAddsChoosesTheMode(bool useAuthentication, bool useAuthorization, FeedAccessMode expected)
+    public static TheoryData<Dictionary<string, string>, bool> OpenFeeds => new()
     {
-        var configuration = expected switch
-        {
-            FeedAccessMode.Open => null,
-            FeedAccessMode.ApiKey => KeysWithoutRoles(),
-            _ => RoleKeys(),
-        };
-        var app = CreateApp(configuration, useAuthentication, useAuthorization);
-
-        Assert.Equal(expected, app.Services.GetRequiredService<FeedAccess>().Mode);
-    }
+        { new(), true },
+        { new() { { "ApiKey", "" } }, true },
+        { RoleKeys(), false },
+        { new() { { "ApiKey", AdminKey } }, false },
+        { new() { { "Authorization:Users:Enabled", "true" } }, false },
+    };
 
     [Theory]
-    [InlineData(null, "read", HttpStatusCode.OK)]
-    [InlineData(null, "push", HttpStatusCode.Unauthorized)]
-    [InlineData(null, "vulnerability", HttpStatusCode.Unauthorized)]
-    [InlineData(ReadOnlyKey, "push", HttpStatusCode.Created)]
-    [InlineData(ReadOnlyKey, "hard delete", HttpStatusCode.NoContent)]
-    [InlineData(ReadWriteKey, "vulnerability", HttpStatusCode.OK)]
-    [InlineData("wrong-key", "push", HttpStatusCode.Unauthorized)]
-    public async Task AuthenticationWithoutAuthorizationOnlyNeedsAValidKey(string? apiKey, string operation, HttpStatusCode expected)
+    [MemberData(nameof(OpenFeeds))]
+    public void FeedIsOpenUntilItHasApiKeysOrUsers(Dictionary<string, string> configuration, bool expected)
     {
-        var configuration = KeysWithoutRoles();
-        configuration["PackageDeletionBehavior"] = "HardDelete";
-        var app = CreateApp(configuration, useAuthorization: false);
-        await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
-        using var client = app.CreateClient();
+        var app = CreateApp(configuration);
 
-        using var request = CreateRequest(operation);
-        if (apiKey != null) request.Headers.Add("X-NuGet-ApiKey", apiKey);
-        using var response = await client.SendAsync(request);
-
-        Assert.Equal(expected, response.StatusCode);
+        Assert.Equal(expected, app.Services.GetRequiredService<FeedAccess>().IsOpen);
     }
 
     public static TheoryData<bool, bool, Dictionary<string, string>, string> MismatchedSettings => new()
     {
-        // Keys the application would ignore, leaving the feed open.
-        { false, false, RoleKeys(), "doesn't add the feed's authentication" },
-        { false, false, new() { { "ApiKey", AdminKey } }, "doesn't add the feed's authentication" },
-        { false, false, new() { { "Authorization:AnonymousRole", "None" } }, "doesn't add the feed's authentication" },
+        // Keys the application would ignore.
+        { false, true, RoleKeys(), "doesn't accept them. Call UseApiKeys()" },
+        { false, true, new() { { "ApiKey", AdminKey } }, "doesn't accept them. Call UseApiKeys()" },
 
-        // Authentication with nothing to authenticate.
-        { true, false, new(), "no API keys are configured" },
-        { true, true, new(), "no API keys are configured" },
+        // An anonymous role the open feed would ignore.
+        { true, true, new() { { "Authorization:AnonymousRole", "None" } }, "the feed has no API keys or users, so it's open" },
 
-        // Roles the application would ignore, letting every key do everything.
-        { true, false, RoleKeys(), "'Authorization:ApiKeys:1:Role' is ReadWrite, but the application doesn't add the feed's authorization policies" },
+        // Users the application would ignore.
+        { true, false, new() { { "Authorization:Users:Enabled", "true" } }, "Call UsePasskeys()" },
 
-        // Roles the application needs.
-        { true, true, KeysWithoutRoles(), "'Authorization:ApiKeys:0:Role' is required" },
+        // Users whose API keys the application would ignore.
+        { false, true, new() { { "Authorization:Users:Enabled", "true" } }, "who create their own API keys, but doesn't accept API keys" },
 
-        // Policies that can't authenticate the keys.
-        { false, true, RoleKeys(), "Call services.AddAuthentication().AddNuDepotApiKey()" },
+        // Keys without roles.
+        { true, true, KeysWithoutRoles(), "'Feed:Authorization:ApiKeys:0:Role' is required" },
     };
 
     [Theory]
     [MemberData(nameof(MismatchedSettings))]
-    public void SettingsMustMatchWhatTheApplicationAdds(
-        bool useAuthentication,
-        bool useAuthorization,
+    public void SettingsMustMatchWhatTheApplicationUses(
+        bool useApiKeys,
+        bool usePasskeys,
         Dictionary<string, string> configuration,
         string expectedFailure)
     {
-        var app = new NuDepotTestApplication(_output, configuration: configuration, useAuthentication: useAuthentication, useAuthorization: useAuthorization);
+        var app = CreateApp(configuration, useApiKeys, usePasskeys);
 
         var exception = Assert.Throws<OptionsValidationException>(() => app.Services);
 
@@ -322,23 +298,28 @@ public class AuthorizationIntegrationTests : IDisposable
     [Fact]
     public void ApiKeysNeedAUniqueKey()
     {
-        var options = new FeedAuthorizationOptions
+        var options = new FeedOptions
         {
-            ApiKeys =
+            Database = { ConnectionString = "Data Source=nudepot.db" },
+            Authorization =
             {
-                new ApiKeyOptions { Name = "No role", Key = "key" },
-                new ApiKeyOptions { Name = "No key", Role = FeedRole.Admin },
-                new ApiKeyOptions { Name = "Duplicate", Key = "key", Role = FeedRole.ReadOnly },
+                ApiKeys =
+                {
+                    new ApiKeyOptions { Name = "No role", Key = "key" },
+                    new ApiKeyOptions { Name = "No key", Role = FeedRole.Admin },
+                    new ApiKeyOptions { Name = "Duplicate", Key = "key", Role = FeedRole.ReadOnly },
+                },
             },
         };
 
-        var result = new ValidateNuDepotOptions().Validate(Options.DefaultName, options);
+        var result = new ValidateFeedOptions().Validate(Options.DefaultName, options);
 
         Assert.True(result.Failed);
         Assert.Collection(
             result.Failures!,
-            failure => Assert.Contains("ApiKeys:1:Key field is required", failure),
-            failure => Assert.Contains("ApiKeys:2:Key field is the same as another API key", failure));
+            failure => Assert.Contains("'Feed:Authorization:ApiKeys:0:Role' is required", failure),
+            failure => Assert.Contains("'Feed:Authorization:ApiKeys:1:Key' is required", failure),
+            failure => Assert.Contains("'Feed:Authorization:ApiKeys:2:Key' is the same as another API key", failure));
     }
 
     private static Dictionary<string, string> KeysWithoutRoles() => new()
@@ -394,10 +375,10 @@ public class AuthorizationIntegrationTests : IDisposable
 
     private NuDepotTestApplication CreateApp(
         IReadOnlyDictionary<string, string>? configuration = null,
-        bool useAuthentication = true,
-        bool useAuthorization = true)
+        bool useApiKeys = true,
+        bool usePasskeys = true)
     {
-        var app = new NuDepotTestApplication(_output, configuration: configuration, useAuthentication: useAuthentication, useAuthorization: useAuthorization);
+        var app = new NuDepotTestApplication(_output, configuration: configuration, useApiKeys: useApiKeys, usePasskeys: usePasskeys);
         _disposables.Add(app);
         return app;
     }

@@ -19,7 +19,7 @@ public sealed class RepositorySigningService : IRepositorySigningService, IDispo
     private readonly RepositorySigningOptions _options;
     private readonly ILogger<RepositorySigningService> _logger;
 
-    public RepositorySigningService(IOptions<NuDepotOptions> options, ILogger<RepositorySigningService> logger)
+    public RepositorySigningService(IOptions<FeedOptions> options, ILogger<RepositorySigningService> logger)
     {
         _options = options?.Value?.RepositorySigning ?? new RepositorySigningOptions();
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

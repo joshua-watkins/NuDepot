@@ -23,7 +23,7 @@ public enum FeedPermissions
 
     /// <summary>
     /// Unlist and relist packages. Deleting a package unlists it when
-    /// <see cref="NuDepotOptions.PackageDeletionBehavior"/> is <see cref="PackageDeletionBehavior.Unlist"/>.
+    /// <see cref="FeedOptions.PackageDeletionBehavior"/> is <see cref="PackageDeletionBehavior.Unlist"/>.
     /// </summary>
     Unlist = 1 << 2,
 
@@ -33,9 +33,9 @@ public enum FeedPermissions
     Deprecate = 1 << 3,
 
     /// <summary>
-    /// Permanently remove packages: deleting a package when <see cref="NuDepotOptions.PackageDeletionBehavior"/>
+    /// Permanently remove packages: deleting a package when <see cref="FeedOptions.PackageDeletionBehavior"/>
     /// is <see cref="PackageDeletionBehavior.HardDelete"/>, and pushing a package that replaces an existing one
-    /// when <see cref="NuDepotOptions.AllowPackageOverwrites"/> is enabled.
+    /// when <see cref="FeedOptions.AllowPackageOverwrites"/> is enabled.
     /// </summary>
     HardDelete = 1 << 4,
 

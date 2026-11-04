@@ -24,7 +24,7 @@ public class PackageIndexingService : IPackageIndexingService
     private readonly IRepositorySigningService _signing;
     private readonly IUrlGenerator _url;
     private readonly SystemTime _time;
-    private readonly IOptionsSnapshot<NuDepotOptions> _options;
+    private readonly IOptionsSnapshot<FeedOptions> _options;
     private readonly ILogger<PackageIndexingService> _logger;
 
     public PackageIndexingService(
@@ -35,7 +35,7 @@ public class PackageIndexingService : IPackageIndexingService
         IRepositorySigningService signing,
         IUrlGenerator url,
         SystemTime time,
-        IOptionsSnapshot<NuDepotOptions> options,
+        IOptionsSnapshot<FeedOptions> options,
         ILogger<PackageIndexingService> logger)
     {
         _packages = packages ?? throw new ArgumentNullException(nameof(packages));

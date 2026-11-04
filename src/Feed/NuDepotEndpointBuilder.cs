@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection;
 using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Endpoints;
 
@@ -8,6 +7,7 @@ namespace NuDepot.Feed;
 
 /// <summary>
 /// Maps the feed's endpoints. Each one requires the <see cref="FeedPermissions"/> for what it does.
+/// The account endpoints are mapped separately, by <see cref="MapAccountRoutes"/>.
 /// </summary>
 public class NuDepotEndpointBuilder
 {
@@ -23,16 +23,13 @@ public class NuDepotEndpointBuilder
         MapDeprecationRoutes(endpoints);
         MapVulnerabilityRoutes(endpoints);
         MapRepositorySignatureRoutes(endpoints);
-        MapAccountRoutes(endpoints);
     }
 
     /// <summary>
-    /// Maps the accounts of people who sign in with passkeys, if the application adds the feed's users.
+    /// Maps the accounts of people who sign in with passkeys. <c>UsePasskeys()</c> maps them when users are enabled.
     /// </summary>
-    public void MapAccountRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapAccountRoutes(IEndpointRouteBuilder endpoints)
     {
-        if (!endpoints.ServiceProvider.GetRequiredService<FeedAccess>().UsersEnabled) return;
-
         endpoints.MapGet("api/account", AccountEndpoints.GetAsync);
         endpoints.MapPost("api/account/signup", AccountEndpoints.SignUpAsync);
         endpoints.MapPost("api/account/signin/options", AccountEndpoints.SignInOptionsAsync);

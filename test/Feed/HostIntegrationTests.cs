@@ -8,26 +8,64 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
+using NuDepot.Core.Hosting;
 using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Search;
+using NuDepot.Feed.Storage;
 using Xunit;
 
 namespace NuDepot.Feed.Tests
 {
     public class HostIntegrationTests
     {
-        private readonly string DatabaseTypeKey = "Database:Type";
-        private readonly string ConnectionStringKey = "Database:ConnectionString";
+        private readonly string StorageTypeKey = "Feed:Storage:Type";
+        private readonly string ConnectionStringKey = "Feed:Database:ConnectionString";
 
         [Fact]
-        public void ThrowsIfDatabaseTypeInvalid()
+        public void ThrowsIfStorageTypeInvalid()
         {
             var provider = BuildServiceProvider(new Dictionary<string, string?>
             {
-                { DatabaseTypeKey, "InvalidType" }
+                { StorageTypeKey, "InvalidType" }
             });
 
             Assert.Throws<InvalidOperationException>(
-                () => provider.GetRequiredService<NuDepotContext>());
+                () => provider.GetRequiredService<IStorageService>());
+        }
+
+        [Theory]
+        [InlineData("FileSystem", typeof(FileStorageService))]
+        [InlineData("Null", typeof(NullStorageService))]
+        public void StorageTypeChoosesTheStorage(string type, Type expected)
+        {
+            var provider = BuildServiceProvider(new Dictionary<string, string?>
+            {
+                { StorageTypeKey, type }
+            });
+
+            Assert.IsType(expected, provider.GetRequiredService<IStorageService>());
+        }
+
+        [Theory]
+        [InlineData("Database", typeof(DatabaseSearchService))]
+        [InlineData("Null", typeof(NullSearchService))]
+        public void SearchTypeChoosesTheSearch(string type, Type expected)
+        {
+            var provider = BuildServiceProvider(new Dictionary<string, string?>
+            {
+                { "Feed:Search:Type", type }
+            });
+
+            using var scope = provider.CreateScope();
+            Assert.IsType(expected, scope.ServiceProvider.GetRequiredService<ISearchService>());
+        }
+
+        [Fact]
+        public void ConfigureChangesTheBoundOptions()
+        {
+            var provider = BuildServiceProvider(configure: options => options.Storage.Type = StorageType.Null);
+
+            Assert.IsType<NullStorageService>(provider.GetRequiredService<IStorageService>());
         }
 
         [Fact]
@@ -35,7 +73,6 @@ namespace NuDepot.Feed.Tests
         {
             var provider = BuildServiceProvider(new Dictionary<string, string?>
             {
-                { DatabaseTypeKey, "Sqlite" },
                 { ConnectionStringKey, "..." }
             });
 
@@ -47,7 +84,6 @@ namespace NuDepot.Feed.Tests
         {
             var provider = BuildServiceProvider(new Dictionary<string, string?>
             {
-                { DatabaseTypeKey, "Sqlite" },
                 { ConnectionStringKey, "..." }
             });
 
@@ -59,7 +95,6 @@ namespace NuDepot.Feed.Tests
         {
             var provider = BuildServiceProvider(new Dictionary<string, string?>
             {
-                { DatabaseTypeKey, "Sqlite" },
                 { ConnectionStringKey, $"Data Source={Guid.NewGuid():N};Mode=Memory;Cache=Shared" }
             });
 
@@ -96,7 +131,7 @@ namespace NuDepot.Feed.Tests
                 .Build();
 
             Assert.Contains("Mode=Memory", configuration[ConnectionStringKey]);
-            Assert.True(configuration.GetValue<bool>("Storage:Temporary"));
+            Assert.True(configuration.GetValue<bool>("Feed:Storage:Temporary"));
         }
 
         [Fact]
@@ -104,10 +139,10 @@ namespace NuDepot.Feed.Tests
         {
             var provider = (ServiceProvider)BuildServiceProvider(new Dictionary<string, string?>
             {
-                { "Storage:Temporary", "true" },
+                { "Feed:Storage:Temporary", "true" },
             });
 
-            var path = provider.GetRequiredService<IOptions<FileSystemStorageOptions>>().Value.Path;
+            var path = provider.GetRequiredService<IOptions<FeedOptions>>().Value.Storage.Path;
 
             Assert.NotNull(path);
             Assert.StartsWith(Path.GetTempPath(), path);
@@ -118,15 +153,14 @@ namespace NuDepot.Feed.Tests
             Assert.False(Directory.Exists(path));
         }
 
-        private IServiceProvider BuildServiceProvider(Dictionary<string, string?>? configs = null)
+        private IServiceProvider BuildServiceProvider(Dictionary<string, string?>? configs = null, Action<FeedOptions>? configure = null)
         {
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    { DatabaseTypeKey, "Sqlite" },
                     { ConnectionStringKey, "Data Source=nuget.db" },
-                    { "Storage:Type", "FileSystem" },
-                    { "Search:Type", "Database" },
+                    { StorageTypeKey, "FileSystem" },
+                    { "Feed:Search:Type", "Database" },
                 })
                 .AddInMemoryCollection(configs ?? new Dictionary<string, string?>())
                 .Build();
@@ -135,11 +169,7 @@ namespace NuDepot.Feed.Tests
 
             services.AddSingleton<IConfiguration>(configuration);
             services.AddLogging();
-            services.AddNuDepot(feed =>
-            {
-                feed.AddSqliteDatabase();
-                feed.AddFileStorage();
-            });
+            services.AddNuDepot().AddFeed(configure);
 
             return services.BuildServiceProvider();
         }
