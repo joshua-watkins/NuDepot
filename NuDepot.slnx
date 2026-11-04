@@ -1,9 +1,8 @@
 <Solution>
+  <!-- The services and installer build for x64 or ARM64. The libraries and tests are always Any CPU. -->
   <Configurations>
-    <Platform Name="Any CPU" />
-    <Platform Name="ARM64" />
     <Platform Name="x64" />
-    <Platform Name="x86" />
+    <Platform Name="ARM64" />
   </Configurations>
   <Folder Name="/docs/">
     <File Path="README.md" />
@@ -22,15 +21,34 @@
     <File Path="docs/installation/iis-proxy.md" />
     <File Path="docs/installation/local.md" />
   </Folder>
-  <Project Path="pub/Linux/Linux.csproj" />
-  <Project Path="pub/Windows.Setup/Windows.Setup.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" Id="1f9582b8-5580-45cd-92cf-83fa0e23d35f">
-    <Platform Solution="*|Any CPU" Project="x64" />
+  <Project Path="pub/Linux/Linux.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|ARM64" Project="ARM64" />
   </Project>
-  <Project Path="pub/Windows/Windows.csproj" />
-  <Project Path="src/Core/Core.csproj" />
-  <Project Path="src/Feed/Feed.csproj" />
-  <Project Path="src/Gallery/Gallery.csproj" />
-  <Project Path="test/Core/Core.Tests.csproj" />
-  <Project Path="test/Feed/Feed.Tests.csproj" />
-  <Project Path="test/Gallery/Gallery.Tests.csproj" />
+  <Project Path="pub/Windows.Setup/Windows.Setup.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" Id="1f9582b8-5580-45cd-92cf-83fa0e23d35f">
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|ARM64" Project="ARM64" />
+  </Project>
+  <Project Path="pub/Windows/Windows.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|ARM64" Project="ARM64" />
+  </Project>
+  <Project Path="src/Core/Core.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
+  <Project Path="src/Feed/Feed.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
+  <Project Path="src/Gallery/Gallery.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
+  <Project Path="test/Core/Core.Tests.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
+  <Project Path="test/Feed/Feed.Tests.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
+  <Project Path="test/Gallery/Gallery.Tests.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
 </Solution>

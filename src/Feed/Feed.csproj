@@ -11,8 +11,6 @@
 	  <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
 	  <!-- Generates the minimal API endpoints' request handling at compile time instead of with reflection. -->
 	  <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
-	  <!-- The Windows installer (pub/Windows.Setup) publishes the Windows service, which references this project, for win-x64. -->
-	  <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>

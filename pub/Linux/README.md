@@ -5,10 +5,11 @@ Run from a shell, it behaves like a normal console application.
 
 ## Building for Linux
 
-Publish for your Linux runtime, for example:
+Publish for x64 (`linux-x64`) or ARM64 (`linux-arm64`, like a Raspberry Pi with a 64-bit OS or an AWS Graviton server):
 
 ```sh
 dotnet publish pub/Linux/Linux.csproj -p:SolutionName=NuDepot -c Release -r linux-x64 --self-contained -o out
+dotnet publish pub/Linux/Linux.csproj -p:SolutionName=NuDepot -c Release -r linux-arm64 --self-contained -o out
 ```
 
 ## Installation

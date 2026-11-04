@@ -11,19 +11,25 @@ a temporary package folder, so it starts empty each time.
 
 ## Building for Windows
 
+Publish for x64 (`win-x64`) or ARM64 (`win-arm64`):
+
 ```powershell
 dotnet publish pub/Windows/Windows.csproj -p:SolutionName=NuDepot -c Release -r win-x64 --self-contained -o out
 ```
 
 ## Installation
 
-Build the installer, then run `NuDepot.msi`:
+Build the installer for the machine's architecture, then run it:
 
 ```powershell
-dotnet build pub/Windows.Setup/Windows.Setup.wixproj -p:SolutionName=NuDepot -c Release
-# Output: pub/Windows.Setup/bin/x64/Release/en-US/NuDepot.msi
+dotnet build pub/Windows.Setup/Windows.Setup.wixproj -p:SolutionName=NuDepot -c Release -p:Platform=x64
+# Output: pub/Windows.Setup/bin/x64/Release/en-US/NuDepot-x64.msi
+
+dotnet build pub/Windows.Setup/Windows.Setup.wixproj -p:SolutionName=NuDepot -c Release -p:Platform=ARM64
+# Output: pub/Windows.Setup/bin/ARM64/Release/en-US/NuDepot-arm64.msi
 ```
 
+Building the solution builds the installer for the solution platform, like `dotnet build NuDepot.slnx -p:Platform=x64`.
 The installer publishes a self-contained build (no .NET runtime needed on the target), installs it to
 C:\Program Files\NuDepot, and registers and starts the `NuDepot` service. The service runs as
 LocalService, starts automatically, and restarts if it fails. Upgrades and uninstall keep your

@@ -1,0 +1,28 @@
+<Project>
+
+	<!--
+		The services and the installer build for x64 or ARM64, like "dotnet build -p:Platform=ARM64".
+		Without a platform, like "dotnet run" or building one project, they build for the runtime being
+		published for ("dotnet publish -r linux-arm64"), or else for x64.
+	-->
+	<PropertyGroup>
+		<Platforms>x64;ARM64</Platforms>
+		<Platform Condition="'$(Platform)' == '' And $(RuntimeIdentifier.EndsWith('-arm64'))">ARM64</Platform>
+		<Platform Condition="'$(Platform)' == '' Or '$(Platform)' == 'AnyCPU' Or '$(Platform)' == 'Any CPU'">x64</Platform>
+
+		<!-- The architecture in runtime identifiers, like the arm64 in win-arm64. -->
+		<NuDepotArchitecture Condition="'$(Platform)' == 'ARM64'">arm64</NuDepotArchitecture>
+		<NuDepotArchitecture Condition="'$(NuDepotArchitecture)' == ''">x64</NuDepotArchitecture>
+	</PropertyGroup>
+
+	<!--
+		The libraries are always Any CPU. Solution builds already map them to it; this keeps a
+		"-p:Platform" given to one service or installer from flowing into them.
+	-->
+	<ItemDefinitionGroup>
+		<ProjectReference>
+			<SetPlatform>Platform=AnyCPU</SetPlatform>
+		</ProjectReference>
+	</ItemDefinitionGroup>
+
+</Project>

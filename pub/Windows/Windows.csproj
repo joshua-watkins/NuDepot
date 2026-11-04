@@ -7,8 +7,9 @@
 		<AssemblyName>$(SolutionName)</AssemblyName>
 		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
 		<IsAotCompatible>true</IsAotCompatible>
-		<!-- The installer (pub/Windows.Setup) publishes a self-contained win-x64 build. -->
-		<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+		<!-- Builds for the platform's architecture (see pub/Directory.Build.props), so the installers get the right build. -->
+		<RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$(NuDepotArchitecture)</RuntimeIdentifier>
+		<RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
 	</PropertyGroup>
 
 	<ItemGroup>

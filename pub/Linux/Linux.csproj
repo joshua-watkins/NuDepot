@@ -7,6 +7,9 @@
 		<AssemblyName>$(SolutionName)</AssemblyName>
 		<RootNamespace>$(SolutionName).$(MSBuildProjectName)</RootNamespace>
 		<IsAotCompatible>true</IsAotCompatible>
+		<!-- Builds for the platform's architecture (see pub/Directory.Build.props). -->
+		<RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">linux-$(NuDepotArchitecture)</RuntimeIdentifier>
+		<RuntimeIdentifiers>linux-x64;linux-arm64</RuntimeIdentifiers>
 	</PropertyGroup>
 
 	<ItemGroup>

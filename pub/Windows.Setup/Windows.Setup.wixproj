@@ -1,14 +1,14 @@
-<Project Sdk="WixToolset.Sdk/7.0.1">
+﻿<Project Sdk="WixToolset.Sdk/7.0.1">
 
 	<PropertyGroup>
-		<OutputName>NuDepot</OutputName>
-		<InstallerPlatform>x64</InstallerPlatform>
+		<!--
+			One installer per architecture, chosen by the platform: x64 (the default) or ARM64, like
+			"dotnet build -p:Platform=ARM64". Each installs a build of the service for its architecture.
+		-->
+		<InstallerPlatform>$(NuDepotArchitecture)</InstallerPlatform>
+		<OutputName>NuDepot-$(InstallerPlatform)</OutputName>
 		<!-- Some .NET runtime files are versioned without a language; that's expected for a self-contained app. -->
 		<SuppressIces>ICE60</SuppressIces>
-		<!--
-			WiX v7 requires accepting the Open Source Maintenance Fee EULA: https://wixtoolset.org/osmf/
-			Accepted for this non-commercial project; the fee applies above $10,000 in annual revenue.
-		-->
 		<AcceptEula>wix7</AcceptEula>
 	</PropertyGroup>
 
@@ -18,12 +18,16 @@
 
 	<ItemGroup>
 		<!--
-			Publish the Windows service as a self-contained app so the target machine doesn't need
-			the .NET runtime. The publish output is available to the .wxs files as !(bindpath.Windows).
+			Publish the Windows service as a self-contained app for the installer's architecture, so the
+			target machine doesn't need the .NET runtime. The publish output is available to the .wxs
+			files as !(bindpath.Windows). The service picks its runtime identifier from its platform:
+			WiX drops a RuntimeIdentifier from AdditionalProperties, and a solution build replaces
+			SetPlatform with the solution's platform for the project.
 		-->
 		<ProjectReference Include="..\Windows\Windows.csproj"
 						  Publish="true"
-						  AdditionalProperties="RuntimeIdentifier=win-x64;SelfContained=true" />
+						  SetPlatform="Platform=$(Platform)"
+						  AdditionalProperties="SelfContained=true" />
 	</ItemGroup>
 
 	<!-- The installer isn't a NuGet package. This lets "dotnet pack NuDepot.slnx" pack the libraries. -->

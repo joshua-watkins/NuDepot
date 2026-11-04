@@ -15,8 +15,6 @@
 		<!-- The website's files are embedded in the assembly (see WebsiteFiles) rather than static web assets. -->
 		<StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
 		<GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
-		<!-- The Windows installer (pub/Windows.Setup) publishes the Windows service, which references this project, for win-x64. -->
-		<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
 	</PropertyGroup>
 
 	<ItemGroup>
