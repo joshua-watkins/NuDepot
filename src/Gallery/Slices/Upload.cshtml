@@ -44,6 +44,35 @@
             </a>.
         </div>
     </div>
+
+    @if (Model.SigningCertificates.Count > 0)
+    {
+        <h2>Signatures</h2>
+        <p>
+            The feed signs its packages. To have NuGet trust its signatures, add its certificates to your
+            <code>nuget.config</code>'s
+            <a target="_blank" rel="noopener noreferrer" href="https://learn.microsoft.com/nuget/reference/nuget-config-file#trustedsigners-section">trusted signers</a>.
+            The certificates change over time, and this page always shows the current ones.
+        </p>
+
+        <table class="table signing-certificates">
+            <thead>
+                <tr><th>SHA-256 fingerprint</th><th>Certificate</th><th>Valid</th></tr>
+            </thead>
+            <tbody>
+                @foreach (SigningCertificateModel certificate in Model.SigningCertificates)
+                {
+                    <tr>
+                        <td><code>@certificate.Fingerprint</code></td>
+                        <td>@certificate.Subject</td>
+                        <td>@certificate.NotBefore.ToString("yyyy-MM-dd") to @certificate.NotAfter.ToString("yyyy-MM-dd")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <pre class="trusted-signers">@Model.GetTrustedSignersConfig()</pre>
+    }
 </div>
 
 <script type="text/javascript">

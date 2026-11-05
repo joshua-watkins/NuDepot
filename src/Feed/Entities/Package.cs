@@ -206,6 +206,20 @@ public class Package
     public bool IsRepositorySigned { get; set; }
 
     /// <summary>
+    /// The lowercase hex SHA-256 fingerprint of the certificate that made the package's repository signature, this
+    /// server's or another repository's, if it's known. When this server signed it, and it isn't the current signing
+    /// certificate, the package is re-signed when it's downloaded.
+    /// </summary>
+    public string? RepositorySignatureFingerprint { get; set; }
+
+    /// <summary>
+    /// When the package's repository signature stops being valid, in UTC: when its certificate expires. Null if it's
+    /// timestamped, or isn't known. A package mirrored from another repository whose signature expired is downloaded
+    /// from that repository again, in case it was re-signed.
+    /// </summary>
+    public DateTime? RepositorySignatureExpiresAt { get; set; }
+
+    /// <summary>
     /// Why the package is deprecated: "Legacy", "CriticalBugs" or "Other".
     /// Empty or null if the package isn't deprecated.
     /// </summary>

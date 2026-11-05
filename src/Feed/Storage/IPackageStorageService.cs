@@ -24,6 +24,16 @@ public interface IPackageStorageService
     Task SavePackageContentAsync(Package package, Stream packageStream, Stream nuspecStream, Stream? readmeStream, Stream? iconStream, Stream? licenseStream, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Replace a package's nupkg, like when it's re-signed. Its other files stay the same.
+    /// </summary>
+    /// <param name="id">The package's id.</param>
+    /// <param name="version">The package's version.</param>
+    /// <param name="packageStream">The package's new nupkg stream.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when the new nupkg is stored.</returns>
+    Task ReplacePackageStreamAsync(string id, NuGetVersion version, Stream packageStream, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Retrieve a package's nupkg stream.
     /// </summary>
     /// <param name="id">The package's id.</param>

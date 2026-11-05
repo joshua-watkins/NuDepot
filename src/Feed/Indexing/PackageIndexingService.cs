@@ -116,14 +116,18 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
             package.Id,
             package.NormalizedVersionString);
 
-        RepositorySigningResult signing = Signing.Certificate == null
-            ? RepositorySigningResult.Unsigned
-            : await Signing.SignAsync(packageStream, Url.GetServiceIndexUrl(), cancellationToken);
+        RepositorySigningResult signing = Signing.IsEnabled
+            ? await Signing.SignAsync(packageStream, Url.GetServiceIndexUrl(), cancellationToken)
+            : RepositorySigningResult.Unsigned;
         Stream storedPackageStream = signing.SignedPackage ?? packageStream;
 
         try
         {
+            // Record the repository signature, this server's or another repository's, like nuget.org's.
             package.IsRepositorySigned = signing.IsRepositorySigned;
+            RepositorySignatureDetails? signature = await Signing.GetRepositorySignatureAsync(storedPackageStream, cancellationToken);
+            package.RepositorySignatureFingerprint = signature?.Fingerprint;
+            package.RepositorySignatureExpiresAt = signature?.ExpiresAt?.UtcDateTime;
 
             // The catalog describes the package as stored, including any repository signature.
             storedPackageStream.Position = 0;

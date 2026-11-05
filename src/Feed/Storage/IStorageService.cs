@@ -44,6 +44,22 @@ public interface IStorageService
     Task<StoragePutResult> PutAsync(string path, Stream content, string contentType, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Replace content in storage, or store it if there isn't any. By default this deletes the content and stores
+    /// the new content, so readers in between find nothing. Implementations that can replace content at once do.
+    /// </summary>
+    /// <param name="path">The path at which to store the content.</param>
+    /// <param name="content">The new content.</param>
+    /// <param name="contentType">The type of content that is being stored.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when the new content is stored.</returns>
+    async Task ReplaceAsync(string path, Stream content, string contentType, CancellationToken cancellationToken = default)
+    {
+        await DeleteAsync(path, cancellationToken);
+        if (await PutAsync(path, content, contentType, cancellationToken) == StoragePutResult.Conflict)
+            throw new InvalidOperationException($"Failed to replace the content at {path}, because other content was stored at the same time.");
+    }
+
+    /// <summary>
     /// Remove content from storage.
     /// </summary>
     /// <param name="path">The path to the content to delete.</param>

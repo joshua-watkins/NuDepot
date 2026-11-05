@@ -127,6 +127,16 @@ public static class ServiceIndexModelExtensions
     }
 
     /// <summary>
+    /// Gets the URL of the repository signatures resource, if the feed repository signs its packages.
+    /// </summary>
+    /// <param name="serviceIndex">The feed's service index.</param>
+    /// <returns>The newest version of the resource's URL, or null if the feed doesn't have it.</returns>
+    public static string? GetRepositorySignaturesResourceUrl(this ServiceIndexResponse serviceIndex)
+    {
+        return serviceIndex.GetResourceUrl(RepositorySignatures);
+    }
+
+    /// <summary>
     /// Gets the URL of the first resource with one of the types, in order of preference.
     /// </summary>
     /// <param name="serviceIndex">The feed's service index.</param>

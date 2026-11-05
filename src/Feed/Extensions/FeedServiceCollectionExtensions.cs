@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -110,7 +111,11 @@ public static class FeedServiceCollectionExtensions
     private static void AddAccess(IServiceCollection services)
     {
         services.TryAddSingleton<FeedAccess>();
+
+        // Data protection protects sign-in cookies and generated signing certificates. Its keys are kept in
+        // the database, unless the application keeps them somewhere else.
         services.AddDataProtection();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<KeyManagementOptions>, ConfigureDataProtectionKeys>());
         services.TryAddScoped<UserService>();
         services.TryAddScoped<PasskeyService>();
         services.TryAddSingleton<UserCookieEvents>();
@@ -198,6 +203,12 @@ public static class FeedServiceCollectionExtensions
         services.TryAddTransient<IVulnerabilityService, VulnerabilityService>();
         services.TryAddTransient<IPackageDeprecationService, PackageDeprecationService>();
         services.TryAddSingleton<IRepositorySigningService, RepositorySigningService>();
+        services.TryAddTransient<PackageResigner>();
+        services.TryAddSingleton<PackageResignerLocks>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton(GeneratedCertificateKeySize.Default);
+        services.TryAddSingleton<ConfiguredSigningCertificate>();
+        services.TryAddSingleton<GeneratedSigningCertificates>();
 
         services.TryAddTransient<DatabaseSearchService>();
         services.TryAddTransient<FileStorageService>();
@@ -209,8 +220,16 @@ public static class FeedServiceCollectionExtensions
         // The options choose the implementations.
         services.TryAddTransient(StorageServiceFactory);
         services.TryAddTransient(SearchServiceFactory);
+        services.TryAddSingleton(SigningCertificateSourceFactory);
         services.TryAddTransient<ISearchIndexer>(provider => provider.GetRequiredService<NullSearchIndexer>());
         services.TryAddTransient(UpstreamClientFactory);
+    }
+
+    private static ISigningCertificateSource SigningCertificateSourceFactory(IServiceProvider provider)
+    {
+        return GetOptions(provider).RepositorySigning.GenerateCertificates
+            ? provider.GetRequiredService<GeneratedSigningCertificates>()
+            : provider.GetRequiredService<ConfiguredSigningCertificate>();
     }
 
     private static IStorageService StorageServiceFactory(IServiceProvider provider)

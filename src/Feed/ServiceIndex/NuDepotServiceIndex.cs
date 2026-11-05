@@ -53,7 +53,7 @@ public class NuDepotServiceIndex(IUrlGenerator url, IVulnerabilityService vulner
         if (packageDetailsUriTemplate != null && IsHttps(packageDetailsUriTemplate))
             resources.AddRange(BuildResource("PackageDetailsUriTemplate", packageDetailsUriTemplate, "5.1.0"));
 
-        if (Signing.Certificate != null && IsHttps(Url.GetServiceIndexUrl()))
+        if (Signing.IsEnabled && IsHttps(Url.GetServiceIndexUrl()))
         {
             resources.AddRange(BuildResource("RepositorySignatures", Url.GetRepositorySignaturesUrl("4.7.0"), "4.7.0", "4.9.0"));
             resources.AddRange(BuildResource("RepositorySignatures", Url.GetRepositorySignaturesUrl("5.0.0"), "5.0.0"));

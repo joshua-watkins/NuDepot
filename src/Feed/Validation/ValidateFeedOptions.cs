@@ -34,6 +34,15 @@ public class ValidateFeedOptions : IValidateOptions<FeedOptions>
                 $"when '{Field(nameof(FeedOptions.Mirror), nameof(MirrorOptions.Enabled))}' is true.");
         }
 
+        RepositorySigningOptions signing = options.RepositorySigning;
+        if (signing.GenerateCertificates && (!string.IsNullOrEmpty(signing.CertificatePath) || !string.IsNullOrEmpty(signing.CertificateThumbprint)))
+        {
+            failures.Add(
+                $"'{Field(nameof(FeedOptions.RepositorySigning), nameof(RepositorySigningOptions.GenerateCertificates))}' " +
+                $"can't be used with '{Field(nameof(FeedOptions.RepositorySigning), nameof(RepositorySigningOptions.CertificatePath))}' " +
+                $"or '{Field(nameof(FeedOptions.RepositorySigning), nameof(RepositorySigningOptions.CertificateThumbprint))}'.");
+        }
+
         ValidateAuthorization(options, failures);
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);

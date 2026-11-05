@@ -128,7 +128,7 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Read);
 
         endpoints
-            .MapGet("v3/repository-signatures/certificates/{fingerprint}.crt", ServiceIndexEndpoints.RepositorySigningCertificate)
+            .MapGet("v3/repository-signatures/certificates/{fingerprint}.crt", ServiceIndexEndpoints.RepositorySigningCertificateAsync)
             .WithName(Routes.RepositorySigningCertificateRouteName)
             .RequireFeedPermission(FeedPermissions.Read);
     }

@@ -38,7 +38,15 @@ public class RepositorySigningOptions
     public string? TimestampServerUrl { get; set; }
 
     /// <summary>
-    /// Whether a certificate is set, so pushed packages are signed.
+    /// Not recommended. Generate a self-signed certificate each year instead of using <see cref="CertificatePath"/> or
+    /// <see cref="CertificateThumbprint"/>. NuGet clients don't trust self-signed certificates, so they warn about every
+    /// package. Each certificate signs packages for a year, and packages signed by an older one are re-signed when
+    /// they're downloaded, which changes their hash.
     /// </summary>
-    public bool IsEnabled => !string.IsNullOrEmpty(CertificatePath) || !string.IsNullOrEmpty(CertificateThumbprint);
+    public bool GenerateCertificates { get; set; }
+
+    /// <summary>
+    /// Whether a certificate is set, or generated, so pushed packages are signed.
+    /// </summary>
+    public bool IsEnabled => !string.IsNullOrEmpty(CertificatePath) || !string.IsNullOrEmpty(CertificateThumbprint) || GenerateCertificates;
 }

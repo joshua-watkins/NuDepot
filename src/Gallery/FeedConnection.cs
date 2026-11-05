@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using NuDepot.Core;
 using NuDepot.Core.Hosting;
+using NuDepot.Core.RepositorySignatures;
 using System.Net;
 
 namespace NuDepot.Gallery;
@@ -17,11 +18,15 @@ public class FeedConnection
 {
     private const string DefaultServiceIndexPath = "v3/index.json";
 
+    // Relative to the service index, like "v3/index.json".
+    private const string CoHostedRepositorySignaturesPath = "repository-signatures/5.0.0/index.json";
+
     private NuDepotFeatures Features { get; }
     private IServer? Server { get; }
     private IHttpContextAccessor? HttpContextAccessor { get; }
     private bool IsCoHosted { get; }
     private Lazy<string> LazyServiceIndexUrl { get; }
+    private Lazy<HttpClient> LazyHttpClient { get; }
     private Lazy<NuGetClientFactory> LazyClientFactory { get; }
 
     /// <summary>
@@ -43,7 +48,8 @@ public class FeedConnection
         // so resolve them on first use.
         IsCoHosted = string.IsNullOrEmpty(configuredUrl);
         LazyServiceIndexUrl = new(() => IsCoHosted ? GetLocalServiceIndexUrl() : configuredUrl!);
-        LazyClientFactory = new(() => new(CreateHttpClient(options.Value.ApiKey), ServiceIndexUrl));
+        LazyHttpClient = new(() => CreateHttpClient(options.Value.ApiKey));
+        LazyClientFactory = new(() => new(LazyHttpClient.Value, ServiceIndexUrl));
     }
 
     /// <summary>
@@ -61,6 +67,21 @@ public class FeedConnection
     /// Creates clients for the feed's resources.
     /// </summary>
     public NuGetClientFactory ClientFactory => LazyClientFactory.Value;
+
+    /// <summary>
+    /// Creates a client for the certificates the feed signs packages with. The resource is only listed in a
+    /// service index read over HTTPS, and a feed hosted in the same application is read over HTTP, so for that
+    /// feed, which is NuDepot's, the resource is read from its path.
+    /// </summary>
+    /// <returns>The client.</returns>
+    public IRepositorySignaturesClient CreateRepositorySignaturesClient()
+    {
+        if (!IsCoHosted)
+            return ClientFactory.CreateRepositorySignaturesClient();
+
+        string url = new Uri(new Uri(ServiceIndexUrl), CoHostedRepositorySignaturesPath).AbsoluteUri;
+        return new RawRepositorySignaturesClient(LazyHttpClient.Value, url);
+    }
 
     /// <summary>
     /// Convert a URL returned by the feed into a URL the browser can use.

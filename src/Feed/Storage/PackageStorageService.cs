@@ -159,6 +159,19 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
     }
 
     /// <inheritdoc />
+    public async Task ReplacePackageStreamAsync(string id, NuGetVersion version, Stream packageStream, CancellationToken cancellationToken)
+    {
+        string lowercasedId = id.ToLowerInvariant();
+        string lowercasedNormalizedVersion = version
+            .ToNormalizedString()
+            .ToLowerInvariant();
+        string packagePath = PackagePath(lowercasedId, lowercasedNormalizedVersion);
+
+        Logger.LogInformation("Replacing package {PackageId} {PackageVersion} at {Path}...", lowercasedId, lowercasedNormalizedVersion, packagePath);
+        await Storage.ReplaceAsync(packagePath, packageStream, PackageContentType, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<Stream?> GetPackageStreamAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         return await GetStreamAsync(id, version, PackagePath, cancellationToken);

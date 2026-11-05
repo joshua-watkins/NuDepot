@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -9,12 +10,17 @@ namespace NuDepot.Feed.Entities;
 /// The package database, in SQLite at <see cref="Configuration.DatabaseOptions.ConnectionString"/>.
 /// Settings that only apply to one provider are behind checks like <see cref="SqliteDatabaseFacadeExtensions.IsSqlite"/>.
 /// </summary>
-public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContext(options)
+public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContext(options), IDataProtectionKeyContext
 {
     /// <summary>
     /// The longest string a column holds, unless it has its own limit.
     /// </summary>
     public const int DefaultMaxStringLength = 4000;
+
+    /// <summary>
+    /// The length of a lowercase hex SHA-256 certificate fingerprint.
+    /// </summary>
+    public const int MaxCertificateFingerprintLength = 64;
 
     /// <summary>
     /// The longest package ID.
@@ -187,6 +193,16 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
     public DbSet<UserSession> UserSessions { get; set; }
 
     /// <summary>
+    /// The repository signing certificates the feed generated.
+    /// </summary>
+    public DbSet<SigningCertificate> SigningCertificates { get; set; }
+
+    /// <summary>
+    /// ASP.NET Core data protection's keys, which protect sign-in cookies and generated signing certificates.
+    /// </summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
+
+    /// <summary>
     /// Check whether a <see cref="DbUpdateException"/> is due to a SQL unique constraint violation.
     /// </summary>
     /// <param name="exception">The exception to inspect.</param>
@@ -232,6 +248,7 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
         builder.Entity<UserPasskey>(BuildUserPasskeyEntity);
         builder.Entity<UserApiKey>(BuildUserApiKeyEntity);
         builder.Entity<UserSession>(BuildUserSessionEntity);
+        builder.Entity<SigningCertificate>(BuildSigningCertificateEntity);
 
         if (Database.IsSqlite())
             BuildSqliteColumns(builder);
@@ -323,6 +340,9 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
         package
             .Property(p => p.PackageHash)
             .HasMaxLength(MaxPackageHashLength);
+        package
+            .Property(p => p.RepositorySignatureFingerprint)
+            .HasMaxLength(MaxCertificateFingerprintLength);
 
         package
             .Property(p => p.DeprecationReasons)
@@ -566,6 +586,26 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
         apiKey
             .Property(k => k.Hash)
             .HasMaxLength(MaxApiKeyHashLength)
+            .IsRequired();
+    }
+
+    private void BuildSigningCertificateEntity(EntityTypeBuilder<SigningCertificate> certificate)
+    {
+        certificate.HasKey(c => c.Key);
+        certificate.HasIndex(c => c.Year);
+        certificate
+            .HasIndex(c => c.Fingerprint)
+            .IsUnique();
+
+        certificate
+            .Property(c => c.Fingerprint)
+            .HasMaxLength(MaxCertificateFingerprintLength)
+            .IsRequired();
+        certificate
+            .Property(c => c.Certificate)
+            .IsRequired();
+        certificate
+            .Property(c => c.ProtectedPrivateKey)
             .IsRequired();
     }
 

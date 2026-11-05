@@ -410,6 +410,9 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
                 RepositoryPrimarySignature signature = Assert.IsType<RepositoryPrimarySignature>(await reader.GetPrimarySignatureAsync(default));
                 Assert.Equal(new Uri("https://localhost/v3/index.json"), signature.V3ServiceIndexUrl);
                 Assert.Equal(certificate.Thumbprint, signature.SignerInfo.Certificate!.Thumbprint);
+
+                // SHA-512, whatever the certificate's own signature uses.
+                Assert.Equal("2.16.840.1.101.3.4.2.3", signature.SignerInfo.DigestAlgorithm.Value);
             }
 
             // The catalog describes the signed package.
@@ -419,8 +422,10 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
             JsonElement legacy = await GetJsonAsync(client, "v3/repository-signatures/4.7.0/index.json");
             Assert.False(legacy.GetProperty("allRepositorySigned").GetBoolean());
 
+            // Every package is signed, but the certificate is self-signed, and NuGet requires a trusted certificate
+            // from a feed that says all its packages are signed.
             JsonElement current = await GetJsonAsync(client, "v3/repository-signatures/5.0.0/index.json");
-            Assert.True(current.GetProperty("allRepositorySigned").GetBoolean());
+            Assert.False(current.GetProperty("allRepositorySigned").GetBoolean());
 
             JsonElement signingCertificate = Assert.Single(current.GetProperty("signingCertificates").EnumerateArray());
             Assert.Equal(fingerprint, signingCertificate.GetProperty("fingerprints").GetProperty("2.16.840.1.101.3.4.2.1").GetString()!);

@@ -1,5 +1,6 @@
 using NuDepot.Core.Models;
 using NuDepot.Feed.Entities;
+using NuDepot.Feed.Signing;
 using NuDepot.Feed.Storage;
 using NuGet.Versioning;
 
@@ -8,10 +9,14 @@ namespace NuDepot.Feed.Content;
 /// <summary>
 /// Implements the NuGet Package Content resource in NuGet's V3 protocol.
 /// </summary>
-public class DefaultPackageContentService(IPackageService packages, IPackageStorageService storage) : IPackageContentService
+/// <param name="packages">Finds packages.</param>
+/// <param name="storage">Where packages are stored.</param>
+/// <param name="resigner">Re-signs packages signed with an older certificate as they're downloaded.</param>
+public class DefaultPackageContentService(IPackageService packages, IPackageStorageService storage, PackageResigner resigner) : IPackageContentService
 {
     private IPackageService Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;
+    private PackageResigner Resigner { get; } = resigner;
 
     /// <inheritdoc />
     public async Task<PackageVersionsResponse?> GetPackageVersionsOrNullAsync(string id, CancellationToken cancellationToken = default)
@@ -35,7 +40,9 @@ public class DefaultPackageContentService(IPackageService packages, IPackageStor
             return null;
 
         await Packages.AddDownloadAsync(id, version, cancellationToken);
-        return await Storage.GetPackageStreamAsync(id, version, cancellationToken);
+        Stream? content = await Storage.GetPackageStreamAsync(id, version, cancellationToken);
+
+        return content == null ? null : await Resigner.RefreshAsync(id, version, content, cancellationToken);
     }
 
     /// <inheritdoc />

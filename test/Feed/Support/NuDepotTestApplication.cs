@@ -27,6 +27,7 @@ internal sealed class NuDepotTestApplication : IDisposable
     private IReadOnlyDictionary<string, string?> Configuration { get; }
     private bool UseApiKeys { get; }
     private bool UsePasskeys { get; }
+    private Action<IServiceCollection>? ConfigureServices { get; }
     private Lazy<WebApplication> App { get; }
 
     /// <param name="output">Receives the server's logs.</param>
@@ -34,12 +35,14 @@ internal sealed class NuDepotTestApplication : IDisposable
     /// <param name="configuration">The feed's configuration, which overrides the test defaults. Keys are in the "Feed" section, like "Authorization:ApiKeys:0:Key".</param>
     /// <param name="useApiKeys">Whether the application calls UseApiKeys(), like the hosts.</param>
     /// <param name="usePasskeys">Whether the application calls UsePasskeys(), like the hosts.</param>
-    public NuDepotTestApplication(ITestOutputHelper output, HttpClient? upstreamClient = null, IReadOnlyDictionary<string, string>? configuration = null, bool useApiKeys = true, bool usePasskeys = true)
+    /// <param name="configureServices">Replaces the feed's services, after they're added.</param>
+    public NuDepotTestApplication(ITestOutputHelper output, HttpClient? upstreamClient = null, IReadOnlyDictionary<string, string>? configuration = null, bool useApiKeys = true, bool usePasskeys = true, Action<IServiceCollection>? configureServices = null)
     {
         Output = output;
         UpstreamClient = upstreamClient;
         UseApiKeys = useApiKeys;
         UsePasskeys = usePasskeys;
+        ConfigureServices = configureServices;
         Configuration = (configuration ?? new Dictionary<string, string>())
             .ToDictionary(setting => $"{FeedOptions.Section}:{setting.Key}", setting => (string?)setting.Value);
         App = new Lazy<WebApplication>(Start);
@@ -146,6 +149,8 @@ internal sealed class NuDepotTestApplication : IDisposable
 
         if (UpstreamClient != null)
             builder.Services.AddSingleton(UpstreamClient);
+
+        ConfigureServices?.Invoke(builder.Services);
 
         WebApplication app = builder.Build();
 

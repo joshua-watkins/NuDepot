@@ -119,3 +119,13 @@ every package carries this server's signature.
 
 Use `CertificateThumbprint` (with `CertificateStoreLocation` and `CertificateStoreName`) instead of
 `CertificatePath` to load the certificate from a certificate store.
+
+Without a certificate, `GenerateCertificates` makes the feed generate a self-signed certificate each year,
+and re-sign packages signed with an older one when they're downloaded. `NuDepot rotate signing-certificate`
+replaces this year's early, like after its key leaked. It isn't recommended: NuGet clients warn about
+packages signed with self-signed certificates. See the
+[configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#generated-certificates).
+
+The signing code is in `Signing`: `RepositorySigningService` signs, `ConfiguredSigningCertificate` and
+`GeneratedSigningCertificates` provide the certificates, and `PackageResigner` re-signs packages as they're
+downloaded.

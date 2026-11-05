@@ -1,0 +1,275 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using NuDepot.Feed.Catalog;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Storage;
+using NuDepot.Feed.Upstream;
+using NuGet.Packaging;
+using NuGet.Versioning;
+
+namespace NuDepot.Feed.Signing;
+
+/// <summary>
+/// Keeps the repository signatures of downloaded packages current, before they're served:
+/// <list type="bullet">
+/// <item>A package this server signed with a certificate other than the current one, like last year's generated
+/// certificate, is re-signed with the current one.</item>
+/// <item>A package mirrored from another repository, whose signature expired, is downloaded from that repository
+/// again, in case it was re-signed there, like by another NuDepot feed with generated certificates.</item>
+/// </list>
+/// The stored package is replaced, and its hash, size and catalog entry are updated. Unsigned packages aren't changed.
+/// </summary>
+/// <param name="signing">Signs the packages.</param>
+/// <param name="context">The package database.</param>
+/// <param name="packages">Finds the packages, with what the catalog needs.</param>
+/// <param name="storage">Where packages are stored.</param>
+/// <param name="catalog">The catalog that records the change.</param>
+/// <param name="upstream">The repository mirrored packages come from.</param>
+/// <param name="url">Generates the service index URL that the signatures record.</param>
+/// <param name="options">The feed's options.</param>
+/// <param name="time">The current time, which signatures expire by.</param>
+/// <param name="locks">The feed's package locks, and when mirrored packages were last downloaded again.</param>
+/// <param name="logger">The logger.</param>
+public class PackageResigner(IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, IOptionsSnapshot<FeedOptions> options, TimeProvider time, PackageResignerLocks locks, ILogger<PackageResigner> logger)
+{
+    // A mirrored package whose upstream copy is also expired is only downloaded again after this long.
+    private static readonly TimeSpan UpstreamRetryInterval = TimeSpan.FromHours(1);
+
+    private IRepositorySigningService Signing { get; } = signing;
+    private NuDepotContext Context { get; } = context;
+    private IPackageDatabase Packages { get; } = packages;
+    private IPackageStorageService Storage { get; } = storage;
+    private ICatalogService Catalog { get; } = catalog;
+    private IUpstreamClient Upstream { get; } = upstream;
+    private IUrlGenerator Url { get; } = url;
+    private FeedOptions Options { get; } = options.Value;
+    private TimeProvider Time { get; } = time;
+    private PackageResignerLocks Locks { get; } = locks;
+    private ILogger<PackageResigner> Logger { get; } = logger;
+
+    /// <summary>
+    /// Makes a package that's being downloaded carry a current repository signature, if it has one.
+    /// </summary>
+    /// <param name="id">The package's ID.</param>
+    /// <param name="version">The package's version.</param>
+    /// <param name="content">The stored package.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>The package to serve: <paramref name="content"/>, or a new copy, in which case <paramref name="content"/> is disposed.</returns>
+    public async Task<Stream> RefreshAsync(string id, NuGetVersion version, Stream content, CancellationToken cancellationToken)
+    {
+        SignatureState? state = await GetStateAsync(id, version, content, cancellationToken);
+        if (state == null)
+            return content;
+
+        if (state.IsOurs)
+        {
+            string? current = Signing.IsEnabled ? await Signing.GetSigningFingerprintAsync(cancellationToken) : null;
+            if (current == null || string.Equals(state.Fingerprint, current, StringComparison.OrdinalIgnoreCase))
+                return content;
+
+            return await WithLockAsync(id, version, content, async () =>
+            {
+                // Another download may have re-signed it while this one waited.
+                SignatureState? latest = await GetStateAsync(id, version, content, cancellationToken);
+                if (latest == null || string.Equals(latest.Fingerprint, current, StringComparison.OrdinalIgnoreCase))
+                    return await ReopenAsync(id, version, content, cancellationToken);
+
+                return await ResignAsync(id, version, content, cancellationToken);
+            });
+        }
+
+        if (!Options.Mirror.Enabled || state.ExpiresAt == null || state.ExpiresAt > Time.GetUtcNow().UtcDateTime)
+            return content;
+
+        DateTimeOffset now = Time.GetUtcNow();
+        if (Locks.WasRefreshedRecently(id, version, now, UpstreamRetryInterval))
+            return content;
+
+        return await WithLockAsync(id, version, content, async () =>
+        {
+            if (Locks.WasRefreshedRecently(id, version, now, UpstreamRetryInterval))
+                return await ReopenAsync(id, version, content, cancellationToken);
+
+            Locks.RecordRefresh(id, version, now);
+            return await RefreshFromUpstreamAsync(id, version, content, state.Fingerprint, cancellationToken);
+        });
+    }
+
+    private async Task<SignatureState?> GetStateAsync(string id, NuGetVersion version, Stream content, CancellationToken cancellationToken)
+    {
+        string normalizedVersion = version.ToNormalizedString();
+        var row = await Context.Packages
+            .AsNoTracking()
+            .Where(p => p.Id == id && p.NormalizedVersionString == normalizedVersion)
+            .Select(p => new { p.IsRepositorySigned, p.RepositorySignatureFingerprint, p.RepositorySignatureExpiresAt })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (row == null)
+            return null;
+
+        if (row.RepositorySignatureFingerprint != null)
+            return new(row.IsRepositorySigned, row.RepositorySignatureFingerprint, row.RepositorySignatureExpiresAt);
+
+        // Packages stored before the signature was recorded: read it from the package, once.
+        RepositorySignatureDetails? signature = await Signing.GetRepositorySignatureAsync(content, cancellationToken);
+        if (signature == null)
+            return null;
+
+        DateTime? expiresAt = signature.ExpiresAt?.UtcDateTime;
+        await Context.Packages
+            .Where(p => p.Id == id && p.NormalizedVersionString == normalizedVersion)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(p => p.RepositorySignatureFingerprint, signature.Fingerprint)
+                    .SetProperty(p => p.RepositorySignatureExpiresAt, expiresAt),
+                cancellationToken);
+
+        return new(row.IsRepositorySigned, signature.Fingerprint, expiresAt);
+    }
+
+    private async Task<Stream> WithLockAsync(string id, NuGetVersion version, Stream content, Func<Task<Stream>> action)
+    {
+        SemaphoreSlim packageLock = Locks.For(id, version);
+        await packageLock.WaitAsync();
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            packageLock.Release();
+        }
+    }
+
+    // The package may have been replaced while this download waited, so serve the stored package again.
+    private async Task<Stream> ReopenAsync(string id, NuGetVersion version, Stream content, CancellationToken cancellationToken)
+    {
+        Stream? stored = await Storage.GetPackageStreamAsync(id, version, cancellationToken);
+        if (stored == null)
+            return content;
+
+        content.Dispose();
+        return stored;
+    }
+
+    private async Task<Stream> ResignAsync(string id, NuGetVersion version, Stream content, CancellationToken cancellationToken)
+    {
+        RepositorySigningResult result = await Signing.ResignAsync(content, Url.GetServiceIndexUrl(), cancellationToken);
+        if (result.SignedPackage == null)
+            return content;
+
+        Stream? replaced = await ReplaceAsync(id, version, content, result.SignedPackage, isRepositorySigned: true, cancellationToken);
+        if (replaced == null)
+            return content;
+
+        Logger.LogInformation("Re-signed package {PackageId} {PackageVersion} with the certificate {Fingerprint}", id, version, result.Fingerprint);
+        return replaced;
+    }
+
+    private async Task<Stream> RefreshFromUpstreamAsync(string id, NuGetVersion version, Stream content, string fingerprint, CancellationToken cancellationToken)
+    {
+        Stream? fresh;
+        try
+        {
+            fresh = await Upstream.DownloadPackageOrNullAsync(id, version, cancellationToken);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            Logger.LogWarning(e, "Failed to download package {PackageId} {PackageVersion} from upstream to refresh its expired signature", id, version);
+            return content;
+        }
+
+        if (fresh == null)
+            return content;
+
+        RepositorySignatureDetails? signature = await Signing.GetRepositorySignatureAsync(fresh, cancellationToken);
+        if (signature == null || string.Equals(signature.Fingerprint, fingerprint, StringComparison.OrdinalIgnoreCase))
+        {
+            Logger.LogInformation("Upstream hasn't re-signed package {PackageId} {PackageVersion} yet. It's served with its expired signature", id, version);
+            fresh.Dispose();
+            return content;
+        }
+
+        // Only the signature may change: the package's content hash leaves the signature out.
+        if (ContentHash(content) != ContentHash(fresh))
+        {
+            Logger.LogWarning("Upstream's copy of package {PackageId} {PackageVersion} has different content, so it isn't used", id, version);
+            fresh.Dispose();
+            return content;
+        }
+
+        Stream? replaced = await ReplaceAsync(id, version, content, fresh, isRepositorySigned: false, cancellationToken);
+        if (replaced == null)
+            return content;
+
+        Logger.LogInformation("Refreshed package {PackageId} {PackageVersion} from upstream, which re-signed it with the certificate {Fingerprint}", id, version, signature.Fingerprint);
+        return replaced;
+    }
+
+    // Stores the new copy, then updates the package's hash, size, signature and catalog entry. Returns null, and
+    // disposes the new copy, if it couldn't be stored.
+    private async Task<Stream?> ReplaceAsync(string id, NuGetVersion version, Stream content, Stream replacement, bool isRepositorySigned, CancellationToken cancellationToken)
+    {
+        string hash;
+        long size;
+        try
+        {
+            replacement.Position = 0;
+            (hash, size) = await replacement.ComputeSha512Async(cancellationToken);
+
+            replacement.Position = 0;
+            await Storage.ReplacePackageStreamAsync(id, version, replacement, cancellationToken);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Like when the storage is read only. Serve the package as it is.
+            Logger.LogWarning(e, "Failed to store the new copy of package {PackageId} {PackageVersion}. It's served as it was", id, version);
+            replacement.Dispose();
+            content.Position = 0;
+            return null;
+        }
+
+        RepositorySignatureDetails? signature = await Signing.GetRepositorySignatureAsync(replacement, cancellationToken);
+        Package? package = await Packages.FindOrNullAsync(id, version, includeUnlisted: true, cancellationToken);
+        if (package != null)
+        {
+            package.PackageHash = hash;
+            package.PackageSize = size;
+            package.IsRepositorySigned = isRepositorySigned;
+            package.RepositorySignatureFingerprint = signature?.Fingerprint;
+            package.RepositorySignatureExpiresAt = signature?.ExpiresAt?.UtcDateTime;
+            await Context.SaveChangesAsync(cancellationToken);
+
+            // The catalog describes the package as stored, including its new hash.
+            await Catalog.AddPackageDetailsAsync([package], cancellationToken);
+        }
+
+        content.Dispose();
+        replacement.Position = 0;
+        return replacement;
+    }
+
+    private static string ContentHash(Stream package)
+    {
+        package.Position = 0;
+        try
+        {
+            using PackageArchiveReader reader = new(package, leaveStreamOpen: true);
+            return reader.GetContentHash(CancellationToken.None);
+        }
+        finally
+        {
+            package.Position = 0;
+        }
+    }
+
+    /// <summary>
+    /// A package's repository signature, as recorded.
+    /// </summary>
+    /// <param name="IsOurs">Whether this server made it.</param>
+    /// <param name="Fingerprint">The fingerprint of the certificate that made it.</param>
+    /// <param name="ExpiresAt">When it stops being valid, or null if it's timestamped.</param>
+    private sealed record SignatureState(bool IsOurs, string Fingerprint, DateTime? ExpiresAt);
+}

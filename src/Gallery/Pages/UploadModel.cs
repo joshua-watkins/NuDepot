@@ -1,15 +1,20 @@
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
+using NuDepot.Core.RepositorySignatures;
 using NuDepot.Core.ServiceIndex;
 
 namespace NuDepot.Gallery.Pages;
 
 /// <summary>
-/// The page that explains how to push packages.
+/// The page that explains how to push packages, and how to trust the feed's repository signatures.
 /// </summary>
-public class UploadModel(IServiceIndexClient serviceIndex, FeedConnection feed)
+/// <param name="serviceIndex">Reads the feed's service index.</param>
+/// <param name="repositorySignatures">Reads the certificates the feed signs packages with.</param>
+/// <param name="feed">The feed the website shows.</param>
+public class UploadModel(IServiceIndexClient serviceIndex, IRepositorySignaturesClient repositorySignatures, FeedConnection feed)
 {
     private IServiceIndexClient ServiceIndex { get; } = serviceIndex;
+    private IRepositorySignaturesClient RepositorySignatures { get; } = repositorySignatures;
     private FeedConnection Feed { get; } = feed;
 
     /// <summary>
@@ -33,16 +38,53 @@ public class UploadModel(IServiceIndexClient serviceIndex, FeedConnection feed)
     public string? PublishUrl { get; private set; }
 
     /// <summary>
-    /// Reads the feed's URLs from its service index.
+    /// The certificates the feed signs packages with, which are read from the feed each time the page is shown.
+    /// Empty if the feed doesn't repository sign its packages.
+    /// </summary>
+    public IReadOnlyList<SigningCertificateModel> SigningCertificates { get; private set; } = [];
+
+    /// <summary>
+    /// Reads the feed's URLs from its service index, and its signing certificates.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the task.</param>
-    /// <returns>A task that completes when the URLs are set.</returns>
+    /// <returns>A task that completes when the page's properties are set.</returns>
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
         ServiceIndexResponse serviceIndex = await ServiceIndex.GetAsync(cancellationToken);
 
         ServiceIndexUrl = Feed.ToPublicUrl(Feed.ServiceIndexUrl);
         PublishUrl = Feed.ToPublicUrl(serviceIndex.GetPackagePublishResourceUrl());
+
+        RepositorySignaturesResponse? signatures = await RepositorySignatures.GetOrNullAsync(cancellationToken);
+        SigningCertificates = [.. (signatures?.SigningCertificates ?? [])
+            .Where(certificate => certificate.Fingerprints.ContainsKey(RepositorySigningCertificate.Sha256Oid))
+            .Select(certificate => new SigningCertificateModel(
+                certificate.Fingerprints[RepositorySigningCertificate.Sha256Oid],
+                certificate.Subject,
+                certificate.NotBefore,
+                certificate.NotAfter,
+                IsSelfSigned: certificate.Subject != null && certificate.Subject == certificate.Issuer))];
+    }
+
+    /// <summary>
+    /// The nuget.config section that trusts the feed's signing certificates.
+    /// </summary>
+    /// <returns>The trustedSigners element, or null if the feed doesn't sign packages.</returns>
+    public string? GetTrustedSignersConfig()
+    {
+        if (SigningCertificates.Count == 0)
+            return null;
+
+        IEnumerable<string> certificates = SigningCertificates.Select(certificate =>
+            $"""      <certificate fingerprint="{certificate.Fingerprint}" hashAlgorithm="SHA256" allowUntrustedRoot="{(certificate.IsSelfSigned ? "true" : "false")}" />""");
+
+        return string.Join('\n', [
+            "<trustedSigners>",
+            $"""  <repository name="NuDepot" serviceIndex="{ServiceIndexUrl}">""",
+            .. certificates,
+            "  </repository>",
+            "</trustedSigners>",
+        ]);
     }
 
     /// <summary>
@@ -87,3 +129,13 @@ public class UploadModel(IServiceIndexClient serviceIndex, FeedConnection feed)
 /// <param name="Content">The command's lines.</param>
 /// <param name="Documentation">The tool's documentation.</param>
 public record PushInstructions(string Name, IReadOnlyList<string> Content, string Documentation);
+
+/// <summary>
+/// A certificate the feed signs packages with.
+/// </summary>
+/// <param name="Fingerprint">The lowercase hex SHA-256 fingerprint that NuGet's trusted signers use.</param>
+/// <param name="Subject">The certificate's subject.</param>
+/// <param name="NotBefore">When the certificate becomes valid.</param>
+/// <param name="NotAfter">When the certificate expires.</param>
+/// <param name="IsSelfSigned">Whether the certificate signed itself, so clients have to allow an untrusted root.</param>
+public record SigningCertificateModel(string Fingerprint, string? Subject, DateTimeOffset NotBefore, DateTimeOffset NotAfter, bool IsSelfSigned);

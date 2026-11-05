@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using NuDepot.Core.Hosting;
 using NuDepot.Core.PackageDetails;
+using NuDepot.Core.RepositorySignatures;
 using NuDepot.Core.Search;
 using NuDepot.Core.ServiceIndex;
 using NuDepot.Gallery;
@@ -33,6 +34,7 @@ public static class GalleryServiceCollectionExtensions
         services.AddSingleton<IServiceIndexClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateServiceIndexClient());
         services.AddSingleton<ISearchClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateSearchClient());
         services.AddSingleton<IPackageDetailsClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreatePackageDetailsClient());
+        services.AddSingleton<IRepositorySignaturesClient>(provider => provider.GetRequiredService<FeedConnection>().CreateRepositorySignaturesClient());
 
         services.AddTransient<IndexModel>();
         services.AddTransient<PackageModel>();

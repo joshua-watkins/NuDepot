@@ -1,5 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Signing;
 using NuDepot.Feed.Upstream;
 
 namespace NuDepot.Feed;
@@ -25,11 +28,15 @@ public static class NuDepotCommands
             Usage: nudepot [command] [options]
 
             Commands:
-              import downloads    Import package downloads from nuget.org.
+              import downloads                Import package downloads from nuget.org.
+              rotate signing-certificate      Replace this year's generated signing certificate, like after its
+                                              key leaked. The old one is revoked, and packages it signed are
+                                              re-signed when they're downloaded. A running server uses the new
+                                              one within a minute.
 
             Options:
               --urls <urls>       The URLs that NuDepot should bind to.
-              --<key>=<value>     Set a configuration value, like --Database:ConnectionString="Data Source=nudepot.db".
+              --<key>=<value>     Set a configuration value, like --Feed:Database:ConnectionString="Data Source=nudepot.db".
               -h|--help           Show help information.
 
             With no command, runs the server.
@@ -66,11 +73,33 @@ public static class NuDepotCommands
 
                 return true;
 
+            case ["rotate", "signing-certificate"]:
+                await RotateSigningCertificateAsync(host);
+                return true;
+
             case var unknown:
                 Console.Error.WriteLine($"Unknown command '{string.Join(' ', unknown)}'. Use --help to see the commands.");
                 Environment.ExitCode = 1;
                 return true;
         }
+    }
+
+    private static async Task RotateSigningCertificateAsync(IHost host)
+    {
+        FeedOptions options = host.Services.GetRequiredService<IOptions<FeedOptions>>().Value;
+        if (!options.RepositorySigning.GenerateCertificates)
+        {
+            Console.Error.WriteLine($"Only generated certificates can be rotated. Set '{FeedOptions.Section}:{nameof(FeedOptions.RepositorySigning)}:{nameof(RepositorySigningOptions.GenerateCertificates)}' to use them.");
+            Environment.ExitCode = 1;
+            return;
+        }
+
+        await host.RunMigrationsAsync();
+        SigningCertificateRotation rotation = await host.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(CancellationToken.None);
+
+        Console.WriteLine($"New signing certificate: {rotation.Fingerprint}, which expires at {rotation.ExpiresAt:u}.");
+        foreach (string revoked in rotation.Revoked)
+            Console.WriteLine($"Revoked: {revoked}. Remove it from your NuGet trusted signers.");
     }
 
     // The command is the arguments that aren't options. Options, like --environment Development

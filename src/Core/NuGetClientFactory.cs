@@ -4,6 +4,7 @@ using NuDepot.Core.Models;
 using NuDepot.Core.PackageContent;
 using NuDepot.Core.PackageDetails;
 using NuDepot.Core.PackageMetadata;
+using NuDepot.Core.RepositorySignatures;
 using NuDepot.Core.Search;
 using NuDepot.Core.ServiceIndex;
 
@@ -121,6 +122,22 @@ public partial class NuGetClientFactory
         return new PackageDetailsClient(this);
     }
 
+    /// <summary>
+    /// Create a client to read the certificates the feed signs packages with.
+    ///
+    /// See https://learn.microsoft.com/en-us/nuget/api/repository-signatures-resource
+    /// </summary>
+    /// <returns>A client to interact with the repository signatures resource.</returns>
+    public virtual IRepositorySignaturesClient CreateRepositorySignaturesClient()
+    {
+        return new RepositorySignaturesClient(this);
+    }
+
+    private Task<IRepositorySignaturesClient> GetRepositorySignaturesClientAsync(CancellationToken cancellationToken = default)
+    {
+        return GetAsync(c => c.RepositorySignaturesClient, cancellationToken);
+    }
+
     private Task<ServiceIndexResponse> GetServiceIndexAsync(CancellationToken cancellationToken = default)
     {
         return GetAsync(c => c.ServiceIndex, cancellationToken);
@@ -204,6 +221,7 @@ public partial class NuGetClientFactory
                         AutocompleteClient = autocompleteClient,
                         CatalogClient = catalogClient,
                         PackageDetailsClient = packageDetailsClient,
+                        RepositorySignaturesClient = new RawRepositorySignaturesClient(HttpClient, serviceIndex.GetRepositorySignaturesResourceUrl()),
                     };
                 }
             }
@@ -227,5 +245,7 @@ public partial class NuGetClientFactory
         public required IAutocompleteClient AutocompleteClient { get; init; }
         public required ICatalogClient CatalogClient { get; init; }
         public required IPackageDetailsClient PackageDetailsClient { get; init; }
+
+        public required IRepositorySignaturesClient RepositorySignaturesClient { get; init; }
     }
 }

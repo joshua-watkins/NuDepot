@@ -26,9 +26,7 @@ internal static class ServiceIndexEndpoints
     // GET v3/repository-signatures/{resourceVersion}/index.json
     public static async Task<IResult> RepositorySignaturesAsync(string resourceVersion, IRepositorySigningService signing, IPackageDatabase packages, IUrlGenerator url, CancellationToken cancellationToken)
     {
-        X509Certificate2? certificate = signing.Certificate;
-        string? fingerprint = signing.CertificateFingerprint;
-        if (certificate == null || fingerprint == null)
+        if (!signing.IsEnabled)
             return Results.NotFound();
 
         bool allRepositorySigned;
@@ -48,12 +46,21 @@ internal static class ServiceIndexEndpoints
                 return Results.NotFound();
         }
 
+        // Every certificate that hasn't expired or been revoked.
+        IReadOnlyList<X509Certificate2> certificates = await signing.GetCertificatesAsync(cancellationToken);
+
+        // When a feed says all its packages are repository signed, NuGet requires a trusted certificate from this
+        // list, so a self-signed certificate fails every restore, and a client with an older copy of the list
+        // rejects packages signed with a newer certificate. Otherwise untrusted certificates are only warnings.
+        if (certificates.Any(IsSelfSigned))
+            allRepositorySigned = false;
         RepositorySignaturesResponse response = new()
         {
             AllRepositorySigned = allRepositorySigned,
-            SigningCertificates =
-            [
-                new Core.Models.RepositorySigningCertificate
+            SigningCertificates = [.. certificates.Select(certificate =>
+            {
+                string fingerprint = CertificateFingerprint.Of(certificate);
+                return new Core.Models.RepositorySigningCertificate
                 {
                     ContentUrl = url.GetRepositorySigningCertificateUrl(fingerprint),
                     Fingerprints = new Dictionary<string, string>
@@ -64,21 +71,24 @@ internal static class ServiceIndexEndpoints
                     Issuer = certificate.Issuer,
                     NotBefore = certificate.NotBefore.ToUniversalTime(),
                     NotAfter = certificate.NotAfter.ToUniversalTime(),
-                }
-            ],
+                };
+            })],
         };
 
         return Results.Json(response, NuGetJsonContext.Default.RepositorySignaturesResponse);
     }
 
+    private static bool IsSelfSigned(X509Certificate2 certificate)
+        => certificate.SubjectName.RawData.AsSpan().SequenceEqual(certificate.IssuerName.RawData);
+
     // GET v3/repository-signatures/certificates/{fingerprint}.crt
-    public static IResult RepositorySigningCertificate(string fingerprint, IRepositorySigningService signing)
+    public static async Task<IResult> RepositorySigningCertificateAsync(string fingerprint, IRepositorySigningService signing, CancellationToken cancellationToken)
     {
-        if (signing.Certificate == null ||
-            !string.Equals(fingerprint, signing.CertificateFingerprint, StringComparison.OrdinalIgnoreCase))
+        X509Certificate2? certificate = await signing.FindCertificateAsync(fingerprint, cancellationToken);
+        if (certificate == null)
             return Results.NotFound();
 
-        return Results.Bytes(signing.Certificate.Export(X509ContentType.Cert), "application/pkix-cert");
+        return Results.Bytes(certificate.Export(X509ContentType.Cert), "application/pkix-cert");
     }
 
     // GET api/v2/{**path}

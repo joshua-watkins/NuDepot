@@ -268,6 +268,106 @@ A private feed requires users to authenticate before accessing packages. Set the
 `Authorization:AnonymousRole` to `None`, and give people API keys or accounts.
 See [Require an API key](#require-an-api-key) and [Users and passkeys](#users-and-passkeys).
 
+## Repository signing
+
+With a code signing certificate, packages pushed over HTTPS get the feed's repository signature, and
+the [repository signatures resource](https://learn.microsoft.com/nuget/api/repository-signatures-resource)
+tells NuGet clients which certificates the feed signs with. Packages that already have a repository
+signature, like packages mirrored from nuget.org, keep it.
+
+```json
+"Feed": {
+    "RepositorySigning": {
+        "CertificatePath": "signing.pfx",
+        "CertificatePassword": "",
+        // Recommended: without a timestamp, signatures stop being valid when the certificate expires.
+        "TimestampServerUrl": "http://timestamp.digicert.com"
+    },
+    ...
+}
+```
+
+To load the certificate from a certificate store instead, set `CertificateThumbprint`, with
+`CertificateStoreLocation` (`CurrentUser` or `LocalMachine`) and `CertificateStoreName` (usually `My`).
+
+Signatures use SHA-512, whatever the certificate itself was signed with. NuGet only accepts RSA certificates, of
+at least 2048 bits. Certificates are identified by their SHA-256 fingerprints, as NuGet's trusted signers and the
+repository signatures resource expect.
+
+### Generated certificates
+
+Not recommended. Without a certificate, the feed can generate its own:
+
+```json
+"Feed": {
+    "RepositorySigning": {
+        "GenerateCertificates": true
+    },
+    ...
+}
+```
+
+The feed generates a self-signed certificate for each year: an RSA-8192 key, signed with SHA-512, which
+signs packages with SHA-512.
+
+- Each year's certificate is generated the first time the feed signs a package or lists its certificates that
+  year, and expires at the end of December 31st. The repository signatures resource lists the current
+  certificate. The gallery's upload page shows it, with the `trustedSigners` section to add to a `nuget.config`.
+- The feed records which certificate signed each package. A package signed with an older certificate is
+  re-signed with the current one the first time it's downloaded over HTTPS, before it's served. Its hash,
+  size and catalog entry are updated to match. Packages that aren't downloaded aren't re-signed.
+- The certificates are stored in the database, with their private keys encrypted by ASP.NET Core data
+  protection. If a certificate can't be decrypted, because data protection's keys were lost, the feed
+  generates a new one, and packages are re-signed with it when they're downloaded.
+
+If a certificate's key leaks, replace it early. Run this command with the server's settings, while it runs; the
+server switches to the new certificate within a minute:
+
+```sh
+NuDepot rotate signing-certificate
+```
+
+The new certificate expires at the end of the year, like the one it replaces. The replaced certificate is revoked:
+the feed stops listing it, and re-signs packages it signed when they're downloaded. NuGet clients don't check
+revocation for these certificates, so remove the old fingerprint from your trusted signers.
+
+What clients see:
+
+- NuGet clients don't trust self-signed certificates. With the default `signatureValidationMode`, restores
+  warn about each package: `NU3018` (the certificate isn't trusted) and `NU3027` (the signature isn't
+  timestamped). Builds that treat warnings as errors fail. Unsigned packages don't cause these warnings.
+- NuGet checks a package's signature once, when it first extracts it into the global packages folder. A copy
+  extracted before the feed re-signed it is kept, and isn't downloaded again. A copy signed with an expired
+  certificate that's extracted later, like from a proxy's cache, adds the warning `NU3037`.
+- In `require` mode, restores fail, even with the certificate's fingerprint in `trustedSigners`.
+- Re-signing changes a package's hash. Restores with a `packages.lock.json` fail with `NU1403` the first
+  time they get a package that was re-signed, until the lock file is updated.
+- The certificate changes each year, so anyone who added its fingerprint to their trusted signers adds the
+  new one.
+- The repository signatures resource never says all packages are signed (`allRepositorySigned`) while it lists a
+  self-signed certificate. When a feed says that, NuGet requires a trusted certificate from the list it read,
+  so every restore would fail. A client that read the list shortly before the certificate changed warns
+  `NU3034` (signed with a certificate the repository didn't list) until it reads the list again.
+
+`GenerateCertificates` can't be used with `CertificatePath` or `CertificateThumbprint`.
+
+### Mirroring a feed that signs packages
+
+A mirrored package keeps the upstream feed's repository signature, which the feed can't re-sign. When that
+signature expires, like when the upstream feed is another NuDepot feed with generated certificates, the next
+download over HTTPS gets the package from the upstream feed again. If the upstream copy has a different signature,
+and the same content otherwise, it replaces the mirrored copy, and its hash and catalog entry are updated. A package
+the upstream feed hasn't re-signed yet is checked again after an hour. Timestamped signatures, like nuget.org's, don't
+expire, so those packages aren't downloaded again.
+
+### Data protection keys
+
+ASP.NET Core data protection protects users' sign-in cookies and generated certificates' private keys, with
+AES-256-CBC encryption and HMAC-SHA512 authentication. The feed keeps its keys in the database, encrypted for the
+machine on Windows, unless the application keeps them somewhere else, like with
+`services.AddDataProtection().PersistKeysToFileSystem(...)`. Then the application's data protection settings,
+including its algorithms, apply.
+
 ## Database, storage and search
 
 NuDepot stores package information in a SQLite database. Set its connection string to choose where

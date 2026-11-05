@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Moq;
 using NuDepot.Core.Models;
 using NuDepot.Core.PackageDetails;
+using NuDepot.Core.RepositorySignatures;
 using NuDepot.Core.Search;
 using NuDepot.Core.ServiceIndex;
 using System.Net;
@@ -23,6 +24,7 @@ public class WebsitePageTests : IDisposable
     private Mock<ISearchClient> Search { get; } = new();
     private Mock<IPackageDetailsClient> Packages { get; } = new();
     private Mock<IServiceIndexClient> ServiceIndex { get; } = new();
+    private Mock<IRepositorySignaturesClient> RepositorySignatures { get; } = new();
     private WebApplication App { get; }
 
     public WebsitePageTests()
@@ -44,6 +46,7 @@ public class WebsitePageTests : IDisposable
         builder.Services.AddSingleton(Search.Object);
         builder.Services.AddSingleton(Packages.Object);
         builder.Services.AddSingleton(ServiceIndex.Object);
+        builder.Services.AddSingleton(RepositorySignatures.Object);
 
         App = builder.Build();
         App.UseNuDepotGallery();
@@ -182,6 +185,45 @@ public class WebsitePageTests : IDisposable
         Assert.Contains($"<code>{ServiceIndexUrl}</code>", html);
         Assert.Contains($"\"dotnet nuget push -s {ServiceIndexUrl} package.nupkg\"", html);
         Assert.Contains("class=\"active\"><span>Upload</span>", html);
+
+        // The feed doesn't sign packages.
+        Assert.DoesNotContain("trustedSigners", html);
+    }
+
+    [Fact]
+    public async Task UploadPageShowsTheFeedsSigningCertificates()
+    {
+        ServiceIndex
+            .Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServiceIndexResponse { Version = "3.0.0", Resources = [] });
+        RepositorySignatures
+            .Setup(s => s.GetOrNullAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RepositorySignaturesResponse
+            {
+                SigningCertificates =
+                [
+                    Certificate("aa11", "CN=NuDepot Repository Signing 2030", 2030),
+                    Certificate("bb22", "CN=NuDepot Repository Signing 2031", 2031),
+                ],
+            });
+
+        string html = await GetPageAsync("/upload");
+
+        Assert.Contains("<code>aa11</code>", html);
+        Assert.Contains("<code>bb22</code>", html);
+        Assert.Contains("2031-01-01 to 2031-12-31", html);
+        Assert.Contains($"&lt;repository name=&quot;NuDepot&quot; serviceIndex=&quot;{ServiceIndexUrl}&quot;&gt;", html);
+        Assert.Contains("&lt;certificate fingerprint=&quot;bb22&quot; hashAlgorithm=&quot;SHA256&quot; allowUntrustedRoot=&quot;true&quot; /&gt;", html);
+
+        static RepositorySigningCertificate Certificate(string fingerprint, string subject, int year) => new()
+        {
+            ContentUrl = $"https://feed.test/v3/repository-signatures/certificates/{fingerprint}.crt",
+            Fingerprints = new Dictionary<string, string> { { RepositorySigningCertificate.Sha256Oid, fingerprint } },
+            Subject = subject,
+            Issuer = subject,
+            NotBefore = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            NotAfter = new DateTimeOffset(year, 12, 31, 23, 59, 59, TimeSpan.Zero),
+        };
     }
 
     [Fact]
