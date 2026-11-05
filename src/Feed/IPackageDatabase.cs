@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Query;
 using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
@@ -79,6 +80,16 @@ public interface IPackageDatabase
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>Task that completes when the package's download has been incremented.</returns>
     Task AddDownloadAsync(string id, NuGetVersion version, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Update a package's columns in the database, without reading it.
+    /// </summary>
+    /// <param name="id">The package's id.</param>
+    /// <param name="version">The package's version.</param>
+    /// <param name="setters">The columns to set, like <c>setters => setters.SetProperty(p => p.Listed, false)</c>.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>False if the package doesn't exist.</returns>
+    Task<bool> UpdateAsync(string id, NuGetVersion version, Action<UpdateSettersBuilder<Package>> setters, CancellationToken cancellationToken);
 
     /// <summary>
     /// Completely remove the package from the database.

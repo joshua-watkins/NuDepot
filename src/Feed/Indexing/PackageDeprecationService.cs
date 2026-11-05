@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Entities;
@@ -6,10 +7,9 @@ using NuGet.Versioning;
 namespace NuDepot.Feed.Indexing;
 
 /// <inheritdoc />
-public class PackageDeprecationService(IPackageDatabase packages, NuDepotContext context, ICatalogService catalog, ILogger<PackageDeprecationService> logger) : IPackageDeprecationService
+public class PackageDeprecationService(IPackageDatabase packages, ICatalogService catalog, ILogger<PackageDeprecationService> logger) : IPackageDeprecationService
 {
     private IPackageDatabase Packages { get; } = packages;
-    private NuDepotContext Context { get; } = context;
     private ICatalogService Catalog { get; } = catalog;
     private ILogger<PackageDeprecationService> Logger { get; } = logger;
 
@@ -18,14 +18,14 @@ public class PackageDeprecationService(IPackageDatabase packages, NuDepotContext
     {
         Logger.LogInformation("Deprecating package {PackageId} {PackageVersion}...", id, version);
 
-        return UpdateAsync(id, version, package =>
-        {
-            package.DeprecationReasons = [.. reasons];
-            package.DeprecationMessage = message;
-            package.AlternatePackageId = alternatePackageId;
-            package.AlternatePackageVersionRange = alternatePackageId == null ? null : alternatePackageVersionRange;
-        },
-        cancellationToken);
+        string[] reasonArray = [.. reasons];
+        string? range = alternatePackageId == null ? null : alternatePackageVersionRange;
+        return UpdateAsync(id, version, setters => setters
+            .SetProperty(p => p.DeprecationReasons, reasonArray)
+            .SetProperty(p => p.DeprecationMessage, message)
+            .SetProperty(p => p.AlternatePackageId, alternatePackageId)
+            .SetProperty(p => p.AlternatePackageVersionRange, range),
+            cancellationToken);
     }
 
     /// <inheritdoc />
@@ -33,27 +33,24 @@ public class PackageDeprecationService(IPackageDatabase packages, NuDepotContext
     {
         Logger.LogInformation("Undeprecating package {PackageId} {PackageVersion}...", id, version);
 
-        return UpdateAsync(id, version, package =>
-        {
-            package.DeprecationReasons = null;
-            package.DeprecationMessage = null;
-            package.AlternatePackageId = null;
-            package.AlternatePackageVersionRange = null;
-        },
-        cancellationToken);
+        return UpdateAsync(id, version, setters => setters
+            .SetProperty(p => p.DeprecationReasons, (string[]?)null)
+            .SetProperty(p => p.DeprecationMessage, (string?)null)
+            .SetProperty(p => p.AlternatePackageId, (string?)null)
+            .SetProperty(p => p.AlternatePackageVersionRange, (string?)null),
+            cancellationToken);
     }
 
-    private async Task<bool> UpdateAsync(string id, NuGetVersion version, Action<Package> update, CancellationToken cancellationToken)
+    private async Task<bool> UpdateAsync(string id, NuGetVersion version, Action<UpdateSettersBuilder<Package>> setters, CancellationToken cancellationToken)
     {
-        Package? package = await Packages.FindOrNullAsync(id, version, includeUnlisted: true, cancellationToken);
-        if (package == null)
+        if (!await Packages.UpdateAsync(id, version, setters, cancellationToken))
         {
             Logger.LogWarning("Could not find package {PackageId} {PackageVersion}", id, version);
             return false;
         }
 
-        update(package);
-        await Context.SaveChangesAsync(cancellationToken);
+        // The catalog records the package as it is now.
+        Package package = (await Packages.FindOrNullAsync(id, version, includeUnlisted: true, cancellationToken))!;
         await Catalog.AddPackageDetailsAsync([package], cancellationToken);
 
         return true;

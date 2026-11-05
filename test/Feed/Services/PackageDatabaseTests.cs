@@ -206,6 +206,19 @@ public class PackageDatabaseTests
 
             Assert.False(await _target.ExistsAsync("Package", default));
         }
+
+        [Fact]
+        public async Task DeletesDependencies()
+        {
+            Package package = CreatePackage("Dependent.Package", "1.0.0");
+            package.Dependencies = [new PackageDependency { Id = "Package", VersionRange = "[1.0.0, )", TargetFramework = "net10.0" }];
+            Assert.Equal(PackageAddResult.Success, await _target.AddAsync(package, default));
+
+            Assert.True(await _target.HardDeletePackageAsync("Dependent.Package", NuGetVersion.Parse("1.0.0"), default));
+
+            using NuDepotContext context = CreateContext();
+            Assert.False(await context.PackageDependencies.AnyAsync());
+        }
     }
 
     public class AllRepositorySignedAsync : FactsBase
@@ -221,9 +234,7 @@ public class PackageDatabaseTests
         {
             using (NuDepotContext context = CreateContext())
             {
-                foreach (Package? package in await context.Packages.ToListAsync())
-                    package.IsRepositorySigned = true;
-                await context.SaveChangesAsync();
+                await context.Packages.ExecuteUpdateAsync(setters => setters.SetProperty(p => p.IsRepositorySigned, true));
             }
 
             Assert.True(await _target.AllRepositorySignedAsync(default));
@@ -278,13 +289,14 @@ public class PackageDatabaseTests
         {
             DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()
                 .UseSqlite(ConnectionString)
+                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options;
 
             return new NuDepotContext(options);
         }
 
         /// <summary>
-        /// Read a version 1.0.0 package from the database, without the target's tracked entities.
+        /// Read a version 1.0.0 package from the database, with a context of its own.
         /// </summary>
         protected async Task<Package> FindAsync(string packageId)
         {

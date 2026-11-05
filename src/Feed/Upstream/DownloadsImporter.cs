@@ -33,28 +33,25 @@ public class DownloadsImporter(NuDepotContext context, IPackageDownloadsSource d
         {
             Logger.LogInformation("Importing batch {Batch}...", batch);
 
-            foreach (Package package in await GetBatchAsync(batch, cancellationToken))
-            {
-                string packageId = package.Id.ToLowerInvariant();
-                string packageVersion = package.NormalizedVersionString.ToLowerInvariant();
+            var packageBatch = await Context.Packages
+                .OrderBy(p => p.Key)
+                .Skip(batch * BatchSize)
+                .Take(BatchSize)
+                .Select(p => new { p.Key, p.Id, p.NormalizedVersionString })
+                .ToListAsync(cancellationToken);
 
-                if (!packageDownloads.ContainsKey(packageId) ||
-                    !packageDownloads[packageId].ContainsKey(packageVersion))
+            foreach (var package in packageBatch)
+            {
+                if (!packageDownloads.TryGetValue(package.Id.ToLowerInvariant(), out Dictionary<string, long>? versions) ||
+                    !versions.TryGetValue(package.NormalizedVersionString.ToLowerInvariant(), out long downloads))
                     continue;
 
-                package.Downloads = packageDownloads[packageId][packageVersion];
+                await Context.Packages
+                    .Where(p => p.Key == package.Key)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.Downloads, downloads), cancellationToken);
             }
-
-            await Context.SaveChangesAsync(cancellationToken);
 
             Logger.LogInformation("Imported batch {Batch}", batch);
         }
     }
-
-    private Task<List<Package>> GetBatchAsync(int batch, CancellationToken cancellationToken)
-        => Context.Packages
-            .OrderBy(p => p.Key)
-            .Skip(batch * BatchSize)
-            .Take(BatchSize)
-            .ToListAsync(cancellationToken);
 }

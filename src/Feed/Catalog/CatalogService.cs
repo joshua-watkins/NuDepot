@@ -254,6 +254,12 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
                     ?? throw new FileNotFoundException("The package isn't in storage.");
 
                 (package.PackageHash, package.PackageSize) = await packageStream.ComputeSha512Async(cancellationToken);
+
+                string? hash = package.PackageHash;
+                long size = package.PackageSize;
+                await Context.Packages
+                    .Where(p => p.Key == package.Key)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.PackageHash, hash).SetProperty(p => p.PackageSize, size), cancellationToken);
             }
             catch (Exception e)
             {
@@ -265,7 +271,6 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
             }
         }
 
-        await Context.SaveChangesAsync(cancellationToken);
         await AddPackageDetailsAsync(packages, cancellationToken);
 
         Logger.LogInformation("Added {PackageCount} existing packages to the catalog", packages.Count);

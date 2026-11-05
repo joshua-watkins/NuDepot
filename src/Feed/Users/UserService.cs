@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -100,20 +101,29 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         if (user?.Passkeys.Count > 0)
             return null;
 
-        if (user == null)
+        if (user != null)
         {
-            user = new User
-            {
-                UserName = userName,
-                Role = Options.CurrentValue.Authorization.Users.DefaultRole,
-                CreatedAt = now,
-            };
+            user.Handle = handle;
+            SetCeremony(user, PasskeyCeremony.SignUp, options, passkeyName);
 
-            Context.Users.Add(user);
+            // Unless the sign-up was finished meanwhile.
+            int key = user.Key;
+            int updated = await Context.Users
+                .Where(u => u.Key == key && !u.Passkeys.Any())
+                .ExecuteUpdateAsync(setters => SetCeremony(setters.SetProperty(u => u.Handle, handle), user), cancellationToken);
+
+            return updated == 1 ? user : null;
         }
 
-        user.Handle = handle;
+        user = new User
+        {
+            UserName = userName,
+            Role = Options.CurrentValue.Authorization.Users.DefaultRole,
+            CreatedAt = now,
+            Handle = handle,
+        };
         SetCeremony(user, PasskeyCeremony.SignUp, options, passkeyName);
+        Context.Users.Add(user);
 
         try
         {
@@ -136,12 +146,22 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         await using IDbContextTransaction transaction = await Context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
         bool isFirst = !await AnyAsync(cancellationToken);
-        user.Role = isFirst ? FeedRole.Admin : Options.CurrentValue.Authorization.Users.DefaultRole;
-        user.CreatedAt = Time.UtcNow;
-        user.Passkeys.Add(passkey);
+        FeedRole role = isFirst ? FeedRole.Admin : Options.CurrentValue.Authorization.Users.DefaultRole;
+        DateTime now = Time.UtcNow;
 
+        int key = user.Key;
+        await Context.Users
+            .Where(u => u.Key == key)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.Role, role).SetProperty(u => u.CreatedAt, now), cancellationToken);
+
+        passkey.UserKey = key;
+        Context.UserPasskeys.Add(passkey);
         await Context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        user.Role = role;
+        user.CreatedAt = now;
+        user.Passkeys.Add(passkey);
 
         Logger.LogInformation("Created user {UserName} with the {Role} role", user.UserName, user.Role);
     }
@@ -155,7 +175,10 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     {
         SetCeremony(user, ceremony, options, passkeyName);
 
-        await Context.SaveChangesAsync(cancellationToken);
+        int key = user.Key;
+        await Context.Users
+            .Where(u => u.Key == key)
+            .ExecuteUpdateAsync(setters => SetCeremony(setters, user), cancellationToken);
     }
 
     /// <summary>
@@ -188,6 +211,21 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         user.CeremonyOptions = options;
         user.CeremonyPasskeyName = passkeyName;
         user.CeremonyExpiresAt = Time.UtcNow + CeremonyLifetime;
+    }
+
+    // Saves the ceremony that SetCeremony set on the user.
+    private static UpdateSettersBuilder<User> SetCeremony(UpdateSettersBuilder<User> setters, User user)
+    {
+        PasskeyCeremony? ceremony = user.Ceremony;
+        string? options = user.CeremonyOptions;
+        string? passkeyName = user.CeremonyPasskeyName;
+        DateTime? expiresAt = user.CeremonyExpiresAt;
+
+        return setters
+            .SetProperty(u => u.Ceremony, ceremony)
+            .SetProperty(u => u.CeremonyOptions, options)
+            .SetProperty(u => u.CeremonyPasskeyName, passkeyName)
+            .SetProperty(u => u.CeremonyExpiresAt, expiresAt);
     }
 
     // Users who have signed up. The rest are sign-ups in progress.
@@ -248,11 +286,20 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     /// </summary>
     public async Task RecordSignInAsync(UserPasskey passkey, uint signCount, bool isBackedUp, CancellationToken cancellationToken)
     {
+        DateTime now = Time.UtcNow;
+        int key = passkey.Key;
+        await Context.UserPasskeys
+            .Where(p => p.Key == key)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(p => p.SignCount, signCount)
+                    .SetProperty(p => p.IsBackedUp, isBackedUp)
+                    .SetProperty(p => p.LastUsedAt, now),
+                cancellationToken);
+
         passkey.SignCount = signCount;
         passkey.IsBackedUp = isBackedUp;
-        passkey.LastUsedAt = Time.UtcNow;
-
-        await Context.SaveChangesAsync(cancellationToken);
+        passkey.LastUsedAt = now;
     }
 
     /// <summary>
@@ -268,10 +315,12 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         if (passkeys.Count == 1)
             return PasskeyDeletionResult.LastPasskey;
 
-        Context.UserPasskeys.Remove(passkey);
-        await Context.SaveChangesAsync(cancellationToken);
+        // Still not their last, if another of their passkeys was deleted meanwhile.
+        int deleted = await Context.UserPasskeys
+            .Where(p => p.Key == passkeyKey && p.UserKey == userKey && Context.UserPasskeys.Count(o => o.UserKey == userKey) > 1)
+            .ExecuteDeleteAsync(cancellationToken);
 
-        return PasskeyDeletionResult.Deleted;
+        return deleted == 1 ? PasskeyDeletionResult.Deleted : PasskeyDeletionResult.LastPasskey;
     }
 
     // API keys
@@ -346,8 +395,11 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         DateTime now = Time.UtcNow;
         if (apiKey.LastUsedAt == null || now - apiKey.LastUsedAt > LastUsedPrecision)
         {
+            int apiKeyKey = apiKey.Key;
+            await Context.UserApiKeys
+                .Where(k => k.Key == apiKeyKey)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(k => k.LastUsedAt, now), cancellationToken);
             apiKey.LastUsedAt = now;
-            await Context.SaveChangesAsync(cancellationToken);
         }
 
         return apiKey.User;

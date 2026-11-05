@@ -243,10 +243,8 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
         using (IServiceScope scope = app.Services.CreateScope())
         {
             NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
-            context.CatalogEntries.RemoveRange(await context.CatalogEntries.ToListAsync());
-            foreach (Package? existing in await context.Packages.ToListAsync())
-                existing.PackageHash = null;
-            await context.SaveChangesAsync(default);
+            await context.CatalogEntries.ExecuteDeleteAsync();
+            await context.Packages.ExecuteUpdateAsync(setters => setters.SetProperty(p => p.PackageHash, (string?)null));
 
             await scope.ServiceProvider
                 .GetRequiredService<ICatalogService>()

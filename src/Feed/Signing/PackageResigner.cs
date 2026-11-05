@@ -102,7 +102,6 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
     {
         string normalizedVersion = version.ToNormalizedString();
         var row = await Context.Packages
-            .AsNoTracking()
             .Where(p => p.Id == id && p.NormalizedVersionString == normalizedVersion)
             .Select(p => new { p.IsRepositorySigned, p.RepositorySignatureFingerprint, p.RepositorySignatureExpiresAt })
             .FirstOrDefaultAsync(cancellationToken);
@@ -232,19 +231,23 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         }
 
         RepositorySignatureDetails? signature = await Signing.GetRepositorySignatureAsync(replacement, cancellationToken);
-        Package? package = await Packages.FindOrNullAsync(id, version, includeUnlisted: true, cancellationToken);
-        if (package != null)
-        {
-            package.PackageHash = hash;
-            package.PackageSize = size;
-            package.IsRepositorySigned = isRepositorySigned;
-            package.RepositorySignatureFingerprint = signature?.Fingerprint;
-            package.RepositorySignatureExpiresAt = signature?.ExpiresAt?.UtcDateTime;
-            await Context.SaveChangesAsync(cancellationToken);
+        string? fingerprint = signature?.Fingerprint;
+        DateTime? expiresAt = signature?.ExpiresAt?.UtcDateTime;
+        bool updated = await Packages.UpdateAsync(
+            id,
+            version,
+            setters => setters
+                .SetProperty(p => p.PackageHash, hash)
+                .SetProperty(p => p.PackageSize, size)
+                .SetProperty(p => p.IsRepositorySigned, isRepositorySigned)
+                .SetProperty(p => p.RepositorySignatureFingerprint, fingerprint)
+                .SetProperty(p => p.RepositorySignatureExpiresAt, expiresAt),
+            cancellationToken);
 
-            // The catalog describes the package as stored, including its new hash.
+        // The catalog describes the package as stored, including its new hash.
+        Package? package = updated ? await Packages.FindOrNullAsync(id, version, includeUnlisted: true, cancellationToken) : null;
+        if (package != null)
             await Catalog.AddPackageDetailsAsync([package], cancellationToken);
-        }
 
         content.Dispose();
         replacement.Position = 0;

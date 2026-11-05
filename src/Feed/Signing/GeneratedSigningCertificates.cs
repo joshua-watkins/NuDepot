@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NuDepot.Feed.Entities;
@@ -143,22 +144,30 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
             using IServiceScope scope = Scopes.CreateScope();
             NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
 
-            List<SigningCertificate> replaced = await context.SigningCertificates
-                .Where(c => c.Year == now.Year && c.RevokedAt == null)
-                .ToListAsync(cancellationToken);
-            foreach (SigningCertificate certificate in replaced)
-            {
-                certificate.RevokedAt = now.UtcDateTime;
-                Logger.LogWarning("Revoked the repository signing certificate {Fingerprint}", certificate.Fingerprint);
-            }
+            // The key is generated first, so the transaction isn't held while it is.
+            SigningCertificate row = Create(now.Year, now);
 
-            SigningCertificate row = await GenerateAsync(context, now.Year, now, cancellationToken);
+            await using IDbContextTransaction transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            IQueryable<SigningCertificate> current = context.SigningCertificates.Where(c => c.Year == now.Year && c.RevokedAt == null);
+            List<string> replaced = await current
+                .Select(c => c.Fingerprint)
+                .ToListAsync(cancellationToken);
+
+            DateTime revokedAt = now.UtcDateTime;
+            await current.ExecuteUpdateAsync(setters => setters.SetProperty(c => c.RevokedAt, revokedAt), cancellationToken);
+            context.SigningCertificates.Add(row);
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            foreach (string fingerprint in replaced)
+                Logger.LogWarning("Revoked the repository signing certificate {Fingerprint}", fingerprint);
+            LogGenerated(row);
 
             Signer? previous = Current;
             Current = new(now.Year, row.Fingerprint, Load(row), now);
             previous?.Certificate.Dispose();
 
-            return new(row.Fingerprint, new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero), [.. replaced.Select(c => c.Fingerprint)]);
+            return new(row.Fingerprint, new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero), replaced);
         }
         finally
         {
@@ -226,6 +235,16 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
 
     private async Task<SigningCertificate> GenerateAsync(NuDepotContext context, int year, DateTimeOffset now, CancellationToken cancellationToken)
     {
+        SigningCertificate row = Create(year, now);
+        context.SigningCertificates.Add(row);
+        await context.SaveChangesAsync(cancellationToken);
+        LogGenerated(row);
+
+        return row;
+    }
+
+    private SigningCertificate Create(int year, DateTimeOffset now)
+    {
         using RSA key = RSA.Create(KeySize);
         CertificateRequest request = new($"CN=NuDepot Repository Signing {year}", key, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
         request.CertificateExtensions.Add(new X509BasicConstraintsExtension(certificateAuthority: false, hasPathLengthConstraint: false, pathLengthConstraint: 0, critical: true));
@@ -237,7 +256,7 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
         DateTimeOffset expiresAt = ExpiresAt(year);
         using X509Certificate2 certificate = request.CreateSelfSigned(now.AddMinutes(-5), expiresAt);
 
-        SigningCertificate row = new()
+        return new()
         {
             Year = year,
             Fingerprint = CertificateFingerprint.Of(certificate),
@@ -246,18 +265,15 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
             CreatedAt = now.UtcDateTime,
             ExpiresAt = expiresAt.UtcDateTime,
         };
-        context.SigningCertificates.Add(row);
-        await context.SaveChangesAsync(cancellationToken);
+    }
 
-        Logger.LogWarning(
+    private void LogGenerated(SigningCertificate row)
+        => Logger.LogWarning(
             "Generated the repository signing certificate for {Year}, with the fingerprint {Fingerprint}. It expires at {ExpiresAt:u}. "
                 + "NuGet clients don't trust generated certificates, so they warn about the feed's packages",
-            year,
+            row.Year,
             row.Fingerprint,
-            expiresAt);
-
-        return row;
-    }
+            new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero));
 
     private X509Certificate2 Load(SigningCertificate row)
         => TryLoad(row) ?? throw new InvalidOperationException($"The generated signing certificate {row.Fingerprint} can't be decrypted.");

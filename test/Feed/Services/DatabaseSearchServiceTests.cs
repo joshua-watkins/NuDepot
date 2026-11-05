@@ -134,6 +134,7 @@ public class DatabaseSearchServiceTests
         {
             DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()
                 .UseSqlite(ConnectionString)
+                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options;
 
             return new NuDepotContext(options);

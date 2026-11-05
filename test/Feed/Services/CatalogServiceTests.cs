@@ -27,6 +27,7 @@ public class CatalogServiceTests : IDisposable
 
         DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()
             .UseSqlite(connectionString)
+            .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
             .Options;
 
         Context = new NuDepotContext(options);

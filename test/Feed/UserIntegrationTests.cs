@@ -476,9 +476,9 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         using IServiceScope scope = app.Services.CreateScope();
         NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
 
-        User user = await context.Users.SingleAsync(u => u.UserName == userName);
-        user.Role = role;
-        await context.SaveChangesAsync();
+        await context.Users
+            .Where(u => u.UserName == userName)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.Role, role));
     }
 
     private static async Task<JsonElement> GetAccountAsync(HttpClient client)

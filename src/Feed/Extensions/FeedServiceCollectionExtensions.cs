@@ -165,7 +165,11 @@ public static class FeedServiceCollectionExtensions
             provider
                 .GetRequiredService<SqliteInMemoryDatabases>()
                 .KeepAlive(connectionString);
-            options.UseSqlite(connectionString);
+            // Queries don't track what they read. Changes are made with ExecuteUpdate and ExecuteDelete,
+            // and new rows with Add and SaveChanges.
+            options
+                .UseSqlite(connectionString)
+                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
 
         services.TryAddTransient<IPackageDatabase, PackageDatabase>();

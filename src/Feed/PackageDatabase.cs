@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.EntityFrameworkCore.Storage;
 using NuDepot.Feed.Entities;
 using NuGet.Versioning;
 
@@ -83,37 +85,43 @@ public class PackageDatabase(NuDepotContext context) : IPackageDatabase
     /// <inheritdoc />
     public Task<bool> UnlistPackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        return TryUpdatePackageAsync(id, version, p => p.Listed = false, cancellationToken);
+        return UpdateAsync(id, version, setters => setters.SetProperty(p => p.Listed, false), cancellationToken);
     }
 
     /// <inheritdoc />
     public Task<bool> RelistPackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        return TryUpdatePackageAsync(id, version, p => p.Listed = true, cancellationToken);
+        return UpdateAsync(id, version, setters => setters.SetProperty(p => p.Listed, true), cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task AddDownloadAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        await TryUpdatePackageAsync(id, version, p => p.Downloads += 1, cancellationToken);
+        // Counted in the database, so downloads at the same time all count.
+        await UpdateAsync(id, version, setters => setters.SetProperty(p => p.Downloads, p => p.Downloads + 1), cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<bool> HardDeletePackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        Package? package = await Context.Packages
-            .Where(p => p.Id == id)
-            .Where(p => p.NormalizedVersionString == version.ToNormalizedString())
-            .Include(p => p.Dependencies)
-            .Include(p => p.TargetFrameworks)
+        int? key = await Find(id, version)
+            .Select(p => (int?)p.Key)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (package == null)
+        if (key == null)
             return false;
 
-        Context.Packages.Remove(package);
-        await Context.SaveChangesAsync(cancellationToken);
+        // The database deletes package types and target frameworks with their package, but not dependencies.
+        await using IDbContextTransaction transaction = await Context.Database.BeginTransactionAsync(cancellationToken);
 
+        await Context.PackageDependencies
+            .Where(d => EF.Property<int?>(d, "PackageKey") == key)
+            .ExecuteDeleteAsync(cancellationToken);
+        await Context.Packages
+            .Where(p => p.Key == key)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
         return true;
     }
 
@@ -123,21 +131,17 @@ public class PackageDatabase(NuDepotContext context) : IPackageDatabase
         return !await Context.Packages.AnyAsync(p => !p.IsRepositorySigned, cancellationToken);
     }
 
-    private async Task<bool> TryUpdatePackageAsync(string id, NuGetVersion version, Action<Package> action, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public async Task<bool> UpdateAsync(string id, NuGetVersion version, Action<UpdateSettersBuilder<Package>> setters, CancellationToken cancellationToken)
     {
-        Package? package = await Context.Packages
+        return await Find(id, version).ExecuteUpdateAsync(setters, cancellationToken) > 0;
+    }
+
+    private IQueryable<Package> Find(string id, NuGetVersion version)
+    {
+        string normalizedVersion = version.ToNormalizedString();
+        return Context.Packages
             .Where(p => p.Id == id)
-            .Where(p => p.NormalizedVersionString == version.ToNormalizedString())
-            .FirstOrDefaultAsync();
-
-        if (package != null)
-        {
-            action(package);
-            await Context.SaveChangesAsync(cancellationToken);
-
-            return true;
-        }
-
-        return false;
+            .Where(p => p.NormalizedVersionString == normalizedVersion);
     }
 }
