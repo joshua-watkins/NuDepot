@@ -462,11 +462,21 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
         return app;
     }
 
+    // A client with the Admin key, which deprecating, hard deleting and managing vulnerabilities need.
     private HttpClient CreateClient(out NuDepotTestApplication app, IReadOnlyDictionary<string, string>? configuration = null)
     {
-        app = CreateApp(configuration);
-        return app.CreateClient();
+        Dictionary<string, string> settings = new(configuration ?? new Dictionary<string, string>())
+        {
+            ["Authorization:ApiKeys:Admin"] = AdminKey,
+        };
+        app = CreateApp(settings);
+
+        HttpClient client = app.CreateClient();
+        client.DefaultRequestHeaders.Add("X-NuGet-ApiKey", AdminKey);
+        return client;
     }
+
+    private const string AdminKey = "admin-key";
 
     private static async Task<HttpResponseMessage> PushAsync(HttpClient client, Stream package)
     {

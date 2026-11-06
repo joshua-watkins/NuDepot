@@ -49,10 +49,11 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
 
     /// <summary>
     /// Whether a user name can be used for a new account: letters, digits, '.', '_', '-' and '@',
-    /// starting with a letter or digit.
+    /// starting with a letter or digit. It can't be a role's name, like "ReadWrite", which names the feed's API
+    /// key for the role in a package source's credentials.
     /// </summary>
     public static bool IsValidUserName(string? userName)
-        => userName != null && UserNamePattern().IsMatch(userName);
+        => userName != null && UserNamePattern().IsMatch(userName) && FeedAccess.GetRole(userName) == null;
 
     /// <summary>
     /// Whether someone may create an account. The first account can always be created.

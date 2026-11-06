@@ -21,8 +21,10 @@ Push a [symbol package](https://learn.microsoft.com/nuget/create-packages/symbol
 dotnet nuget push -s http://localhost:3333/v3/index.json package.1.0.0.snupkg
 ```
 
-If the feed requires an API key, add `-k` with the key. See [Using a key](configuration.md#using-a-key) for the
-other ways to give NuGet a key.
+If the feed has a `ReadWrite` key, add `-k` with it, or with the `Admin` key. See
+[Using a key](configuration.md#using-a-key) for the other ways to give NuGet a key. An API key you created in the
+gallery goes in your `nuget.config` instead, with your user name, and you push without `-k`; see
+[Users and passkeys](configuration.md#users-and-passkeys).
 
 ## Restore packages
 

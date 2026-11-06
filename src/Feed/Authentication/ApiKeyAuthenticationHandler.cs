@@ -14,14 +14,15 @@ using System.Text.Encodings.Web;
 namespace NuDepot.Feed.Authentication;
 
 /// <summary>
-/// Authenticates requests by their API key. NuGet clients send a key in the X-NuGet-ApiKey header
-/// when pushing or deleting (the push command's -k option, or nuget.config's apikeys), and send a
-/// package source's credentials from nuget.config with HTTP Basic authentication. Either works:
-/// the key is the header's value, or the Basic password. The Basic user name isn't used.
-/// The key is a configured key, or one a user created if users are enabled. Keys are only accepted
-/// if the application calls <c>UseApiKeys()</c>.
+/// Authenticates requests by their API key. NuGet clients send a key in the X-NuGet-ApiKey header when pushing or
+/// deleting (the push command's -k option, or nuget.config's apikeys), and send a package source's credentials from
+/// nuget.config with HTTP Basic authentication, whenever the feed asks for them.
+/// <list type="bullet">
+/// <item>The feed's configured keys work either way. In credentials, the user name is the key's role, like "ReadWrite".</item>
+/// <item>Keys users create only work in credentials, with the user's name, and only if the application uses <c>UsePasskeys()</c>.</item>
+/// </list>
 /// </summary>
-internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, FeedAccess access, FeedPipeline pipeline) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, FeedAccess access) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = NuDepotAuthenticationSchemes.ApiKey;
 
@@ -31,22 +32,31 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
     public const string Issuer = "NuDepot";
 
     private FeedAccess Access { get; } = access;
-    private FeedPipeline Pipeline { get; } = pipeline;
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        List<string> presentedKeys = GetPresentedKeys(Request);
-        if (presentedKeys.Count == 0 || !Pipeline.UsesApiKeys)
+        string? headerKey = Request.GetApiKey();
+        (string UserName, string Password)? credentials = GetCredentials(Request);
+        if (string.IsNullOrEmpty(headerKey) && credentials == null)
             return AuthenticateResult.NoResult();
 
-        foreach (string presentedKey in presentedKeys)
-        {
-            if (Access.FindApiKey(presentedKey) is { } apiKey)
-                return Success(FeedClaims.CreateIdentity(apiKey.Name, apiKey.Role, Scheme.Name));
+        if (Access.FindApiKey(headerKey) is { } headerRole)
+            return Success(FeedClaims.CreateIdentity(headerRole.ToString(), headerRole, Scheme.Name));
 
-            if (Access.UsersEnabled &&
-                await Context.RequestServices.GetRequiredService<UserService>().FindByApiKeyAsync(presentedKey, Context.RequestAborted) is { } user)
+        if (credentials is ({ } userName, { } password))
+        {
+            // The user name says which key it is: a role's, or a user's.
+            if (FeedAccess.GetRole(userName) is { } role)
+            {
+                if (Access.FindApiKey(password, role) is { } keyRole)
+                    return Success(FeedClaims.CreateIdentity(keyRole.ToString(), keyRole, Scheme.Name));
+            }
+            else if (Access.UsersEnabled &&
+                await Context.RequestServices.GetRequiredService<UserService>().FindByApiKeyAsync(password, Context.RequestAborted) is { } user &&
+                string.Equals(user.UserName, userName, StringComparison.OrdinalIgnoreCase))
+            {
                 return Success(FeedClaims.CreateIdentity(user, Scheme.Name));
+            }
         }
 
         // The request continues as anonymous, so an unknown key can still do what anyone may.
@@ -66,44 +76,28 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
         return Task.CompletedTask;
     }
 
-    private static List<string> GetPresentedKeys(HttpRequest request)
+    private static (string UserName, string Password)? GetCredentials(HttpRequest request)
     {
-        List<string> keys = [];
-
-        string? headerKey = request.GetApiKey();
-        if (!string.IsNullOrEmpty(headerKey))
-            keys.Add(headerKey);
-
-        if (AuthenticationHeaderValue.TryParse(request.Headers.Authorization, out AuthenticationHeaderValue? authorization) &&
-            string.Equals(authorization.Scheme, "Basic", StringComparison.OrdinalIgnoreCase) &&
-            TryGetBasicPassword(authorization.Parameter, out string? password))
-            keys.Add(password);
-
-        return keys;
-    }
-
-    private static bool TryGetBasicPassword(string? parameter, out string password)
-    {
-        password = string.Empty;
-        if (string.IsNullOrEmpty(parameter))
-            return false;
+        if (!AuthenticationHeaderValue.TryParse(request.Headers.Authorization, out AuthenticationHeaderValue? authorization) ||
+            !string.Equals(authorization.Scheme, "Basic", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrEmpty(authorization.Parameter))
+            return null;
 
         string credentials;
         try
         {
-            credentials = Encoding.UTF8.GetString(Convert.FromBase64String(parameter));
+            credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authorization.Parameter));
         }
         catch (FormatException)
         {
-            return false;
+            return null;
         }
 
         // The credentials are "user:password". Passwords may contain colons, user names may not.
         int separator = credentials.IndexOf(':');
-        if (separator < 0)
-            return false;
+        if (separator < 0 || separator == credentials.Length - 1)
+            return null;
 
-        password = credentials[(separator + 1)..];
-        return password.Length > 0;
+        return (credentials[..separator], credentials[(separator + 1)..]);
     }
 }

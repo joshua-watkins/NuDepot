@@ -53,8 +53,9 @@ See the [configuration](../configuration.md) guide for every setting.
 - **Serve it over HTTPS.** The service listens on HTTP on localhost, for a reverse proxy that serves HTTPS on your
   feed's address. Passkeys and signing need HTTPS, and API keys travel with every request. See
   [Serve NuDepot over HTTPS](https.md).
-- **Require API keys or accounts.** Until you add API keys or users, anyone who can reach the feed may push and
-  delete packages. See [Require an API key](../configuration.md#require-an-api-key).
+- **Set API keys, or turn on users.** Without either, anyone who can reach the feed may push and unlist packages.
+  A `ReadWrite` key, or users, stop that, and a `ReadOnly` key makes the feed private, as do users with
+  `AnonymousReads` off. See [Require an API key](../configuration.md#require-an-api-key).
 - **Create your account first.** With users on, the first person to sign up becomes an Admin, so sign up before you
   share the feed's address.
 

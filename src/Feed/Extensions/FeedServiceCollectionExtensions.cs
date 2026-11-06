@@ -64,6 +64,42 @@ public static class FeedServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Adds the feed's users, who sign up and sign in to the gallery with passkeys, and create API keys for NuGet
+    /// clients, which present them as the password of a package source's credentials, with the user's name. Each
+    /// user has a role, like the feed's API keys. With users, requests without a key or a signed-in user may only
+    /// read the feed. The application uses them with <c>UsePasskeys()</c>. It needs the feed, from <see cref="AddFeed"/>.
+    /// </summary>
+    public static NuDepotBuilder AddPasskeys(this NuDepotBuilder builder)
+    {
+        IServiceCollection services = builder.Services;
+        FeedPipeline pipeline = FeedPipeline.Get(services);
+        if (pipeline.AddsPasskeys)
+            return builder;
+
+        pipeline.AddsPasskeys = true;
+        services.TryAddScoped<UserService>();
+        services.TryAddScoped<PasskeyService>();
+        services.TryAddSingleton<UserCookieEvents>();
+
+        services
+            .AddAuthentication()
+            .AddCookie(NuDepotAuthenticationSchemes.User, options =>
+            {
+                options.Cookie.Name = UserCookieName;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                // Each request gets a new cookie, so the user stays signed in for a year after their
+                // last request. The cookie's session is checked in the database with each request.
+                options.ExpireTimeSpan = UserService.SessionLifetime;
+                options.SlidingExpiration = false;
+                options.EventsType = typeof(UserCookieEvents);
+            });
+
+        return builder;
+    }
+
+    /// <summary>
     /// Adds the NuGet feed, like <c>services.AddNuDepot().AddFeed(configure)</c>. Its <see cref="FeedOptions"/>
     /// are bound from the <see cref="FeedOptions.Section"/> configuration section, then changed by
     /// <paramref name="configure"/>. Use it with <see cref="FeedApplicationBuilderExtensions.UseNuDepotFeed{TApplication}"/>.
@@ -96,7 +132,7 @@ public static class FeedServiceCollectionExtensions
             .ValidateOnStart();
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FeedOptions>, ValidateFeedOptions>());
-        services.TryAddSingleton<FeedPipeline>();
+        FeedPipeline.Get(services);
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ValidateFeedPipeline>());
 
         // Forwarded headers and the path base come before routing, so the routes see the request's real path.
@@ -115,9 +151,6 @@ public static class FeedServiceCollectionExtensions
         // the database, unless the application keeps them somewhere else.
         services.AddDataProtection();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<KeyManagementOptions>, ConfigureDataProtectionKeys>());
-        services.TryAddScoped<UserService>();
-        services.TryAddScoped<PasskeyService>();
-        services.TryAddSingleton<UserCookieEvents>();
 
         // Authenticate requests as the feed does, unless the application authenticates them another way.
         services.Configure<AuthenticationOptions>(options => options.DefaultScheme ??= NuDepotAuthenticationSchemes.Feed);
@@ -134,19 +167,7 @@ public static class FeedServiceCollectionExtensions
                         ? NuDepotAuthenticationSchemes.ApiKey
                         : NuDepotAuthenticationSchemes.User;
             })
-            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(NuDepotAuthenticationSchemes.ApiKey, configureOptions: null)
-            .AddCookie(NuDepotAuthenticationSchemes.User, options =>
-            {
-                options.Cookie.Name = UserCookieName;
-                options.Cookie.HttpOnly = true;
-                options.Cookie.SameSite = SameSiteMode.Lax;
-                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-                // Each request gets a new cookie, so the user stays signed in for a year after their
-                // last request. The cookie's session is checked in the database with each request.
-                options.ExpireTimeSpan = UserService.SessionLifetime;
-                options.SlidingExpiration = false;
-                options.EventsType = typeof(UserCookieEvents);
-            });
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(NuDepotAuthenticationSchemes.ApiKey, configureOptions: null);
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IAuthorizationHandler, FeedPermissionHandler>());
         services

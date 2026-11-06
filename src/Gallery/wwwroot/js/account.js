@@ -288,18 +288,8 @@
         }).catch(showError);
 
         loadPasskeys(page).catch(showError);
-        loadApiKeys(page).catch(showError);
 
-        var passkeyForm = page.querySelector('#add-passkey-form');
-        passkeyForm.addEventListener('submit', function (event) {
-            event.preventDefault();
-            var input = passkeyForm.querySelector('#passkey-name');
-            busy(passkeyForm.querySelector('button'), createPasskey('/passkeys/options', { passkeyName: input.value.trim() || guessPasskeyName() })
-                .then(function () {
-                    input.value = '';
-                    return loadPasskeys(page);
-                }));
-        });
+        loadApiKeys(page).catch(showError);
 
         var apiKeyForm = page.querySelector('#create-apikey-form');
         apiKeyForm.addEventListener('submit', function (event) {
@@ -310,6 +300,17 @@
                     input.value = '';
                     showNewApiKey(page, apiKey.key);
                     return loadApiKeys(page);
+                }));
+        });
+
+        var passkeyForm = page.querySelector('#add-passkey-form');
+        passkeyForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            var input = passkeyForm.querySelector('#passkey-name');
+            busy(passkeyForm.querySelector('button'), createPasskey('/passkeys/options', { passkeyName: input.value.trim() || guessPasskeyName() })
+                .then(function () {
+                    input.value = '';
+                    return loadPasskeys(page);
                 }));
         });
 

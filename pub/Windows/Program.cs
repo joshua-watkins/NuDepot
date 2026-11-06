@@ -15,11 +15,9 @@ builder.Services.AddWindowsService(options =>
     options.ServiceName = "NuDepot";
 });
 
-// The feed reads its settings from the "Feed" section, and the gallery from "Gallery".
-builder.Services
-    .AddNuDepot()
-    .AddFeed()
-    .AddGallery();
+// The feed reads its settings from the "Feed" section, and the gallery from "Gallery". The settings say whether
+// people sign in with passkeys, and create API keys for NuGet clients.
+NuDepotService.AddNuDepot(builder);
 
 WebApplication app = builder.Build();
 
@@ -27,13 +25,8 @@ WebApplication app = builder.Build();
 if (await app.TryRunCommandAsync(args))
     return;
 
-// The feed is open until API keys or users are configured. Then each key and user may do what its role allows.
-app
-    .UseNuDepot()
-    .UseFeed()
-    .UseApiKeys()
-    .UsePasskeys()
-    .UseGallery();
+// Without API keys or users, anyone may read, push and unlist. Each key and user may do what its role allows.
+NuDepotService.UseNuDepot(app);
 
 await app.RunMigrationsAsync();
 await app.RunAsync();

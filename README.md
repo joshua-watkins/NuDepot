@@ -13,15 +13,15 @@ browsing packages. Releases are self-contained, so you don't need to install .NE
 3. Browse <http://localhost:3333/> to see the gallery.
 4. Push a package: `dotnet nuget push -s http://localhost:3333/v3/index.json package.1.0.0.nupkg`
 
-NuDepot listens on `http://localhost:3333`, ready for a reverse proxy that serves HTTPS. Until you add API keys or
-users, anyone who can reach it may push and delete packages. Before you share it, see
+NuDepot listens on `http://localhost:3333`, ready for a reverse proxy that serves HTTPS. Until you set API keys,
+anyone who can reach it may push and unlist packages. Before you share it, see
 [Serve NuDepot over HTTPS](docs/installation/https.md) and [Require an API key](docs/configuration.md#require-an-api-key).
 
 ## Features
 
 - Push, restore, search and browse packages and symbols, from the dotnet CLI, nuget.exe and Visual Studio.
 - A gallery website, with sign-in with passkeys and personal API keys.
-- API keys with roles: read only, read and write, or admin.
+- One API key for each role: read only, read and write, or admin. Without keys, anyone may read and push.
 - Repository signing of pushed packages.
 - Mirroring of nuget.org, so restores work offline and builds don't wait on it.
 - The catalog, vulnerability, deprecation and package details resources.

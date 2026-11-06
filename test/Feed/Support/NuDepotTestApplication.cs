@@ -25,23 +25,23 @@ internal sealed class NuDepotTestApplication : IDisposable
     private ITestOutputHelper Output { get; }
     private HttpClient? UpstreamClient { get; }
     private IReadOnlyDictionary<string, string?> Configuration { get; }
-    private bool UseApiKeys { get; }
+    private bool AddPasskeys { get; }
     private bool UsePasskeys { get; }
     private Action<IServiceCollection>? ConfigureServices { get; }
     private Lazy<WebApplication> App { get; }
 
     /// <param name="output">Receives the server's logs.</param>
     /// <param name="upstreamClient">If set, the server mirrors the upstream feed this client reaches.</param>
-    /// <param name="configuration">The feed's configuration, which overrides the test defaults. Keys are in the "Feed" section, like "Authorization:ApiKeys:0:Key".</param>
-    /// <param name="useApiKeys">Whether the application calls UseApiKeys(), like the hosts.</param>
-    /// <param name="usePasskeys">Whether the application calls UsePasskeys(), like the hosts.</param>
+    /// <param name="configuration">The feed's configuration, which overrides the test defaults. Keys are in the "Feed" section, like "Authorization:ApiKeys:Admin".</param>
+    /// <param name="passkeys">Whether the application calls AddPasskeys() and UsePasskeys(), for users and their API keys.</param>
+    /// <param name="usePasskeys">Whether the application calls UsePasskeys(), if it isn't the same as <paramref name="passkeys"/>.</param>
     /// <param name="configureServices">Replaces the feed's services, after they're added.</param>
-    public NuDepotTestApplication(ITestOutputHelper output, HttpClient? upstreamClient = null, IReadOnlyDictionary<string, string>? configuration = null, bool useApiKeys = true, bool usePasskeys = true, Action<IServiceCollection>? configureServices = null)
+    public NuDepotTestApplication(ITestOutputHelper output, HttpClient? upstreamClient = null, IReadOnlyDictionary<string, string>? configuration = null, bool passkeys = false, bool? usePasskeys = null, Action<IServiceCollection>? configureServices = null)
     {
         Output = output;
         UpstreamClient = upstreamClient;
-        UseApiKeys = useApiKeys;
-        UsePasskeys = usePasskeys;
+        AddPasskeys = passkeys;
+        UsePasskeys = usePasskeys ?? passkeys;
         ConfigureServices = configureServices;
         Configuration = (configuration ?? new Dictionary<string, string>())
             .ToDictionary(setting => $"{FeedOptions.Section}:{setting.Key}", setting => (string?)setting.Value);
@@ -119,7 +119,6 @@ internal sealed class NuDepotTestApplication : IDisposable
         // Setup the integration test configuration.
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            { "Feed:ApiKey", "" },
             { "Feed:PackageDeletionBehavior", "HardDelete" },
             { "Feed:AllowPackageOverwrites", "true" },
             { "Feed:Database:ConnectionString", $"Data Source=NuDepotTests-{testId};Mode=Memory;Cache=Shared" },
@@ -132,9 +131,11 @@ internal sealed class NuDepotTestApplication : IDisposable
 
         builder.Configuration.AddInMemoryCollection(Configuration);
 
-        builder.Services
+        NuDepotBuilder nuDepotServices = builder.Services
             .AddNuDepot()
             .AddFeed();
+        if (AddPasskeys)
+            nuDepotServices.AddPasskeys();
 
         // Make time deterministic for testing purposes. Tests can move it forward with the clock.
         Mock<SystemTime> time = new();
@@ -157,8 +158,6 @@ internal sealed class NuDepotTestApplication : IDisposable
         NuDepotApplicationBuilder nuDepot = app
             .UseNuDepot()
             .UseFeed();
-        if (UseApiKeys)
-            nuDepot.UseApiKeys();
         if (UsePasskeys)
             nuDepot.UsePasskeys();
 

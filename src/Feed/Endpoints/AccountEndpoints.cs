@@ -52,7 +52,8 @@ internal static class AccountEndpoints
         {
             return EndpointHelpers.Text(
                 StatusCodes.Status400BadRequest,
-                "A user name is up to 64 letters, digits, '.', '_', '-' or '@', and starts with a letter or digit.");
+                "A user name is up to 64 letters, digits, '.', '_', '-' or '@', and starts with a letter or digit. " +
+                "It can't be ReadOnly, ReadWrite or Admin.");
         }
 
         CredentialCreateOptions? options = await passkeys.BeginSignUpAsync(httpContext, userName!, GetName(body?.PasskeyName, DefaultPasskeyName)!, cancellationToken);

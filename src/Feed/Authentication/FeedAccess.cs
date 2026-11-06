@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Extensions;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,26 +10,24 @@ namespace NuDepot.Feed.Authentication;
 /// <summary>
 /// Decides what a request may do on the feed, from its API key or signed-in user.
 /// </summary>
-public class FeedAccess(IOptionsMonitor<FeedOptions> options)
+public class FeedAccess(IOptionsMonitor<FeedOptions> options, FeedPipeline pipeline)
 {
-    private const string LegacyApiKeyName = "ApiKey";
-
     private IOptionsMonitor<FeedOptions> Options { get; } = options;
+    private FeedPipeline Pipeline { get; } = pipeline;
 
     /// <summary>
-    /// Whether anyone may do anything: the feed has no API keys, and users aren't enabled.
+    /// Whether people can sign in with passkeys, and create API keys for NuGet clients: the application uses
+    /// <c>UsePasskeys()</c>.
     /// </summary>
-    public bool IsOpen => !HasApiKeys(Options.CurrentValue) && !UsersEnabled;
+    public bool UsersEnabled => Pipeline.UsesPasskeys;
 
     /// <summary>
-    /// Whether people can sign in with passkeys, and create their own API keys.
+    /// The role of requests without a valid API key or a signed-in user: <see cref="FeedRole.ReadWrite"/>, unless
+    /// users or a <see cref="ApiKeyOptions.ReadWrite"/> key make it <see cref="FeedRole.ReadOnly"/>, or a
+    /// <see cref="ApiKeyOptions.ReadOnly"/> key, or users without <see cref="UserOptions.AnonymousReads"/>, make
+    /// it <see cref="FeedRole.None"/>.
     /// </summary>
-    public bool UsersEnabled => Options.CurrentValue.Authorization.Users.Enabled;
-
-    /// <summary>
-    /// The role of requests without a valid API key or a signed-in user. Only used when the feed isn't open.
-    /// </summary>
-    public FeedRole AnonymousRole => Options.CurrentValue.Authorization.AnonymousRole ?? FeedRole.ReadOnly;
+    public FeedRole AnonymousRole => GetAnonymousRole(Options.CurrentValue.Authorization, UsersEnabled);
 
     /// <summary>
     /// What the user may do. An API key or a signed-in user adds their role to what requests without
@@ -38,7 +37,7 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options)
     {
         ArgumentNullException.ThrowIfNull(user);
 
-        FeedPermissions permissions = IsOpen ? FeedPermissions.All : AnonymousRole.GetPermissions();
+        FeedPermissions permissions = AnonymousRole.GetPermissions();
         foreach (Claim claim in user.FindAll(ClaimTypes.Role))
         {
             if (claim.Issuer == ApiKeyAuthenticationHandler.Issuer &&
@@ -67,56 +66,74 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options)
             : FeedPermissions.Unlist;
 
     /// <summary>
-    /// Find the configured API key that matches <paramref name="key"/>.
+    /// Find the role whose configured API key is <paramref name="key"/>.
     /// </summary>
-    /// <returns>The key's name and role, or null if no key matches.</returns>
-    public (string Name, FeedRole Role)? FindApiKey(string? key)
+    /// <param name="key">The presented key.</param>
+    /// <param name="role">The role named by the credentials' user name, or null for a key in the X-NuGet-ApiKey header.</param>
+    /// <returns>The key's role, or null if it isn't a configured key, or isn't the named role's.</returns>
+    public FeedRole? FindApiKey(string? key, FeedRole? role = null)
     {
         if (string.IsNullOrEmpty(key))
             return null;
 
         byte[] presented = Encoding.UTF8.GetBytes(key);
-        (string Name, FeedRole Role)? match = null;
+        FeedRole? match = null;
 
         // Compare against every key in constant time, so the response time doesn't reveal a key.
-        foreach ((string? name, string? apiKey, FeedRole role) in GetApiKeys(Options.CurrentValue))
+        foreach ((FeedRole keyRole, string apiKey) in GetApiKeys(Options.CurrentValue.Authorization.ApiKeys))
         {
-            if (CryptographicOperations.FixedTimeEquals(presented, Encoding.UTF8.GetBytes(apiKey)))
-                match ??= (name, role);
+            if (CryptographicOperations.FixedTimeEquals(presented, Encoding.UTF8.GetBytes(apiKey)) && (role == null || role == keyRole))
+                match ??= keyRole;
         }
 
         return match;
     }
 
     /// <summary>
-    /// Whether any API keys are configured, in <see cref="FeedOptions.ApiKey"/> or <see cref="FeedAuthorizationOptions.ApiKeys"/>.
+    /// The role a user name names, in a package source's credentials, like "ReadWrite".
     /// </summary>
-    internal static bool HasApiKeys(FeedOptions options)
-        => !string.IsNullOrEmpty(options.ApiKey) || options.Authorization.ApiKeys.Exists(apiKey => !string.IsNullOrEmpty(apiKey.Key));
-
-    /// <summary>
-    /// The configured API keys: <see cref="FeedOptions.ApiKey"/> and <see cref="FeedAuthorizationOptions.ApiKeys"/>.
-    /// </summary>
-    internal static List<(string Name, string Key, FeedRole Role)> GetApiKeys(FeedOptions options)
+    public static FeedRole? GetRole(string userName)
     {
-        FeedAuthorizationOptions authorization = options.Authorization;
-        List<(string Name, string Key, FeedRole Role)> keys = [];
-
-        // The original single API key may do everything, as it always could.
-        if (!string.IsNullOrEmpty(options.ApiKey))
-            keys.Add((LegacyApiKeyName, options.ApiKey, FeedRole.Admin));
-
-        for (int i = 0; i < authorization.ApiKeys.Count; i++)
+        foreach (FeedRole role in ApiKeyRoles)
         {
-            ApiKeyOptions apiKey = authorization.ApiKeys[i];
-            if (string.IsNullOrEmpty(apiKey.Key))
-                continue;
-
-            // Keys without a role don't pass validation, so the feed doesn't start with one.
-            string name = string.IsNullOrWhiteSpace(apiKey.Name) ? $"{nameof(FeedAuthorizationOptions.ApiKeys)}:{i}" : apiKey.Name;
-            keys.Add((name, apiKey.Key, apiKey.Role ?? FeedRole.Admin));
+            if (string.Equals(userName, role.ToString(), StringComparison.OrdinalIgnoreCase))
+                return role;
         }
 
+        return null;
+    }
+
+    /// <summary>
+    /// The roles that have a configured API key, and that users can't be named after.
+    /// </summary>
+    internal static IReadOnlyList<FeedRole> ApiKeyRoles { get; } = [FeedRole.ReadOnly, FeedRole.ReadWrite, FeedRole.Admin];
+
+    /// <summary>
+    /// The configured API keys, with their roles.
+    /// </summary>
+    internal static List<(FeedRole Role, string Key)> GetApiKeys(ApiKeyOptions apiKeys)
+    {
+        List<(FeedRole Role, string Key)> keys = [];
+        if (!string.IsNullOrEmpty(apiKeys.ReadOnly))
+            keys.Add((FeedRole.ReadOnly, apiKeys.ReadOnly));
+        if (!string.IsNullOrEmpty(apiKeys.ReadWrite))
+            keys.Add((FeedRole.ReadWrite, apiKeys.ReadWrite));
+        if (!string.IsNullOrEmpty(apiKeys.Admin))
+            keys.Add((FeedRole.Admin, apiKeys.Admin));
+
         return keys;
+    }
+
+    internal static FeedRole GetAnonymousRole(FeedAuthorizationOptions authorization, bool usersEnabled)
+    {
+        ApiKeyOptions apiKeys = authorization.ApiKeys;
+        if (!string.IsNullOrEmpty(apiKeys.ReadOnly) || (usersEnabled && !authorization.Users.AnonymousReads))
+            return FeedRole.None;
+
+        // Users change the feed, so others may only read it.
+        if (!string.IsNullOrEmpty(apiKeys.ReadWrite) || usersEnabled)
+            return FeedRole.ReadOnly;
+
+        return FeedRole.ReadWrite;
     }
 }

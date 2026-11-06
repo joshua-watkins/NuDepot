@@ -14,7 +14,7 @@ using Xunit.Abstractions;
 namespace NuDepot.Feed.Tests;
 
 /// <summary>
-/// Tests what API keys, and requests without one, may do on the feed.
+/// Tests what the feed's API keys, one for each role, and requests without one, may do on the feed.
 /// </summary>
 public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposable
 {
@@ -33,8 +33,8 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
 
     public static TheoryData<string?, string, HttpStatusCode> RolePermissions => new()
     {
-        // Without a key, the feed is read-only once it has API keys.
-        { null, "read", HttpStatusCode.OK },
+        // With a ReadOnly key, the feed is private: requests without a key may do nothing.
+        { null, "read", HttpStatusCode.Unauthorized },
         { null, "push", HttpStatusCode.Unauthorized },
         { null, "unlist", HttpStatusCode.Unauthorized },
         { null, "relist", HttpStatusCode.Unauthorized },
@@ -87,61 +87,74 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
         Assert.Equal(expected, response.StatusCode);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("any-key")]
-    public async Task FeedIsOpenWithoutApiKeysOrUsers(string? apiKey)
+    public static TheoryData<string, HttpStatusCode> AnonymousOperations => new()
     {
-        NuDepotTestApplication app = CreateApp();
+        { "read", HttpStatusCode.OK },
+        { "push", HttpStatusCode.Created },
+        { "unlist", HttpStatusCode.NoContent },
+        { "relist", HttpStatusCode.OK },
+        { "hard delete", HttpStatusCode.Unauthorized },
+        { "deprecate", HttpStatusCode.Unauthorized },
+        { "vulnerability", HttpStatusCode.Unauthorized },
+    };
+
+    [Theory]
+    [MemberData(nameof(AnonymousOperations))]
+    public async Task WithoutKeysAnyoneMayReadPushAndUnlist(string operation, HttpStatusCode expected)
+    {
+        Dictionary<string, string> configuration = new()
+        { ["PackageDeletionBehavior"] = operation == "hard delete" ? "HardDelete" : "Unlist" };
+        NuDepotTestApplication app = CreateApp(configuration);
         await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
         using HttpClient client = app.CreateClient();
 
-        foreach (string? operation in new[] { "read", "push", "deprecate", "vulnerability", "hard delete" })
-        {
-            using HttpRequestMessage request = CreateRequest(operation);
-            if (apiKey != null)
-                request.Headers.Add("X-NuGet-ApiKey", apiKey);
-            using HttpResponseMessage response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(CreateRequest(operation));
 
-            Assert.True(response.IsSuccessStatusCode, $"{operation}: {response.StatusCode}");
-        }
+        Assert.Equal(expected, response.StatusCode);
     }
 
-    [Fact]
-    public async Task ApiKeySettingIsAnAdminKey()
+    public static TheoryData<Dictionary<string, string>, FeedRole> AnonymousRoles => new()
     {
-        NuDepotTestApplication app = CreateApp(new Dictionary<string, string> { { "ApiKey", AdminKey } });
-        using HttpClient client = app.CreateClient();
+        { new(), FeedRole.ReadWrite },
+        { new() { { "Authorization:ApiKeys:ReadOnly", "" } }, FeedRole.ReadWrite },
+        { new() { { "Authorization:ApiKeys:Admin", AdminKey } }, FeedRole.ReadWrite },
+        { new() { { "Authorization:ApiKeys:ReadWrite", ReadWriteKey } }, FeedRole.ReadOnly },
+        { new() { { "Authorization:ApiKeys:ReadOnly", ReadOnlyKey } }, FeedRole.None },
+        { RoleKeys(), FeedRole.None },
+    };
 
-        using HttpResponseMessage anonymous = await client.SendAsync(CreateRequest("vulnerability"));
-        using HttpRequestMessage request = CreateRequest("vulnerability");
-        request.Headers.Add("X-NuGet-ApiKey", AdminKey);
-        using HttpResponseMessage withKey = await client.SendAsync(request);
+    [Theory]
+    [MemberData(nameof(AnonymousRoles))]
+    public void KeysDecideWhatAnonymousRequestsMayDo(Dictionary<string, string> configuration, FeedRole expected)
+    {
+        NuDepotTestApplication app = CreateApp(configuration);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, withKey.StatusCode);
+        Assert.Equal(expected, app.Services.GetRequiredService<FeedAccess>().AnonymousRole);
     }
 
-    [Fact]
-    public async Task BasicPasswordIsTheApiKey()
+    [Theory]
+    [InlineData("ReadWrite", ReadWriteKey, HttpStatusCode.Created)]
+    [InlineData("readwrite", ReadWriteKey, HttpStatusCode.Created)]
+    [InlineData("Admin", AdminKey, HttpStatusCode.Created)]
+    [InlineData("ReadOnly", ReadWriteKey, HttpStatusCode.Unauthorized)]
+    [InlineData("me", ReadWriteKey, HttpStatusCode.Unauthorized)]
+    public async Task CredentialsNameTheKeysRole(string userName, string password, HttpStatusCode expected)
     {
         // NuGet sends a package source's credentials from nuget.config this way.
         NuDepotTestApplication app = CreateApp(RoleKeys());
         using HttpClient client = app.CreateClient();
 
         using HttpRequestMessage request = CreateRequest("push");
-        request.Headers.Authorization = Basic("any user name", ReadWriteKey);
+        request.Headers.Authorization = Basic(userName, password);
         using HttpResponseMessage response = await client.SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(expected, response.StatusCode);
     }
 
     [Fact]
     public async Task MissingCredentialsAskForBasicCredentials()
     {
-        Dictionary<string, string> configuration = RoleKeys();
-        configuration["Authorization:AnonymousRole"] = "None";
-        NuDepotTestApplication app = CreateApp(configuration);
+        NuDepotTestApplication app = CreateApp(RoleKeys());
         using HttpClient client = app.CreateClient();
 
         using HttpResponseMessage anonymous = await client.GetAsync("v3/index.json");
@@ -152,7 +165,7 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
         Assert.Equal("Basic", challenge.Scheme);
 
         using HttpRequestMessage request = new(HttpMethod.Get, "v3/index.json");
-        request.Headers.Authorization = Basic("user", ReadOnlyKey);
+        request.Headers.Authorization = Basic("ReadOnly", ReadOnlyKey);
         using HttpResponseMessage withCredentials = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, withCredentials.StatusCode);
@@ -168,7 +181,7 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
 
         using HttpRequestMessage request = CreateRequest("push");
         if (header == "Authorization")
-            request.Headers.Authorization = Basic("user", "wrong-key");
+            request.Headers.Authorization = Basic("ReadWrite", "wrong-key");
         else
             request.Headers.Add(header, "wrong-key");
         using HttpResponseMessage response = await client.SendAsync(request);
@@ -180,7 +193,7 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
     [Fact]
     public async Task UnknownApiKeyCanStillDoWhatAnyoneMay()
     {
-        NuDepotTestApplication app = CreateApp(RoleKeys());
+        NuDepotTestApplication app = CreateApp(new Dictionary<string, string> { { "Authorization:ApiKeys:ReadWrite", ReadWriteKey } });
         using HttpClient client = app.CreateClient();
 
         using HttpRequestMessage request = new(HttpMethod.Get, "v3/index.json");
@@ -188,21 +201,6 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
         using HttpResponseMessage response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task AnonymousRoleCanBeRaised()
-    {
-        Dictionary<string, string> configuration = RoleKeys();
-        configuration["Authorization:AnonymousRole"] = "ReadWrite";
-        NuDepotTestApplication app = CreateApp(configuration);
-        using HttpClient client = app.CreateClient();
-
-        using HttpResponseMessage push = await client.SendAsync(CreateRequest("push"));
-        using HttpResponseMessage vulnerability = await client.SendAsync(CreateRequest("vulnerability"));
-
-        Assert.Equal(HttpStatusCode.Created, push.StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, vulnerability.StatusCode);
     }
 
     [Theory]
@@ -233,104 +231,77 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
         using HttpRequestMessage request = CreateRequest("push");
         request.Headers.Add("X-NuGet-ApiKey", AdminKey);
         using HttpResponseMessage push = await client.SendAsync(request);
-        using HttpResponseMessage read = await client.GetAsync("v3/index.json");
+        using HttpRequestMessage read = new(HttpMethod.Get, "v3/index.json");
+        read.Headers.Add("X-NuGet-ApiKey", ReadOnlyKey);
+        using HttpResponseMessage readResponse = await client.SendAsync(read);
 
         Assert.Equal(HttpStatusCode.Forbidden, push.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
-    }
-
-    public static TheoryData<Dictionary<string, string>, bool> OpenFeeds => new()
-    {
-        { new(), true },
-        { new() { { "ApiKey", "" } }, true },
-        { RoleKeys(), false },
-        { new() { { "ApiKey", AdminKey } }, false },
-        { new() { { "Authorization:Users:Enabled", "true" } }, false },
-    };
-
-    [Theory]
-    [MemberData(nameof(OpenFeeds))]
-    public void FeedIsOpenUntilItHasApiKeysOrUsers(Dictionary<string, string> configuration, bool expected)
-    {
-        NuDepotTestApplication app = CreateApp(configuration);
-
-        Assert.Equal(expected, app.Services.GetRequiredService<FeedAccess>().IsOpen);
-    }
-
-    public static TheoryData<bool, bool, Dictionary<string, string>, string> MismatchedSettings => new()
-    {
-        // Keys the application would ignore.
-        { false, true, RoleKeys(), "doesn't accept them. Call UseApiKeys()" },
-        { false, true, new() { { "ApiKey", AdminKey } }, "doesn't accept them. Call UseApiKeys()" },
-
-        // An anonymous role the open feed would ignore.
-        { true, true, new() { { "Authorization:AnonymousRole", "None" } }, "the feed has no API keys or users, so it's open" },
-
-        // Users the application would ignore.
-        { true, false, new() { { "Authorization:Users:Enabled", "true" } }, "Call UsePasskeys()" },
-
-        // Users whose API keys the application would ignore.
-        { false, true, new() { { "Authorization:Users:Enabled", "true" } }, "who create their own API keys, but doesn't accept API keys" },
-
-        // Keys without roles.
-        { true, true, KeysWithoutRoles(), "'Feed:Authorization:ApiKeys:0:Role' is required" },
-    };
-
-    [Theory]
-    [MemberData(nameof(MismatchedSettings))]
-    public void SettingsMustMatchWhatTheApplicationUses(bool useApiKeys, bool usePasskeys, Dictionary<string, string> configuration, string expectedFailure)
-    {
-        NuDepotTestApplication app = CreateApp(configuration, useApiKeys, usePasskeys);
-
-        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
-
-        Assert.Contains(exception.Failures, failure => failure.Contains(expectedFailure));
+        Assert.Equal(HttpStatusCode.OK, readResponse.StatusCode);
     }
 
     [Fact]
-    public void ApiKeysNeedAUniqueKey()
+    public void EachRoleNeedsItsOwnKey()
     {
         FeedOptions options = new()
         {
-            Database = { ConnectionString = "Data Source=nudepot.db" },
             Authorization =
             {
-                ApiKeys =
-                {
-                    new ApiKeyOptions { Name = "No role", Key = "key" },
-                    new ApiKeyOptions { Name = "No key", Role = FeedRole.Admin },
-                    new ApiKeyOptions { Name = "Duplicate", Key = "key", Role = FeedRole.ReadOnly },
-                },
+                ApiKeys = { ReadOnly = "key", ReadWrite = "key", Admin = "other-key" },
             },
         };
 
         ValidateOptionsResult result = new ValidateFeedOptions().Validate(Options.DefaultName, options);
 
         Assert.True(result.Failed);
-        Assert.Collection(
-            result.Failures!,
-            failure => Assert.Contains("'Feed:Authorization:ApiKeys:0:Role' is required", failure),
-            failure => Assert.Contains("'Feed:Authorization:ApiKeys:1:Key' is required", failure),
-            failure => Assert.Contains("'Feed:Authorization:ApiKeys:2:Key' is the same as another API key", failure));
+        Assert.Contains(result.Failures!, failure => failure.Contains("'Feed:Authorization:ApiKeys:ReadWrite' is the same as another role's API key"));
     }
 
-    private static Dictionary<string, string> KeysWithoutRoles() => new()
+    public static TheoryData<Dictionary<string, string>, FeedRole> AnonymousRolesWithUsers => new()
     {
-        { "Authorization:ApiKeys:0:Key", ReadOnlyKey },
-        { "Authorization:ApiKeys:1:Key", ReadWriteKey },
+        // Users change the feed, so others may only read it.
+        { new(), FeedRole.ReadOnly },
+        { new() { { "Authorization:Users:AnonymousReads", "false" } }, FeedRole.None },
+        { new() { { "Authorization:ApiKeys:ReadWrite", ReadWriteKey } }, FeedRole.ReadOnly },
+        { new() { { "Authorization:ApiKeys:ReadOnly", ReadOnlyKey } }, FeedRole.None },
     };
+
+    [Theory]
+    [MemberData(nameof(AnonymousRolesWithUsers))]
+    public void UsersMakeAnonymousRequestsReadOnly(Dictionary<string, string> configuration, FeedRole expected)
+    {
+        NuDepotTestApplication app = new(Output, configuration: configuration, passkeys: true);
+        Disposables.Add(app);
+
+        Assert.Equal(expected, app.Services.GetRequiredService<FeedAccess>().AnonymousRole);
+    }
+
+    [Fact]
+    public void UsersTheApplicationAddsMustBeUsed()
+    {
+        NuDepotTestApplication app = new(Output, passkeys: true, usePasskeys: false);
+        Disposables.Add(app);
+
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
+
+        Assert.Contains(exception.Failures, failure => failure.Contains("Call UsePasskeys()"));
+    }
+
+    [Fact]
+    public void UsingUsersThatWerentAddedFails()
+    {
+        NuDepotTestApplication app = new(Output, passkeys: false, usePasskeys: true);
+        Disposables.Add(app);
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => app.Services);
+
+        Assert.Contains("Call AddPasskeys()", exception.Message);
+    }
 
     private static Dictionary<string, string> RoleKeys() => new()
     {
-        { "Authorization:ApiKeys:0:Name", "Administrator" },
-        { "Authorization:ApiKeys:0:Key", AdminKey },
-        { "Authorization:ApiKeys:0:Role", "Admin" },
-        { "Authorization:ApiKeys:1:Name", "Build server" },
-        { "Authorization:ApiKeys:1:Key", ReadWriteKey },
-        { "Authorization:ApiKeys:1:Role", "ReadWrite" },
-        { "Authorization:ApiKeys:2:Name", "Developers" },
-        { "Authorization:ApiKeys:2:Key", ReadOnlyKey },
-        { "Authorization:ApiKeys:2:Role", "ReadOnly" },
+        { "Authorization:ApiKeys:Admin", AdminKey },
+        { "Authorization:ApiKeys:ReadWrite", ReadWriteKey },
+        { "Authorization:ApiKeys:ReadOnly", ReadOnlyKey },
     };
 
     private static HttpRequestMessage CreateRequest(string operation) => operation switch
@@ -365,9 +336,9 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
     private static AuthenticationHeaderValue Basic(string userName, string password)
         => new("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{password}")));
 
-    private NuDepotTestApplication CreateApp(IReadOnlyDictionary<string, string>? configuration = null, bool useApiKeys = true, bool usePasskeys = true)
+    private NuDepotTestApplication CreateApp(IReadOnlyDictionary<string, string>? configuration = null)
     {
-        NuDepotTestApplication app = new(Output, configuration: configuration, useApiKeys: useApiKeys, usePasskeys: usePasskeys);
+        NuDepotTestApplication app = new(Output, configuration: configuration);
         Disposables.Add(app);
         return app;
     }

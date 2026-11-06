@@ -11,14 +11,8 @@ public class FeedOptions
     public const string Section = "Feed";
 
     /// <summary>
-    /// An API key that may do everything, like an <see cref="Authentication.FeedRole.Admin"/> key in
-    /// <see cref="Authorization"/>. If no API keys are set and users aren't enabled, anyone may do anything.
-    /// </summary>
-    public string? ApiKey { get; set; }
-
-    /// <summary>
-    /// The API keys and their roles, the users who sign in with passkeys, and what requests without
-    /// a key or a user may do.
+    /// The API key for each role, which decide what anonymous requests may do, and the users who sign in with
+    /// passkeys.
     /// </summary>
     public FeedAuthorizationOptions Authorization { get; set; } = new();
 

@@ -252,6 +252,9 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
     [InlineData("alice", HttpStatusCode.Conflict)]
     [InlineData("ALICE", HttpStatusCode.Conflict)]
     [InlineData("not valid!", HttpStatusCode.BadRequest)]
+    // Role names name the feed's API keys in credentials.
+    [InlineData("ReadWrite", HttpStatusCode.BadRequest)]
+    [InlineData("admin", HttpStatusCode.BadRequest)]
     [InlineData("", HttpStatusCode.BadRequest)]
     public async Task UserNamesMustBeValidAndUnique(string userName, HttpStatusCode expected)
     {
@@ -269,7 +272,7 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
     {
         NuDepotTestApplication app = CreateApp(new() { { "Authorization:Users:AllowSignUp", "false" } });
 
-        await SignUpAsync(app, "admin");
+        await SignUpAsync(app, "owner");
 
         using HttpClient browser = app.CreateBrowserClient();
         HttpResponseMessage response = await browser.PostAsync("api/account/signup", JsonContent.Create(new { userName = "bob" }));
@@ -295,7 +298,7 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
     [Fact]
     public async Task SignedInUsersReadAFeedClosedToEveryoneElse()
     {
-        NuDepotTestApplication app = CreateApp(new() { { "Authorization:AnonymousRole", "None" } });
+        NuDepotTestApplication app = CreateApp(new() { { "Authorization:ApiKeys:ReadOnly", "read-only-key" } });
         (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
 
         using HttpClient anonymous = app.CreateClient();
@@ -317,10 +320,51 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
 
         using HttpClient client = app.CreateClient();
 
-        // Like the push command's -k option, and like nuget.config's package source credentials.
-        Assert.Equal(HttpStatusCode.Created, (await SendWithKeyAsync(client, aliceKey, "Header.Package", basic: false)).StatusCode);
-        Assert.Equal(HttpStatusCode.Created, (await SendWithKeyAsync(client, aliceKey, "Basic.Package", basic: true)).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await SendWithKeyAsync(client, bobKey, "ReadOnly.Package", basic: false)).StatusCode);
+        // Like nuget.config's package source credentials, with the user's name.
+        Assert.Equal(HttpStatusCode.Created, (await SendWithKeyAsync(client, aliceKey, "Basic.Package", userName: "alice")).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await SendWithKeyAsync(client, aliceKey, "Any.Case.Package", userName: "ALICE")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendWithKeyAsync(client, bobKey, "ReadOnly.Package", userName: "bob")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("bob")]
+    [InlineData("ReadWrite")]
+    public async Task UserApiKeysOnlyWorkWithTheirUsersName(string? userName)
+    {
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
+        string aliceKey = await CreateApiKeyAsync(alice, "Build server");
+
+        // Without a user name, the key is in the X-NuGet-ApiKey header, like the push command's -k option.
+        using HttpClient client = app.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await SendWithKeyAsync(client, aliceKey, "Rejected.Package", userName)).StatusCode);
+    }
+
+    [Fact]
+    public async Task WithUsersAnonymousRequestsMayOnlyRead()
+    {
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
+        using HttpClient anonymous = app.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("v3/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PutAsync("api/v2/package", Package("Anonymous.Package"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await alice.PutAsync("api/v2/package", Package("Alice.Package"))).StatusCode);
+    }
+
+    [Fact]
+    public async Task AnonymousReadsCanBeTurnedOff()
+    {
+        NuDepotTestApplication app = CreateApp(new() { { "Authorization:Users:AnonymousReads", "false" } });
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
+        using HttpClient anonymous = app.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("v3/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await alice.GetAsync("v3/index.json")).StatusCode);
+
+        // The gallery's sign-in still works.
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("api/account")).StatusCode);
     }
 
     [Fact]
@@ -338,7 +382,7 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/apikeys/{apiKey.GetProperty("id").GetInt32()}")).StatusCode);
 
         using HttpClient client = app.CreateClient();
-        Assert.Equal(HttpStatusCode.Unauthorized, (await SendWithKeyAsync(client, key, "Revoked.Package", basic: false)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await SendWithKeyAsync(client, key, "Revoked.Package", userName: "alice")).StatusCode);
     }
 
     [Fact]
@@ -373,7 +417,7 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
     [Fact]
     public async Task AccountsNeedASignInCookie()
     {
-        NuDepotTestApplication app = CreateApp(new() { { "ApiKey", "admin-key" } });
+        NuDepotTestApplication app = CreateApp(new() { { "Authorization:ApiKeys:Admin", "admin-key" } });
         using HttpClient client = app.CreateClient();
 
         using HttpRequestMessage request = new(HttpMethod.Get, "api/account/apikeys");
@@ -398,26 +442,6 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
     }
 
     [Fact]
-    public void UsersWithoutUsePasskeysStopStartup()
-    {
-        NuDepotTestApplication app = new(Output, configuration: UsersEnabled(), usePasskeys: false);
-
-        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
-
-        Assert.Contains(exception.Failures, f => f.Contains("Call UsePasskeys()"));
-    }
-
-    [Fact]
-    public void UsersWithoutUseApiKeysStopStartup()
-    {
-        NuDepotTestApplication app = new(Output, configuration: UsersEnabled(), useApiKeys: false);
-
-        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
-
-        Assert.Contains(exception.Failures, f => f.Contains("who create their own API keys, but doesn't accept API keys"));
-    }
-
-    [Fact]
     public async Task AccountsArentMappedWithoutUsers()
     {
         NuDepotTestApplication app = new(Output);
@@ -429,18 +453,9 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private static Dictionary<string, string> UsersEnabled(Dictionary<string, string>? configuration = null)
-    {
-        Dictionary<string, string> settings = new(configuration ?? [])
-        {
-            ["Authorization:Users:Enabled"] = "true"
-        };
-        return settings;
-    }
-
     private NuDepotTestApplication CreateApp(Dictionary<string, string>? configuration = null)
     {
-        NuDepotTestApplication app = new(Output, configuration: UsersEnabled(configuration));
+        NuDepotTestApplication app = new(Output, configuration: configuration, passkeys: true);
         Disposables.Add(app);
         return app;
     }
@@ -495,11 +510,12 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
             .GetString()!;
     }
 
-    private static Task<HttpResponseMessage> SendWithKeyAsync(HttpClient client, string key, string packageId, bool basic)
+    // With a user name, the key is the password of credentials; without one, it's in the X-NuGet-ApiKey header.
+    private static Task<HttpResponseMessage> SendWithKeyAsync(HttpClient client, string key, string packageId, string? userName)
     {
         HttpRequestMessage request = new(HttpMethod.Put, "api/v2/package") { Content = Package(packageId) };
-        if (basic)
-            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes("me:" + key)));
+        if (userName != null)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(userName + ":" + key)));
         else
             request.Headers.Add("X-NuGet-ApiKey", key);
 

@@ -23,17 +23,31 @@ await app.RunAsync();
 The feed reads its settings from the `Feed` configuration section. Every setting has a default: the
 database is `nudepot.db` and packages are stored in a `packages` folder, both in the working directory.
 Pass a lambda to change the settings in code: `AddNuDepotFeed(options => options.Storage.Path = "data")`.
-The feed is open until you configure API keys or users; see
-[the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md).
+Without API keys or users, anyone may read, push and unlist packages. The feed has one API key for each role, in
+`Feed:Authorization:ApiKeys`: a `ReadWrite` key, or users, stop anonymous changes, and a `ReadOnly` key, or users
+with `Users:AnonymousReads` off, make the feed private. See [the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#require-an-api-key).
 
 The feed reads `X-Forwarded-Proto` and `X-Forwarded-For` from a reverse proxy, unless
 `Feed:UseForwardedHeaders` is false. Applications that handle forwarded headers themselves should turn it off.
 
 `AddNuDepotFeed()` is `services.AddNuDepot().AddFeed()`, and `UseNuDepotFeed()` is
-`app.UseNuDepot().UseFeed().UseApiKeys().UsePasskeys()`. Use the builders to choose, or to add
-[NuDepot.Gallery](https://www.nuget.org/packages/NuDepot.Gallery) to the same application:
-`services.AddNuDepot().AddFeed().AddGallery()`. The methods are in the `Microsoft.Extensions.DependencyInjection`,
-`Microsoft.AspNetCore.Builder` and `Microsoft.Extensions.Hosting` namespaces, so they don't need a `using`.
+`app.UseNuDepot().UseFeed()`. Use the builders for users who sign in with passkeys, and the API keys they create,
+or to add [NuDepot.Gallery](https://www.nuget.org/packages/NuDepot.Gallery) to the same application:
+
+```csharp
+builder.Services.AddNuDepot()
+    .AddFeed()
+    .AddPasskeys()   // Users, who sign in to the gallery with passkeys, and create API keys for NuGet clients.
+    .AddGallery();
+
+app.UseNuDepot()
+    .UseFeed()
+    .UsePasskeys()
+    .UseGallery();
+```
+
+The methods are in the `Microsoft.Extensions.DependencyInjection`, `Microsoft.AspNetCore.Builder` and
+`Microsoft.Extensions.Hosting` namespaces, so they don't need a `using`.
 
 ## Developing it
 
@@ -47,9 +61,10 @@ The important folders are:
 * Metadata, Content, Search, ServiceIndex - Server implementations of the protocol resources
 * Catalog - The append-only record of package changes, served as the catalog resource
 * Vulnerabilities - Known vulnerabilities, served to NuGet Audit
-* Authentication - API keys and their roles. Each endpoint requires a `FeedPermissions`. The feed is
-  open until its options have API keys or users, which the host accepts with `UseApiKeys()` and
-  `UsePasskeys()`; see `FeedAccess` and [the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#require-an-api-key)
+* Authentication - API keys and their roles. Each endpoint requires a `FeedPermissions`. The API keys of
+  the options, one for each role, decide what anonymous requests may do; see `FeedAccess` and
+  [the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#require-an-api-key)
+* Users - People who sign in with passkeys (`AddPasskeys()`), and the API keys they create
 * Signing - Repository signing of pushed packages
 * Entities - The package database (SQLite by default)
 * Storage - Stores the content of packages and symbols on the file system
@@ -78,9 +93,9 @@ because that's the path the V3 `PackagePublish/2.0.0` resource uses.
 
 ## Administration
 
-These endpoints aren't part of the NuGet protocol. Once the feed checks API keys and has some,
-they need a valid key (an `Admin` key with roles), in the `X-NuGet-ApiKey` header or as a Basic
-password. They are disabled in read-only mode.
+These endpoints aren't part of the NuGet protocol. They need the `Admin` key, in the `X-NuGet-ApiKey` header
+or as the password of Basic credentials with the user name `Admin`, or a user with the `Admin` role. They are
+disabled in read-only mode.
 
 Deprecate a package version (reasons: `Legacy`, `CriticalBugs`, `Other`), or undeprecate it:
 

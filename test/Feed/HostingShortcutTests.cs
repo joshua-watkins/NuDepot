@@ -32,13 +32,11 @@ public class HostingShortcutTests
     }
 
     [Fact]
-    public async Task ShortcutsUseApiKeysAndPasskeysWhenTheOptionsTurnThemOn()
+    public async Task ShortcutsUseTheFeedsApiKeys()
     {
         await using WebApplication app = await StartAsync(new Dictionary<string, string?>
         {
-            { "Feed:ApiKey", "secret" },
-            { "Feed:Authorization:AnonymousRole", "None" },
-            { "Feed:Authorization:Users:Enabled", "true" },
+            { "Feed:Authorization:ApiKeys:ReadOnly", "secret" },
         });
         using HttpClient client = app.GetTestClient();
 
@@ -49,7 +47,9 @@ public class HostingShortcutTests
 
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
         Assert.Equal(HttpStatusCode.OK, withKey.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, account.StatusCode);
+
+        // Users need AddPasskeys() and UsePasskeys().
+        Assert.Equal(HttpStatusCode.NotFound, account.StatusCode);
     }
 
     [Fact]

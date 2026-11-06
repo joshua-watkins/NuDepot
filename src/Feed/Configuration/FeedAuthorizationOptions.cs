@@ -3,41 +3,62 @@ using NuDepot.Feed.Authentication;
 namespace NuDepot.Feed.Configuration;
 
 /// <summary>
-/// Who may do what on the feed. The feed is open, so anyone may do anything, until it has API keys
-/// or users. Clients present an API key in the X-NuGet-ApiKey header, or as the password of HTTP
-/// Basic authentication, which is how NuGet sends a package source's credentials from a nuget.config
-/// file. The application accepts API keys with <c>UseApiKeys()</c>, and users with <c>UsePasskeys()</c>.
+/// Who may do what on the feed. Without API keys or users, the feed is open: anyone may read, push and unlist
+/// packages (<see cref="FeedRole.ReadWrite"/>). Users, or a <see cref="ApiKeyOptions.ReadWrite"/> key, stop
+/// anonymous changes, and a <see cref="ApiKeyOptions.ReadOnly"/> key, or users without
+/// <see cref="UserOptions.AnonymousReads"/>, close the feed to anonymous requests.
 /// </summary>
 public class FeedAuthorizationOptions
 {
     /// <summary>
-    /// What requests without a valid API key or a signed-in user may do, once the feed has API keys
-    /// or users. If unset, <see cref="FeedRole.ReadOnly"/>.
+    /// The feed's API keys, one for each role. These aren't the keys users create for themselves.
     /// </summary>
-    public FeedRole? AnonymousRole { get; set; }
+    public ApiKeyOptions ApiKeys { get; set; } = new();
 
     /// <summary>
-    /// The API keys that grant access to the feed. <see cref="FeedOptions.ApiKey"/>, if set,
-    /// is also an <see cref="FeedRole.Admin"/> key.
-    /// </summary>
-    public List<ApiKeyOptions> ApiKeys { get; set; } = [];
-
-    /// <summary>
-    /// People who sign in with passkeys.
+    /// People who sign in with passkeys, when the application uses them, with <c>AddPasskeys()</c> and
+    /// <c>UsePasskeys()</c>.
     /// </summary>
     public UserOptions Users { get; set; } = new();
 }
 
 /// <summary>
-/// People who sign in to the feed with passkeys, and create their own API keys.
+/// The feed's API keys, one for each role. Clients present a key in the X-NuGet-ApiKey header, which is what
+/// the push command's -k option sends, or as the password of a package source's credentials in nuget.config,
+/// with the role's name as the user name, like "ReadWrite". A key's role adds to what anonymous requests may do.
+/// </summary>
+public class ApiKeyOptions
+{
+    /// <summary>
+    /// A key that may read the feed. Once it's set, anonymous requests may do nothing: the feed is private.
+    /// </summary>
+    public string? ReadOnly { get; set; }
+
+    /// <summary>
+    /// A key that may read, push and unlist packages. Once it's set, anonymous requests may only read, unless
+    /// <see cref="ReadOnly"/> is set too.
+    /// </summary>
+    public string? ReadWrite { get; set; }
+
+    /// <summary>
+    /// A key that may do everything, including permanently deleting packages, replacing packages, deprecating
+    /// packages and managing vulnerabilities. Nobody may do those without it, or a user with the
+    /// <see cref="FeedRole.Admin"/> role.
+    /// </summary>
+    public string? Admin { get; set; }
+}
+
+/// <summary>
+/// People who sign in to the gallery with passkeys, and create API keys for NuGet clients, which can't use
+/// passkeys. The application lets them with <c>AddPasskeys()</c> and <c>UsePasskeys()</c>. With users, requests
+/// without a key or a signed-in user may only read the feed.
 /// </summary>
 public class UserOptions
 {
     /// <summary>
-    /// Whether people can sign in with passkeys and create their own API keys. The application
-    /// must use the feed's users, with <c>UsePasskeys()</c>.
+    /// Whether requests without a key or a signed-in user may read the feed. If false, they may do nothing.
     /// </summary>
-    public bool Enabled { get; set; }
+    public bool AnonymousReads { get; set; } = true;
 
     /// <summary>
     /// Whether anyone can create an account. The first account is always an
@@ -61,25 +82,4 @@ public class UserOptions
     /// the origin the browser used.
     /// </summary>
     public List<string> Origins { get; set; } = [];
-}
-
-/// <summary>
-/// An API key that grants access to the feed.
-/// </summary>
-public class ApiKeyOptions
-{
-    /// <summary>
-    /// Who or what uses the key, like "Build server". It appears in the logs.
-    /// </summary>
-    public string? Name { get; set; }
-
-    /// <summary>
-    /// The secret clients present.
-    /// </summary>
-    public string? Key { get; set; }
-
-    /// <summary>
-    /// What the key may do. Required.
-    /// </summary>
-    public FeedRole? Role { get; set; }
 }

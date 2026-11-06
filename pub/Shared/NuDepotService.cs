@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration.Ini;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
+using NuDepot.Core.Hosting;
 
 namespace NuDepot;
 
@@ -88,6 +89,43 @@ internal static class NuDepotService
             // A Windows Service starts in C:\Windows\System32, and a console may start anywhere.
             ContentRootPath = contentRoot,
         });
+
+    /// <summary>
+    /// The setting that lets people sign in to the gallery with passkeys, and create API keys: the service then
+    /// calls <c>AddPasskeys()</c> and <c>UsePasskeys()</c>.
+    /// </summary>
+    public const string UsersSetting = "Feed:Authorization:Users:Enabled";
+
+    /// <summary>
+    /// Adds the feed and the gallery, and the users if the settings turn them on.
+    /// </summary>
+    public static void AddNuDepot(WebApplicationBuilder builder)
+    {
+        NuDepotBuilder nuDepot = builder.Services
+            .AddNuDepot()
+            .AddFeed()
+            .AddGallery();
+
+        if (UsesUsers(builder.Configuration))
+            nuDepot.AddPasskeys();
+    }
+
+    /// <summary>
+    /// Uses what <see cref="AddNuDepot"/> added.
+    /// </summary>
+    public static void UseNuDepot(WebApplication app)
+    {
+        NuDepotApplicationBuilder nuDepot = app
+            .UseNuDepot()
+            .UseFeed();
+
+        if (UsesUsers(app.Configuration))
+            nuDepot.UsePasskeys();
+
+        nuDepot.UseGallery();
+    }
+
+    private static bool UsesUsers(IConfiguration configuration) => configuration.GetValue<bool>(UsersSetting);
 
     // Reads setup.ini under appsettings.json, which the content root's folder holds.
     private static void ReadSetupFrom(IConfigurationBuilder configuration, string folder)

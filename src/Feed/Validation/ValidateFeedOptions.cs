@@ -54,32 +54,12 @@ public class ValidateFeedOptions : IValidateOptions<FeedOptions>
 
     private static void ValidateAuthorization(FeedOptions options, List<string> failures)
     {
-        FeedAuthorizationOptions authorization = options.Authorization;
+        // A key in the X-NuGet-ApiKey header says which role it is by itself.
         HashSet<string> keys = new(StringComparer.Ordinal);
-
-        for (int i = 0; i < authorization.ApiKeys.Count; i++)
+        foreach ((FeedRole role, string key) in FeedAccess.GetApiKeys(options.Authorization.ApiKeys))
         {
-            ApiKeyOptions apiKey = authorization.ApiKeys[i];
-            string field = Field(nameof(FeedOptions.Authorization), nameof(FeedAuthorizationOptions.ApiKeys), i.ToString());
-
-            if (string.IsNullOrWhiteSpace(apiKey.Key))
-                failures.Add($"'{field}:{nameof(ApiKeyOptions.Key)}' is required.");
-            else if (!keys.Add(apiKey.Key))
-                failures.Add($"'{field}:{nameof(ApiKeyOptions.Key)}' is the same as another API key.");
-
-            if (apiKey.Role == null)
-                failures.Add($"'{field}:{nameof(ApiKeyOptions.Role)}' is required. Allowed values: {string.Join(", ", Enum.GetNames<FeedRole>())}");
-        }
-
-        // Without API keys or users, the feed is open, and would ignore what anonymous requests may do.
-        if (authorization.AnonymousRole != null &&
-            FeedAccess.GetApiKeys(options).Count == 0 &&
-            !authorization.Users.Enabled)
-        {
-            failures.Add(
-                $"'{Field(nameof(FeedOptions.Authorization), nameof(FeedAuthorizationOptions.AnonymousRole))}' is set, " +
-                "but the feed has no API keys or users, so it's open and anyone may do anything. Add API keys, " +
-                "enable users, or remove the setting.");
+            if (!keys.Add(key))
+                failures.Add($"'{Field(nameof(FeedOptions.Authorization), nameof(FeedAuthorizationOptions.ApiKeys), role.ToString())}' is the same as another role's API key.");
         }
     }
 

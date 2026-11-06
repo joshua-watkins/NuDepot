@@ -31,7 +31,8 @@
     <section>
         <h2>API keys</h2>
         <p>
-            NuGet clients and Visual Studio use an API key instead of a passkey. Each key can do what your account can.
+            NuGet clients and Visual Studio can't use passkeys, so they use an API key, as the password of the feed's
+            credentials, with your user name. Each key can do what your account can.
         </p>
         <table class="table account-table">
             <thead>
@@ -59,7 +60,10 @@
                     </div>
                 </div>
             </div>
-            <p>To use it in Visual Studio, add it to your <code>nuget.config</code> as the feed's password:</p>
+            <p>
+                Add it to your <code>nuget.config</code> as the feed's password, with your user name. NuGet sends it
+                when it restores and pushes packages, so push without <code>-k</code>:
+            </p>
             <pre id="new-apikey-config"></pre>
         </div>
     </section>

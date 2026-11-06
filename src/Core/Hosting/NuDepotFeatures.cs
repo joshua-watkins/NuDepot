@@ -14,8 +14,8 @@ public sealed class NuDepotFeatures
     public const string CoHostedTokenHeader = "X-NuDepot-CoHosted";
 
     /// <summary>
-    /// Whether people can sign in with passkeys: the feed's users are enabled, and the application
-    /// uses them. The gallery then shows who's signed in, and lets people sign in.
+    /// Whether people can sign in with passkeys: the application uses the feed's users. The gallery then shows
+    /// who's signed in, lets people sign in, and lets them create API keys for NuGet clients.
     /// </summary>
     public bool Passkeys { get; set; }
 
