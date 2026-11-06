@@ -53,19 +53,18 @@ public class CatalogServiceTests : IDisposable
     [Fact]
     public async Task PagesHoldMaxPageSizeItems()
     {
-        for (int i = 0; i <= CatalogService.MaxPageSize; i++)
-        {
-            Context.CatalogEntries.Add(new CatalogEntry
-            {
-                CommitId = Guid.NewGuid().ToString(),
-                CommittedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(i),
-                Type = CatalogEntry.PackageDeleteType,
-                PackageId = "Package",
-                PackageVersion = $"1.0.{i}",
-            });
-        }
-
-        await Context.SaveChangesAsync();
+        await Context.CatalogEntries.ExecuteInsertAsync(
+            Enumerable
+                .Range(0, CatalogService.MaxPageSize + 1)
+                .Select(i => new CatalogEntry
+                {
+                    CommitId = Guid.NewGuid().ToString(),
+                    CommittedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(i),
+                    Type = CatalogEntry.PackageDeleteType,
+                    PackageId = "Package",
+                    PackageVersion = $"1.0.{i}",
+                }),
+            default);
 
         CatalogIndex index = await Target.GetIndexAsync(default);
         CatalogPage? first = await Target.GetPageOrNullAsync(0, default);

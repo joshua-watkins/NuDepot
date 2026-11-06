@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 using NuGet.Versioning;
 using Xunit;
 
@@ -270,9 +271,10 @@ public class PackageDatabaseTests
                 Package unlisted = CreatePackage("Unlisted.Package", "1.0.0");
                 unlisted.Listed = false;
 
-                context.Packages.Add(CreatePackage("Package", "1.0.0"));
-                context.Packages.Add(unlisted);
-                context.SaveChanges();
+                context.Packages
+                    .ExecuteInsertAsync([CreatePackage("Package", "1.0.0"), unlisted], default)
+                    .GetAwaiter()
+                    .GetResult();
             }
 
             Context = CreateContext();

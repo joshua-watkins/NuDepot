@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
 using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 using NuGet.Versioning;
 
 namespace NuDepot.Feed;
@@ -19,9 +20,7 @@ public class PackageDatabase(NuDepotContext context) : IPackageDatabase
     {
         try
         {
-            Context.Packages.Add(package);
-
-            await Context.SaveChangesAsync(cancellationToken);
+            await Context.Packages.ExecuteInsertAsync(package, cancellationToken);
 
             return PackageAddResult.Success;
         }

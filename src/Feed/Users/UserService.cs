@@ -123,11 +123,9 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             Handle = handle,
         };
         SetCeremony(user, PasskeyCeremony.SignUp, options, passkeyName);
-        Context.Users.Add(user);
-
         try
         {
-            await Context.SaveChangesAsync(cancellationToken);
+            await Context.Users.ExecuteInsertAsync(user, cancellationToken);
         }
         catch (DbUpdateException e) when (Context.IsUniqueConstraintViolationException(e))
         {
@@ -155,8 +153,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.Role, role).SetProperty(u => u.CreatedAt, now), cancellationToken);
 
         passkey.UserKey = key;
-        Context.UserPasskeys.Add(passkey);
-        await Context.SaveChangesAsync(cancellationToken);
+        await Context.UserPasskeys.ExecuteInsertAsync(passkey, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         user.Role = role;
@@ -276,9 +273,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     public async Task AddPasskeyAsync(int userKey, UserPasskey passkey, CancellationToken cancellationToken)
     {
         passkey.UserKey = userKey;
-        Context.UserPasskeys.Add(passkey);
-
-        await Context.SaveChangesAsync(cancellationToken);
+        await Context.UserPasskeys.ExecuteInsertAsync(passkey, cancellationToken);
     }
 
     /// <summary>
@@ -354,8 +349,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             CreatedAt = Time.UtcNow,
         };
 
-        Context.UserApiKeys.Add(apiKey);
-        await Context.SaveChangesAsync(cancellationToken);
+        await Context.UserApiKeys.ExecuteInsertAsync(apiKey, cancellationToken);
 
         return (apiKey, key);
     }
@@ -424,8 +418,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             ExpiresAt = now + SessionLifetime,
         };
 
-        Context.UserSessions.Add(session);
-        await Context.SaveChangesAsync(cancellationToken);
+        await Context.UserSessions.ExecuteInsertAsync(session, cancellationToken);
 
         return (session, token);
     }

@@ -297,10 +297,9 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
             {
                 entry.CommitId = commitId;
                 entry.CommittedAt = DateTime.SpecifyKind(timestamp, DateTimeKind.Utc);
-                Context.CatalogEntries.Add(entry);
             }
 
-            await Context.SaveChangesAsync(cancellationToken);
+            await Context.CatalogEntries.ExecuteInsertAsync(entries, cancellationToken);
         }
         finally
         {

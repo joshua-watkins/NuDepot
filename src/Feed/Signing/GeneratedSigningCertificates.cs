@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -155,8 +156,7 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
 
             DateTime revokedAt = now.UtcDateTime;
             await current.ExecuteUpdateAsync(setters => setters.SetProperty(c => c.RevokedAt, revokedAt), cancellationToken);
-            context.SigningCertificates.Add(row);
-            await context.SaveChangesAsync(cancellationToken);
+            await context.SigningCertificates.ExecuteInsertAsync(row, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
             foreach (string fingerprint in replaced)
@@ -236,8 +236,7 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
     private async Task<SigningCertificate> GenerateAsync(NuDepotContext context, int year, DateTimeOffset now, CancellationToken cancellationToken)
     {
         SigningCertificate row = Create(year, now);
-        context.SigningCertificates.Add(row);
-        await context.SaveChangesAsync(cancellationToken);
+        await context.SigningCertificates.ExecuteInsertAsync(row, cancellationToken);
         LogGenerated(row);
 
         return row;

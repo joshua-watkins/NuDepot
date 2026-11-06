@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Search;
 using NuDepot.Feed.Storage;
 using Xunit;
@@ -96,13 +97,14 @@ public class HostIntegrationTests
         {
             NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
             await context.RunMigrationsAsync(default);
-            context.VulnerabilityAdvisories.Add(new VulnerabilityAdvisory
-            {
-                PackageId = "Package",
-                VersionRange = "[1.0.0]",
-                AdvisoryUrl = "https://example.com/advisory",
-            });
-            await context.SaveChangesAsync();
+            await context.VulnerabilityAdvisories.ExecuteInsertAsync(
+                new VulnerabilityAdvisory
+                {
+                    PackageId = "Package",
+                    VersionRange = "[1.0.0]",
+                    AdvisoryUrl = "https://example.com/advisory",
+                },
+                default);
         }
 
         using (IServiceScope scope = provider.CreateScope())

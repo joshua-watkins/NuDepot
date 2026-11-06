@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using NuDepot.Core.Models;
 using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Search;
 using NuDepot.Feed.Vulnerabilities;
@@ -144,8 +145,7 @@ public class DatabaseSearchServiceTests
         {
             using NuDepotContext context = CreateContext();
 
-            context.Packages.Add(package);
-            await context.SaveChangesAsync();
+            await context.Packages.ExecuteInsertAsync(package, default);
         }
 
         protected static Package CreatePackage(string id, string version, long downloads, string description, string? dependsOn, bool listed = true)
