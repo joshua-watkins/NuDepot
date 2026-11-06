@@ -14,7 +14,6 @@ internal sealed class ConfigureFeedOptions
     : IConfigureOptions<CorsOptions>
     , IConfigureOptions<FormOptions>
     , IConfigureOptions<ForwardedHeadersOptions>
-    , IConfigureOptions<IISServerOptions>
 {
     public void Configure(CorsOptions options)
     {
@@ -34,13 +33,8 @@ internal sealed class ConfigureFeedOptions
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
 
-        // Do not restrict to local network/proxy
+        // The reverse proxy may be on another machine. FeedOptions.UseForwardedHeaders turns them off.
         options.KnownIPNetworks.Clear();
         options.KnownProxies.Clear();
-    }
-
-    public void Configure(IISServerOptions options)
-    {
-        options.MaxRequestBodySize = 262144000;
     }
 }

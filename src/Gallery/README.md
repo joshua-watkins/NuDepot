@@ -38,7 +38,10 @@ The website's files in `wwwroot` (scripts, styles, images and libraries) are emb
 assembly, so the library is a single DLL. `UseGallery()` serves them under
 `_content/NuDepot.Gallery`; hosts don't copy or serve them. After changing a file, rebuild to see it.
 
-The website reads the feed from its own application. Set `Gallery:ServiceIndexUrl` to the service
+The website reads the feed from its own application, over HTTP on the address it listens on, so a certificate for
+the public host name doesn't get in the way. When the browser used HTTPS, the website tells the feed so, with a
+secret of the application's that the feed trusts, so a feed that signs packages, which only answers HTTPS, still
+answers it. Set `Gallery:ServiceIndexUrl` to the service
 index of another feed to show that feed instead, for example `https://api.nuget.org/v3/index.json`.
 If the feed doesn't let anonymous users read it, set `Gallery:ApiKey` to a `ReadOnly` key.
 If the website can't read the feed, its pages explain that instead of failing.

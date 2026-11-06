@@ -10,6 +10,8 @@
 		<!-- Builds for the platform's architecture (see pub/Directory.Build.props), so the installers get the right build. -->
 		<RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$(NuDepotArchitecture)</RuntimeIdentifier>
 		<RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+		<!-- Kestrel serves the feed, behind a reverse proxy if one is used, so there's no IIS web.config. -->
+		<IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -19,5 +21,14 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Feed\Feed.csproj" />
 		<ProjectReference Include="..\..\src\Gallery\Gallery.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Include="..\Shared\NuDepotService.cs" Link="NuDepotService.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The installer puts appsettings.json in C:\ProgramData\NuDepot. The development settings aren't published. -->
+		<Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
 	</ItemGroup>
 </Project>

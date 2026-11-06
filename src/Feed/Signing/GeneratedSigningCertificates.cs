@@ -32,8 +32,8 @@ internal sealed record GeneratedCertificateKeySize(int Bits)
 internal sealed record SigningCertificateRotation(string Fingerprint, DateTimeOffset ExpiresAt, IReadOnlyList<string> Revoked);
 
 /// <summary>
-/// Self-signed signing certificates the feed generates, one for each year, with
-/// <see cref="Configuration.RepositorySigningOptions.GenerateCertificates"/>. They're RSA keys signed with SHA-512, stored
+/// Self-signed signing certificates the feed generates, one for each year, when signing is on without a configured
+/// certificate (<see cref="Configuration.RepositorySigningOptions.GeneratesCertificates"/>). They're RSA keys signed with SHA-512, stored
 /// in the database with their private keys encrypted by ASP.NET Core data protection.
 /// </summary>
 /// <remarks>

@@ -1,7 +1,4 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Configuration;
@@ -15,45 +12,6 @@ namespace Microsoft.Extensions.Hosting;
 /// </summary>
 public static class FeedHostExtensions
 {
-    /// <summary>
-    /// The environment variable that holds the folder to read appsettings.json from,
-    /// if it isn't the application's content root.
-    /// </summary>
-    public const string ConfigRootVariable = "NUDEPOT_CONFIG_ROOT";
-
-    /// <summary>
-    /// Reads the appsettings files from the folder in <see cref="ConfigRootVariable"/>, if it is set.
-    /// The files keep their precedence relative to environment variables and command line arguments.
-    /// </summary>
-    public static IHostApplicationBuilder UseNuDepotConfigRoot(this IHostApplicationBuilder builder)
-    {
-        string? root = Environment.GetEnvironmentVariable(ConfigRootVariable);
-        if (string.IsNullOrEmpty(root))
-            return builder;
-
-        PhysicalFileProvider fileProvider = new(Path.GetFullPath(root));
-        IList<IConfigurationSource> sources = builder.Configuration.Sources;
-
-        for (int i = 0; i < sources.Count; i++)
-        {
-            if (sources[i] is JsonConfigurationSource json &&
-                json.Path != null &&
-                json.Path.StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
-            {
-                // Replace the source, rather than modify it, so the configuration reloads.
-                sources[i] = new JsonConfigurationSource
-                {
-                    Path = json.Path,
-                    Optional = json.Optional,
-                    ReloadOnChange = json.ReloadOnChange,
-                    FileProvider = fileProvider,
-                };
-            }
-        }
-
-        return builder;
-    }
-
     /// <summary>
     /// Updates the package database's schema, and adds packages that predate the catalog to it,
     /// if <see cref="NuDepot.Feed.Configuration.FeedOptions.RunMigrationsAtStartup"/> is true. Call it before running the host.

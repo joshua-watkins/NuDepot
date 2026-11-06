@@ -4,7 +4,7 @@
       <Directory Id="INSTALLFOLDER" Name="NuDepot" />
     </StandardDirectory>
 
-    <!-- Matches the database and storage paths in the service's appsettings.json. -->
+    <!-- The service's settings folder and working directory, where its settings, database and packages are. -->
     <StandardDirectory Id="CommonAppDataFolder">
       <Directory Id="DATAFOLDER" Name="NuDepot" />
     </StandardDirectory>

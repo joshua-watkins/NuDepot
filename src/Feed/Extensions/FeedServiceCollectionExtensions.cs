@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using NuDepot.Core;
 using NuDepot.Core.Hosting;
 using NuDepot.Feed;
@@ -32,6 +33,8 @@ using NuDepot.Feed.Validation;
 using NuDepot.Feed.Vulnerabilities;
 using System.Net;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 
 // In the namespace of IServiceCollection, so applications see AddNuDepotFeed() without a using.
 namespace Microsoft.Extensions.DependencyInjection;
@@ -102,10 +105,6 @@ public static class FeedServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<CorsOptions>, ConfigureFeedOptions>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<FormOptions>, ConfigureFeedOptions>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<ForwardedHeadersOptions>, ConfigureFeedOptions>());
-        services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<IISServerOptions>, ConfigureFeedOptions>());
-        services
-            .AddOptions<IISServerOptions>()
-            .BindConfiguration(nameof(IISServerOptions));
     }
 
     private static void AddAccess(IServiceCollection services)
@@ -231,7 +230,7 @@ public static class FeedServiceCollectionExtensions
 
     private static ISigningCertificateSource SigningCertificateSourceFactory(IServiceProvider provider)
     {
-        return GetOptions(provider).RepositorySigning.GenerateCertificates
+        return GetOptions(provider).RepositorySigning.GeneratesCertificates
             ? provider.GetRequiredService<GeneratedSigningCertificates>()
             : provider.GetRequiredService<ConfiguredSigningCertificate>();
     }
@@ -298,8 +297,8 @@ public static class FeedServiceCollectionExtensions
         => !string.IsNullOrEmpty(request.GetApiKey()) || request.Headers.Authorization.Count > 0;
 
     /// <summary>
-    /// Adds the middleware that has to come before routing: forwarded headers from a reverse proxy,
-    /// and the <see cref="FeedOptions.PathBase"/>.
+    /// Adds the middleware that has to come before routing: forwarded headers from a reverse proxy, the
+    /// HTTPS requirement of a feed that signs packages, and the <see cref="FeedOptions.PathBase"/>.
     /// </summary>
     private sealed class FeedStartupFilter(IOptions<FeedOptions> options) : IStartupFilter
     {
@@ -307,7 +306,45 @@ public static class FeedServiceCollectionExtensions
         {
             return app =>
             {
-                app.UseForwardedHeaders();
+                if (options.Value.UseForwardedHeaders)
+                    app.UseForwardedHeaders();
+
+                // The gallery hosted in the same application calls the feed over HTTP, and says whether the browser
+                // used HTTPS, with the application's secret.
+                NuDepotFeatures? features = app.ApplicationServices.GetService<NuDepotFeatures>();
+                if (features != null)
+                {
+                    byte[] token = Encoding.ASCII.GetBytes(features.CoHostedToken);
+                    app.Use((context, nextMiddleware) =>
+                    {
+                        HttpRequest request = context.Request;
+                        if (request.Headers.Remove(NuDepotFeatures.CoHostedTokenHeader, out StringValues sent) &&
+                            CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(sent.ToString()), token) &&
+                            string.Equals(request.Headers["X-Forwarded-Proto"], Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                            request.Scheme = Uri.UriSchemeHttps;
+
+                        return nextMiddleware(context);
+                    });
+                }
+
+                // Signatures name the feed's HTTPS address, and packages are signed when they're pushed and
+                // re-signed when they're downloaded over HTTPS, so a feed that signs doesn't answer HTTP.
+                if (options.Value.RepositorySigning.IsEnabled)
+                {
+                    app.Use(async (context, nextMiddleware) =>
+                    {
+                        if (context.Request.IsHttps)
+                        {
+                            await nextMiddleware(context);
+                            return;
+                        }
+
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        context.Response.ContentType = "text/plain; charset=utf-8";
+                        await context.Response.WriteAsync("This feed signs packages, so it only accepts HTTPS requests.");
+                    });
+                }
+
                 app.UsePathBase(options.Value.PathBase);
 
                 next(app);

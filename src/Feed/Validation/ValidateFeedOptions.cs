@@ -35,13 +35,17 @@ public class ValidateFeedOptions : IValidateOptions<FeedOptions>
         }
 
         RepositorySigningOptions signing = options.RepositorySigning;
-        if (signing.GenerateCertificates && (!string.IsNullOrEmpty(signing.CertificatePath) || !string.IsNullOrEmpty(signing.CertificateThumbprint)))
+        string certificatePath = Field(nameof(FeedOptions.RepositorySigning), nameof(RepositorySigningOptions.CertificatePath));
+        string certificateThumbprint = Field(nameof(FeedOptions.RepositorySigning), nameof(RepositorySigningOptions.CertificateThumbprint));
+        if (signing.HasCertificate && !signing.Enabled)
         {
             failures.Add(
-                $"'{Field(nameof(FeedOptions.RepositorySigning), nameof(RepositorySigningOptions.GenerateCertificates))}' " +
-                $"can't be used with '{Field(nameof(FeedOptions.RepositorySigning), nameof(RepositorySigningOptions.CertificatePath))}' " +
-                $"or '{Field(nameof(FeedOptions.RepositorySigning), nameof(RepositorySigningOptions.CertificateThumbprint))}'.");
+                $"A signing certificate is set, but '{Field(nameof(FeedOptions.RepositorySigning), nameof(RepositorySigningOptions.Enabled))}' " +
+                "isn't true, so packages wouldn't be signed. Set it to true, or remove the certificate.");
         }
+
+        if (!string.IsNullOrEmpty(signing.CertificatePath) && !string.IsNullOrEmpty(signing.CertificateThumbprint))
+            failures.Add($"'{certificatePath}' can't be used with '{certificateThumbprint}'.");
 
         ValidateAuthorization(options, failures);
 

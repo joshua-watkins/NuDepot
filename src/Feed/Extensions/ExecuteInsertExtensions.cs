@@ -35,7 +35,7 @@ internal static class ExecuteInsertExtensions
             .Context;
 
         // Saving would save these too.
-        if (context.ChangeTracker .Entries().Any())
+        if (context.ChangeTracker.Entries().Any())
             throw new InvalidOperationException("The context is tracking entities, which an insert would save.");
 
         try

@@ -11,7 +11,8 @@
                         Type="ownProcess"
                         Start="auto"
                         ErrorControl="normal"
-                        Account="NT AUTHORITY\LocalService">
+                        Account="[SERVICEACCOUNT]"
+                        Password="[SERVICEPASSWORD]">
           <!-- Restart the service if it stops unexpectedly. -->
           <util:ServiceConfig FirstFailureActionType="restart"
                               SecondFailureActionType="restart"
@@ -27,22 +28,27 @@
                         Remove="uninstall"
                         Wait="yes" />
 
-        <!--
-          The service logs to the Application event log. LocalService isn't allowed to
-          create the event source, so register it here.
-        -->
+        <!-- The service logs to the Application event log. Register its source, which a service account may not be allowed to. -->
         <util:EventSource Name="NuDepot"
                           Log="Application"
                           EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
       </Component>
 
-      <!-- Keep the administrator's settings when upgrading or uninstalling. -->
-      <Component NeverOverwrite="yes" Permanent="yes">
-        <File Id="AppSettings" Name="appsettings.json" Source="!(bindpath.Windows)appsettings.json" KeyPath="yes" />
+      <!-- The installer's options, so an upgrade keeps them. -->
+      <Component>
+        <RegistryKey Root="HKLM" Key="SOFTWARE\NuDepot">
+          <RegistryValue Name="Port" Type="string" Value="[PORT]" KeyPath="yes" />
+          <RegistryValue Name="Listen" Type="string" Value="[LISTEN]" />
+          <RegistryValue Name="Users" Type="string" Value="[USERS]" />
+          <RegistryValue Name="Signing" Type="string" Value="[SIGNING]" />
+          <RegistryValue Name="Mirror" Type="string" Value="[MIRROR]" />
+          <RegistryValue Name="ServiceAccount" Type="string" Value="[SERVICEACCOUNT]" />
+        </RegistryKey>
       </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
+      <!-- The settings are in C:\ProgramData\NuDepot, so the application's folder only holds the application. -->
       <Files Include="!(bindpath.Windows)**">
         <Exclude Files="!(bindpath.Windows)NuDepot.exe" />
         <Exclude Files="!(bindpath.Windows)appsettings.json" />
@@ -53,13 +59,40 @@
 
     <ComponentGroup Id="DataComponents" Directory="DATAFOLDER">
       <!--
-        The database and packages live here. The service runs as LocalService, so give it
-        modify access. Leave the folder behind on uninstall so packages aren't lost.
+        The settings, database and packages live here, and it's the service's working directory. Only SYSTEM and
+        Administrators may use it, since the settings may hold API keys and passwords. Leave the folder behind on
+        uninstall so packages aren't lost.
       -->
       <Component Id="DataFolder" Guid="{6C2D0E8B-6A4B-4C55-9C7B-2F6E3A1D9B47}" Permanent="yes">
         <CreateFolder>
-          <PermissionEx Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1301bf;;;LS)" />
+          <PermissionEx Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)" />
         </CreateFolder>
+      </Component>
+
+      <!-- A service account of the administrator's choosing may modify the folder too. -->
+      <Component Id="ServiceAccountAccess" Guid="{3D76AD7B-6DDA-4767-8771-50189F6B26CB}" Condition="SERVICEACCOUNT &lt;&gt; &quot;LocalSystem&quot;">
+        <CreateFolder>
+          <util:PermissionEx User="[SERVICEACCOUNT]" GenericRead="yes" GenericWrite="yes" GenericExecute="yes" Delete="yes" />
+        </CreateFolder>
+      </Component>
+
+      <!-- The settings template, with every setting commented out. Upgrades and uninstall keep the administrator's settings. -->
+      <Component NeverOverwrite="yes" Permanent="yes">
+        <File Id="AppSettings" Name="appsettings.json" Source="!(bindpath.Windows)appsettings.json" KeyPath="yes" />
+      </Component>
+
+      <!-- The installer's options, which appsettings.json overrides. -->
+      <Component Id="SetupAddress" Guid="{5EBE1303-9BFE-46FC-B829-1B64156650C1}">
+        <IniFile Id="SetupUrl" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Kestrel:Endpoints:Http" Key="Url" Value="http://[LISTEN]:[PORT]" />
+      </Component>
+      <Component Id="SetupUsers" Guid="{4EB08A06-0C13-459D-ABDA-0C05D1797C70}" Condition="USERS = &quot;1&quot;">
+        <IniFile Id="SetupUsersEnabled" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Feed:Authorization:Users" Key="Enabled" Value="true" />
+      </Component>
+      <Component Id="SetupSigning" Guid="{80F70F90-5BDA-4B44-8D41-E97507AFA906}" Condition="SIGNING = &quot;1&quot;">
+        <IniFile Id="SetupSigningEnabled" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Feed:RepositorySigning" Key="Enabled" Value="true" />
+      </Component>
+      <Component Id="SetupMirror" Guid="{A32A25EC-4C7E-4063-9831-8760926ED496}" Condition="MIRROR = &quot;1&quot;">
+        <IniFile Id="SetupMirrorEnabled" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Feed:Mirror" Key="Enabled" Value="true" />
       </Component>
     </ComponentGroup>
   </Fragment>

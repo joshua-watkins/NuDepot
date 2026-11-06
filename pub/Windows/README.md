@@ -1,25 +1,30 @@
 # NuDepot service for Windows
 
-The NuDepot server and website, built to run as a Windows Service.
-Run from a console, it behaves like a normal console application.
+The NuDepot server and gallery, built to run as a Windows Service. Run from a console, it behaves like a normal
+console application. To install a release, see [Install NuDepot on Windows](../../docs/installation/windows.md).
 
 ## Development
 
-Start this project (F5 in Visual Studio, or `dotnet run --project pub/Windows -p:SolutionName=NuDepot`) to run the server
-and the website together, at <https://localhost:5001> and <http://localhost:5000>. In Development it uses an in-memory database and
-a temporary package folder, so it starts empty each time.
+Start this project (F5 in Visual Studio, or `dotnet run --project pub/Windows -p:SolutionName=NuDepot`) to run the
+server and the gallery together, at <https://localhost:3334> and <http://localhost:3333>. In Development it reads the
+project's `appsettings.json` and `appsettings.Development.json`, and uses an in-memory database and a temporary
+package folder, so it starts empty each time.
 
-## Building for Windows
+## How it runs
 
-Publish for x64 (`win-x64`) or ARM64 (`win-arm64`):
+Outside Development, the service's settings folder is `C:\ProgramData\NuDepot`, or the folder in the
+`NUDEPOT_CONFIG_ROOT` environment variable. It's the working directory, so the database and packages are kept there
+too, and relative paths in the settings are relative to it. The settings are read from:
 
-```powershell
-dotnet publish pub/Windows/Windows.csproj -p:SolutionName=NuDepot -c Release -r win-x64 --self-contained -o out
-```
+1. The options' defaults, and the service's (port 3333 on localhost, and the gallery's package pages).
+2. `setup.ini`, the installer's options.
+3. `appsettings.json`, the administrator's settings. The project's copy is the template the installer puts there,
+   with every setting commented out.
+4. Environment variables, then command line arguments.
 
-## Installation
+`pub/Shared/NuDepotService.cs`, which the Linux service shares, sets this up.
 
-Build the installer for the machine's architecture, then run it:
+## Building the installer
 
 ```powershell
 dotnet build pub/Windows.Setup/Windows.Setup.wixproj -p:SolutionName=NuDepot -c Release -p:Platform=x64
@@ -30,30 +35,12 @@ dotnet build pub/Windows.Setup/Windows.Setup.wixproj -p:SolutionName=NuDepot -c 
 ```
 
 Building the solution builds the installer for the solution platform, like `dotnet build NuDepot.slnx -p:Platform=x64`.
-The installer publishes a self-contained build (no .NET runtime needed on the target), installs it to
-C:\Program Files\NuDepot, and registers and starts the `NuDepot` service. The service runs as
-LocalService, starts automatically, and restarts if it fails. Upgrades and uninstall keep your
-appsettings.json and the data in C:\ProgramData\NuDepot.
+The installer publishes a self-contained build, installs it to `C:\Program Files\NuDepot`, puts the settings
+template in `C:\ProgramData\NuDepot` unless it's there, writes the installer's options to `setup.ini`, and registers
+and starts the `NuDepot` service. Its options are described in `pub/Windows.Setup/Package.wxs`.
 
-### Manual installation
-
-From an elevated PowerShell prompt:
+To publish without the installer:
 
 ```powershell
-Copy-Item out "C:\Program Files\NuDepot" -Recurse
-notepad "C:\Program Files\NuDepot\appsettings.json"
-sc.exe create NuDepot binPath= "\"C:\Program Files\NuDepot\NuDepot.exe\"" start= auto DisplayName= "NuDepot"
-sc.exe description NuDepot "A lightweight NuGet and symbol server."
-sc.exe start NuDepot
-```
-
-The database and packages are stored in C:\ProgramData\NuDepot. The service listens on
-`http://localhost:5000` unless `Kestrel` endpoints or `Urls` are set in appsettings.json.
-Logs go to the Windows Event Log (Application log, source "NuDepot").
-
-To remove the service:
-
-```powershell
-sc.exe stop NuDepot
-sc.exe delete NuDepot
+dotnet publish pub/Windows/Windows.csproj -p:SolutionName=NuDepot -c Release -r win-x64 --self-contained -o out
 ```

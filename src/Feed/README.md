@@ -20,10 +20,14 @@ await app.RunMigrationsAsync();
 await app.RunAsync();
 ```
 
-The feed reads its settings from the `Feed` configuration section. Only `Feed:Database:ConnectionString`
-is required, like `Data Source=nudepot.db`. Pass a lambda to change the settings in code:
-`AddNuDepotFeed(options => options.Storage.Path = "packages")`. The feed is open until you configure
-API keys or users; see [the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md).
+The feed reads its settings from the `Feed` configuration section. Every setting has a default: the
+database is `nudepot.db` and packages are stored in a `packages` folder, both in the working directory.
+Pass a lambda to change the settings in code: `AddNuDepotFeed(options => options.Storage.Path = "data")`.
+The feed is open until you configure API keys or users; see
+[the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md).
+
+The feed reads `X-Forwarded-Proto` and `X-Forwarded-For` from a reverse proxy, unless
+`Feed:UseForwardedHeaders` is false. Applications that handle forwarded headers themselves should turn it off.
 
 `AddNuDepotFeed()` is `services.AddNuDepot().AddFeed()`, and `UseNuDepotFeed()` is
 `app.UseNuDepot().UseFeed().UseApiKeys().UsePasskeys()`. Use the builders to choose, or to add
@@ -63,7 +67,7 @@ Besides package push, delete, content, metadata, search and autocomplete, the se
 | `ReadmeUriTemplate/6.13.0` | Package readmes. |
 | `VulnerabilityInfo/6.7.0` | Only advertised once a vulnerability is recorded. |
 | `PackageDetailsUriTemplate/5.1.0` | Set `PackageDetailsUriTemplate` in appsettings.json. HTTPS only. |
-| `RepositorySignatures/4.7.0`, `4.9.0`, `5.0.0` | Set `RepositorySigning` in appsettings.json. HTTPS only. |
+| `RepositorySignatures/4.7.0`, `4.9.0`, `5.0.0` | Set `RepositorySigning:Enabled` in appsettings.json. HTTPS only. |
 
 ## NuGet V2
 
@@ -102,14 +106,26 @@ curl -X DELETE "https://nuget.example.com/api/vulnerabilities?packageId=Contoso.
 
 ## Repository signing
 
-With a code signing certificate configured, packages pushed over HTTPS get this server's repository
-signature, and the repository signatures resource lists the certificate. Packages that already have a
-repository signature, like packages from nuget.org, keep it. `allRepositorySigned` is only true once
-every package carries this server's signature.
+Signing is off by default. With `Feed:RepositorySigning:Enabled`, pushed packages get this server's
+repository signature, and the repository signatures resource lists the certificate. The feed then only
+answers HTTPS requests (as the forwarded headers describe them), since signatures name its HTTPS address.
+Packages that already have a repository signature, like packages from nuget.org, keep it.
+
+```json
+"Feed": {
+  "RepositorySigning": { "Enabled": true }
+}
+```
+
+Without a certificate, the feed generates a self-signed one each year, and re-signs packages signed with an
+older one when they're downloaded. `NuDepot rotate signing-certificate` replaces this year's early, like after
+its key leaked. NuGet clients warn about packages signed with self-signed certificates, so a trusted code
+signing certificate is better:
 
 ```json
 "Feed": {
   "RepositorySigning": {
+    "Enabled": true,
     "CertificatePath": "signing.pfx",
     "CertificatePassword": "",
     "TimestampServerUrl": "http://timestamp.digicert.com"
@@ -118,13 +134,8 @@ every package carries this server's signature.
 ```
 
 Use `CertificateThumbprint` (with `CertificateStoreLocation` and `CertificateStoreName`) instead of
-`CertificatePath` to load the certificate from a certificate store.
-
-Without a certificate, `GenerateCertificates` makes the feed generate a self-signed certificate each year,
-and re-sign packages signed with an older one when they're downloaded. `NuDepot rotate signing-certificate`
-replaces this year's early, like after its key leaked. It isn't recommended: NuGet clients warn about
-packages signed with self-signed certificates. See the
-[configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#generated-certificates).
+`CertificatePath` to load the certificate from a certificate store. See the
+[configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#repository-signing).
 
 The signing code is in `Signing`: `RepositorySigningService` signs, `ConfiguredSigningCertificate` and
 `GeneratedSigningCertificates` provide the certificates, and `PackageResigner` re-signs packages as they're

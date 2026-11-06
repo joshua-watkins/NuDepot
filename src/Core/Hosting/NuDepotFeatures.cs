@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 namespace NuDepot.Core.Hosting;
 
 /// <summary>
@@ -7,8 +9,20 @@ namespace NuDepot.Core.Hosting;
 public sealed class NuDepotFeatures
 {
     /// <summary>
+    /// The header the gallery sends <see cref="CoHostedToken"/> in.
+    /// </summary>
+    public const string CoHostedTokenHeader = "X-NuDepot-CoHosted";
+
+    /// <summary>
     /// Whether people can sign in with passkeys: the feed's users are enabled, and the application
     /// uses them. The gallery then shows who's signed in, and lets people sign in.
     /// </summary>
     public bool Passkeys { get; set; }
+
+    /// <summary>
+    /// A secret of this application's, which the gallery sends with its requests to the feed hosted in the same
+    /// application. The feed then trusts the request's X-Forwarded-Proto, which says whether the browser used
+    /// HTTPS, even if it doesn't trust forwarded headers from other clients.
+    /// </summary>
+    public string CoHostedToken { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 }

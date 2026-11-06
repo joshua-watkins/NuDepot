@@ -3,18 +3,29 @@
 NuDepot is a lightweight NuGet and symbol server, and a replacement for NuGet.Server. It runs as a
 Windows service or a Linux systemd service, and comes with a gallery website for browsing packages.
 
-## Run NuDepot
+## Install NuDepot
 
-* [On your computer](installation/local.md)
-* [Behind IIS](installation/iis-proxy.md)
-* [As a Windows service](../pub/Windows/README.md)
-* [As a Linux systemd service](../pub/Linux/README.md)
+* [On Windows](installation/windows.md)
+* [On Linux](installation/linux.md)
+* [Serve it over HTTPS](installation/https.md), with a reverse proxy or by itself
+
+## Use NuDepot
+
+* [Push and restore packages, and load symbols](using.md)
+* [Import packages](import/nugetserver.md) from NuGet.Server, a [local feed](import/local-feeds.md), or [nuget.org](import/nugetorg.md)
 
 ## Configure NuDepot
 
-See the [configuration](configuration.md) guide.
+Every feature is off until you turn it on. The [configuration](configuration.md) guide describes all the
+settings. The ones you're most likely to want:
 
-## NuDepot.Core
+* [Require an API key](configuration.md#require-an-api-key)
+* [Let people sign in with passkeys](configuration.md#users-and-passkeys)
+* [Sign packages](configuration.md#repository-signing)
+* [Mirror nuget.org](configuration.md#mirror-nugetorg)
 
-The `NuDepot.Core` library has the NuGet V3 protocol's models and a client for talking to a NuGet
-server. See its [README](../src/Core/README.md).
+## Libraries
+
+The server's parts are also NuGet packages for your own ASP.NET Core application:
+[NuDepot.Feed](../src/Feed/README.md), [NuDepot.Gallery](../src/Gallery/README.md) and
+[NuDepot.Core](../src/Core/README.md).

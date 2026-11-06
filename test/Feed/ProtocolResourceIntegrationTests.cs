@@ -387,6 +387,7 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
         {
             NuDepotTestApplication app = CreateApp(new Dictionary<string, string>
             {
+                { "RepositorySigning:Enabled", "true" },
                 { "RepositorySigning:CertificatePath", pfxPath },
                 { "RepositorySigning:CertificatePassword", "password" },
             });
@@ -396,7 +397,6 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
             Assert.Contains("RepositorySignatures/4.7.0", resourceTypes);
             Assert.Contains("RepositorySignatures/4.9.0", resourceTypes);
             Assert.Contains("RepositorySignatures/5.0.0", resourceTypes);
-            Assert.DoesNotContain("RepositorySignatures/5.0.0", await GetResourceTypesAsync(app.CreateClient()));
 
             Assert.Equal(HttpStatusCode.Created, (await PushAsync(client, TestPackages.Create("Signed.Package", "1.0.0"))).StatusCode);
 
@@ -432,10 +432,13 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
             byte[] download = await client.GetByteArrayAsync(signingCertificate.GetProperty("contentUrl").GetString()!);
             Assert.Equal(certificate.RawData, download);
 
-            // Pushing over HTTP can't record an HTTPS service index URL, so the package isn't signed.
-            await PushAsync(app.CreateClient(), TestPackages.Create("Unsigned.Package", "1.0.0"));
-            JsonElement afterUnsigned = await GetJsonAsync(client, "v3/repository-signatures/5.0.0/index.json");
-            Assert.False(afterUnsigned.GetProperty("allRepositorySigned").GetBoolean());
+            // Pushing over HTTP can't record an HTTPS service index URL, so a feed that signs doesn't accept it.
+            using MultipartFormDataContent content = new()
+            {
+                { new StreamContent(TestPackages.Create("Unsigned.Package", "1.0.0")), "package", "package.nupkg" },
+            };
+            using HttpResponseMessage overHttp = await app.CreateClient().PutAsync("api/v2/package", content);
+            Assert.Equal(HttpStatusCode.Forbidden, overHttp.StatusCode);
         }
         finally
         {

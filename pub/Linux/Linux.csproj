@@ -10,6 +10,10 @@
 		<!-- Builds for the platform's architecture (see pub/Directory.Build.props). -->
 		<RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">linux-$(NuDepotArchitecture)</RuntimeIdentifier>
 		<RuntimeIdentifiers>linux-x64;linux-arm64</RuntimeIdentifiers>
+		<!-- Kestrel serves the feed, behind a reverse proxy if one is used, so there's no IIS web.config. -->
+		<IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+		<!-- Publishing also makes the release archive, like bin/Release/NuDepot-linux-x64.tar.gz. -->
+		<NuDepotArchive>$([System.IO.Path]::Combine($(MSBuildProjectDirectory), 'bin', $(Configuration), 'NuDepot-$(RuntimeIdentifier).tar.gz'))</NuDepotArchive>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -22,8 +26,20 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="nudepot.service">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
+		<Compile Include="..\Shared\NuDepotService.cs" Link="NuDepotService.cs" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<!-- install.sh puts appsettings.json in /etc/nudepot. The development settings aren't published. -->
+		<Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+		<None Update="nudepot.service;install.sh" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<!-- The archive holds the published files, install.sh and nudepot.service, with no top folder. -->
+	<Target Name="NuDepotArchive" AfterTargets="Publish">
+		<MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(NuDepotArchive)'))" />
+		<Delete Files="$(NuDepotArchive)" />
+		<Exec Command="tar -czf &quot;$(NuDepotArchive)&quot; -C &quot;$(PublishDir.TrimEnd('\/'))&quot; ." />
+		<Message Importance="high" Text="$(MSBuildProjectName) -> $(NuDepotArchive)" />
+	</Target>
 </Project>

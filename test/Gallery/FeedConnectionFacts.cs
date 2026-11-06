@@ -64,6 +64,8 @@ public class FeedConnectionFacts
     [InlineData(null, null)]
     [InlineData("http://localhost:5000/v3/package/a/1.0.0/icon", "https://nuget.example.com/feed/v3/package/a/1.0.0/icon")]
     [InlineData("HTTP://LOCALHOST:5000/v3/index.json", "https://nuget.example.com/feed/v3/index.json")]
+    // The website passes on that the browser used HTTPS, so the feed's links use it.
+    [InlineData("https://localhost:5000/v3/package/a/1.0.0/icon", "https://nuget.example.com/feed/v3/package/a/1.0.0/icon")]
     [InlineData("http://localhost:50001/v3/index.json", "http://localhost:50001/v3/index.json")]
     [InlineData("https://example.org/icon.png", "https://example.org/icon.png")]
     public void CoHostedFeedRewritesLocalUrls(string? url, string? expected)

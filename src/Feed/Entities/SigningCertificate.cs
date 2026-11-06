@@ -1,8 +1,8 @@
 namespace NuDepot.Feed.Entities;
 
 /// <summary>
-/// A repository signing certificate the feed generated, with
-/// <see cref="Configuration.RepositorySigningOptions.GenerateCertificates"/>. Each year has its own, which is
+/// A repository signing certificate the feed generated, because signing is on without a configured certificate
+/// (<see cref="Configuration.RepositorySigningOptions.GeneratesCertificates"/>). Each year has its own, which is
 /// generated when the feed first needs it that year, and expires at the end of the year. A certificate replaced
 /// early, like after its key leaked, is revoked.
 /// </summary>

@@ -101,10 +101,18 @@ public class FeedConnection
         if (request == null)
             return url;
 
-        // The co-hosted server generates links using the local address the website called it on.
-        // Swap that address for the one the browser used to reach this application.
-        string feedRoot = new Uri(ServiceIndexUrl).GetLeftPart(UriPartial.Authority);
-        if (!url.StartsWith(feedRoot + "/", StringComparison.OrdinalIgnoreCase))
+        // The co-hosted server generates links using the local address the website called it on, with the
+        // browser's scheme if the website passed it on. Swap that address for the one the browser used to
+        // reach this application.
+        string feedAuthority = new Uri(ServiceIndexUrl).Authority + "/";
+        string? path = null;
+        foreach (string scheme in (string[])["http://", "https://"])
+        {
+            if (url.StartsWith(scheme + feedAuthority, StringComparison.OrdinalIgnoreCase))
+                path = url[(scheme.Length + feedAuthority.Length - 1)..];
+        }
+
+        if (path == null)
             return url;
 
         string publicRoot = string.Concat(
@@ -113,7 +121,7 @@ public class FeedConnection
             request.Host.ToUriComponent(),
             request.PathBase.ToUriComponent());
 
-        return publicRoot + url.Substring(feedRoot.Length);
+        return publicRoot + path;
     }
 
     private string GetLocalServiceIndexUrl()
@@ -155,8 +163,8 @@ public class FeedConnection
             UseCookies = false,
         };
 
-        if (SignInAvailable && HttpContextAccessor != null)
-            handler = new ForwardCookiesHandler(HttpContextAccessor) { InnerHandler = handler };
+        if (IsCoHosted && HttpContextAccessor != null)
+            handler = new CoHostedFeedHandler(HttpContextAccessor, Features, SignInAvailable) { InnerHandler = handler };
 
         HttpClient client = new(handler);
 
@@ -167,15 +175,24 @@ public class FeedConnection
     }
 
     /// <summary>
-    /// Sends the browser's cookies, including its sign-in cookie, with the website's requests to the
-    /// feed hosted in the same application, so the feed answers as it would answer the signed-in user.
+    /// Tells the feed hosted in the same application about the browser's request. The website calls the feed
+    /// over HTTP, so it passes on that the browser used HTTPS, which a feed that signs packages requires, with the
+    /// application's secret so the feed trusts it. With sign-in, it sends the browser's cookies, including its
+    /// sign-in cookie, so the feed answers as it would answer the signed-in user.
     /// </summary>
-    private sealed class ForwardCookiesHandler(IHttpContextAccessor httpContextAccessor) : DelegatingHandler
+    private sealed class CoHostedFeedHandler(IHttpContextAccessor httpContextAccessor, NuDepotFeatures features, bool forwardCookies) : DelegatingHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            StringValues? cookies = httpContextAccessor.HttpContext?.Request.Headers.Cookie;
-            if (cookies is { Count: > 0 })
+            HttpRequest? browserRequest = httpContextAccessor.HttpContext?.Request;
+            if (browserRequest?.IsHttps == true && request.RequestUri?.Scheme == Uri.UriSchemeHttp)
+            {
+                request.Headers.TryAddWithoutValidation("X-Forwarded-Proto", Uri.UriSchemeHttps);
+                request.Headers.TryAddWithoutValidation(NuDepotFeatures.CoHostedTokenHeader, features.CoHostedToken);
+            }
+
+            StringValues? cookies = browserRequest?.Headers.Cookie;
+            if (forwardCookies && cookies is { Count: > 0 })
                 request.Headers.TryAddWithoutValidation("Cookie", cookies.ToString());
 
             return base.SendAsync(request, cancellationToken);

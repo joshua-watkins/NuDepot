@@ -1,38 +1,32 @@
 # NuDepot service for Linux
 
-The NuDepot server and website, built to run as a systemd service.
-Run from a shell, it behaves like a normal console application.
+The NuDepot server and gallery, built to run as a systemd service. Run from a shell, it behaves like a normal
+console application. To install a release, see [Install NuDepot on Linux](../../docs/installation/linux.md).
 
-## Building for Linux
+## How it runs
 
-Publish for x64 (`linux-x64`) or ARM64 (`linux-arm64`, like a Raspberry Pi with a 64-bit OS or an AWS Graviton server):
+Outside Development, the service's settings folder is `/etc/nudepot`, or the folder in the `NUDEPOT_CONFIG_ROOT`
+environment variable. It's the working directory, so relative paths in the settings are relative to it. The database
+and packages default to `/var/lib/nudepot`, which systemd creates for the service. The settings are read from:
+
+1. The options' defaults, and the service's (port 3333 on localhost, the `/var/lib/nudepot` paths, and the gallery's
+   package pages).
+2. `setup.ini`, the install script's options.
+3. `appsettings.json`, the administrator's settings. The project's copy is the template `install.sh` puts there,
+   with every setting commented out.
+4. Environment variables, then command line arguments.
+
+`pub/Shared/NuDepotService.cs`, which the Windows service shares, sets this up.
+
+## Building a release
+
+Publish for x64 (`linux-x64`) or ARM64 (`linux-arm64`, like a Raspberry Pi with a 64-bit OS or an AWS Graviton
+server):
 
 ```sh
 dotnet publish pub/Linux/Linux.csproj -p:SolutionName=NuDepot -c Release -r linux-x64 --self-contained -o out
-dotnet publish pub/Linux/Linux.csproj -p:SolutionName=NuDepot -c Release -r linux-arm64 --self-contained -o out
+dotnet publish pub/Linux/Linux.csproj -p:SolutionName=NuDepot -c Release -r linux-arm64 --self-contained -o out-arm64
 ```
 
-## Installation
-
-Installation of NuDepot on Linux comprises the following steps:
-
-* Create the `nudepot` user the service runs as
-* Copy the NuDepot build to /usr/share/nudepot
-* Make the NuDepot application executable
-* Edit /usr/share/nudepot/appsettings.json to your needs
-* Edit /usr/share/nudepot/nudepot.service to your needs
-* Install, enable and start the service
-
-```sh
-sudo useradd --system --no-create-home --shell /usr/sbin/nologin nudepot
-sudo cp -r out /usr/share/nudepot
-sudo chmod 0755 /usr/share/nudepot/NuDepot
-sudo vi /usr/share/nudepot/appsettings.json
-sudo vi /usr/share/nudepot/nudepot.service
-sudo cp /usr/share/nudepot/nudepot.service /etc/systemd/system/nudepot.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now nudepot
-```
-
-The database and packages are stored in /var/lib/nudepot, which systemd creates for the service.
-Logs go to the journal: `journalctl -u nudepot -f`.
+Publishing also makes the release archive, `pub/Linux/bin/Release/NuDepot-linux-x64.tar.gz`, with the published
+files, `install.sh`, `nudepot.service` and the settings template. `install.sh` installs it; see its `--help`.

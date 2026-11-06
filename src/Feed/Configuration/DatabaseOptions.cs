@@ -6,7 +6,7 @@ namespace NuDepot.Feed.Configuration;
 public class DatabaseOptions
 {
     /// <summary>
-    /// The SQLite connection string, like "Data Source=nudepot.db". Required.
+    /// The SQLite connection string. Defaults to "Data Source=nudepot.db", in the working directory.
     /// </summary>
-    public string? ConnectionString { get; set; }
+    public string? ConnectionString { get; set; } = "Data Source=nudepot.db";
 }

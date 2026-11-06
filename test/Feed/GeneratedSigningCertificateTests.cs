@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NuDepot.Core.Hosting;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Signing;
 using NuDepot.Feed.Tests.Support;
@@ -16,7 +17,7 @@ using Xunit.Abstractions;
 namespace NuDepot.Feed.Tests;
 
 /// <summary>
-/// Tests the yearly self-signed certificates the feed generates with <c>RepositorySigning:GenerateCertificates</c>,
+/// Tests the yearly self-signed certificates the feed generates with <c>RepositorySigning:Enabled</c> and no certificate,
 /// and re-signing packages signed with an older one when they're downloaded. The keys are smaller than the feed's,
 /// so they generate quickly.
 /// </summary>
@@ -153,17 +154,46 @@ public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDispo
     }
 
     [Fact]
-    public async Task DownloadsOverHttpServeTheExistingSignature()
+    public async Task FeedsThatSignOnlyAnswerHttps()
     {
         NuDepotTestApplication app = CreateApp();
-        HttpClient https = app.CreateHttpsClient();
-
-        await PushAsync(https, TestPackages.Create("Generated.Signed", "1.0.0"));
-        byte[] original = await https.GetByteArrayAsync(PackageUrl);
-        await app.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(default);
+        await PushAsync(app.CreateHttpsClient(), TestPackages.Create("Generated.Signed", "1.0.0"));
 
         // A signature records the service index's HTTPS URL, which an HTTP request doesn't have.
-        Assert.Equal(original, await app.CreateClient().GetByteArrayAsync(PackageUrl));
+        HttpClient http = app.CreateClient();
+        Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync("v3/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync(PackageUrl)).StatusCode);
+
+        // A reverse proxy that serves HTTPS says so.
+        using HttpRequestMessage proxied = new(HttpMethod.Get, PackageUrl);
+        proxied.Headers.Add("X-Forwarded-Proto", "https");
+        using HttpResponseMessage response = await http.SendAsync(proxied);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using X509Certificate2 signer = await GetRepositorySignerAsync(await response.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task ForwardedHeadersCanBeTurnedOff()
+    {
+        NuDepotTestApplication app = CreateApp(configuration: new Dictionary<string, string> { ["UseForwardedHeaders"] = "false" });
+
+        using HttpRequestMessage proxied = new(HttpMethod.Get, "v3/index.json");
+        proxied.Headers.Add("X-Forwarded-Proto", "https");
+        Assert.Equal(HttpStatusCode.Forbidden, (await app.CreateClient().SendAsync(proxied)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await app.CreateHttpsClient().GetAsync("v3/index.json")).StatusCode);
+
+        // The gallery hosted with the feed is still trusted, with the application's secret.
+        string token = app.Services.GetRequiredService<NuDepotFeatures>().CoHostedToken;
+        Assert.Equal(HttpStatusCode.OK, (await SendForwardedAsync(app, token)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendForwardedAsync(app, new string('0', token.Length))).StatusCode);
+    }
+
+    private static async Task<HttpResponseMessage> SendForwardedAsync(NuDepotTestApplication app, string token)
+    {
+        using HttpRequestMessage request = new(HttpMethod.Get, "v3/index.json");
+        request.Headers.Add("X-Forwarded-Proto", "https");
+        request.Headers.Add(NuDepotFeatures.CoHostedTokenHeader, token);
+        return await app.CreateClient().SendAsync(request);
     }
 
     [Fact]
@@ -278,22 +308,46 @@ public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDispo
     }
 
     [Fact]
-    public void GeneratingCertificatesCantBeCombinedWithACertificate()
+    public void SigningIsOffByDefault()
+    {
+        NuDepotTestApplication app = new(Output);
+        Disposables.Add(app);
+
+        Assert.False(app.Services.GetRequiredService<IRepositorySigningService>().IsEnabled);
+    }
+
+    [Fact]
+    public void ACertificateNeedsSigningToBeEnabled()
+    {
+        NuDepotTestApplication app = new(Output, configuration: new Dictionary<string, string>
+        {
+            { "RepositorySigning:CertificatePath", "signing.pfx" },
+        });
+        Disposables.Add(app);
+
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
+        Assert.Contains("A signing certificate is set, but 'Feed:RepositorySigning:Enabled' isn't true", exception.Message);
+    }
+
+    [Fact]
+    public void ACertificateFileCantBeCombinedWithAThumbprint()
     {
         NuDepotTestApplication app = CreateApp(configuration: new Dictionary<string, string>
         {
             { "RepositorySigning:CertificatePath", "signing.pfx" },
+            { "RepositorySigning:CertificateThumbprint", "ABCDEF" },
         });
 
         OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
-        Assert.Contains("'Feed:RepositorySigning:GenerateCertificates' can't be used with", exception.Message);
+        Assert.Contains("'Feed:RepositorySigning:CertificatePath' can't be used with 'Feed:RepositorySigning:CertificateThumbprint'", exception.Message);
     }
 
     private NuDepotTestApplication CreateApp(TimeProvider? time = null, IReadOnlyDictionary<string, string>? configuration = null)
     {
+        // Signing without a certificate generates them.
         Dictionary<string, string> settings = new(configuration ?? new Dictionary<string, string>())
         {
-            ["RepositorySigning:GenerateCertificates"] = "true",
+            ["RepositorySigning:Enabled"] = "true",
         };
 
         NuDepotTestApplication app = new(Output, configuration: settings, configureServices: services =>

@@ -1,26 +1,45 @@
 # Configuration
 
-You can modify NuDepot's configuration by editing the `appsettings.json` file. The feed's settings
-are in the `Feed` section, and the gallery's in the `Gallery` section. ASP.NET Core's own settings,
-like `Logging`, `Kestrel` and `IISServerOptions`, stay at the top level:
+Every setting is optional: each has a default, and everything beyond a plain feed is off until you turn it on.
+NuDepot's settings are in `appsettings.json`, in its settings folder:
+
+| | Settings folder | Database and packages |
+| --- | --- | --- |
+| Windows | `C:\ProgramData\NuDepot` | `C:\ProgramData\NuDepot` |
+| Linux | `/etc/nudepot` | `/var/lib/nudepot` |
+
+The settings folder is NuDepot's working directory, so relative paths in the settings, like a certificate's, are
+relative to it. The `NUDEPOT_CONFIG_ROOT` environment variable chooses another settings folder.
+
+The installer starts you off with an `appsettings.json` whose settings are all commented out: uncomment what you
+want, then restart the service. Upgrades never change it. The installer's own options, like the port, are in
+`setup.ini` in the same folder, and `appsettings.json` overrides them.
+
+The feed's settings are in the `Feed` section, and the gallery's in the `Gallery` section. ASP.NET Core's own
+settings, like `Logging` and `Kestrel`, stay at the top level:
 
 ```json
 {
     "Feed": {
-        "Database": { "ConnectionString": "Data Source=nudepot.db" },
-        "Storage": { "Path": "packages" },
+        "Authorization": { "Users": { "Enabled": true } },
         ...
     },
     "Gallery": {
         ...
     },
-    "Logging": { ... }
+    "Kestrel": { ... }
 }
 ```
 
 Environment variables and command line arguments set the same settings with the section in front,
-like `Feed__Database__ConnectionString` or `--Feed:Database:ConnectionString=...`. The examples
-below show the `Feed` section's contents.
+like `Feed__RepositorySigning__CertificatePassword` or `--Feed:Mirror:Enabled=true`. They override
+`appsettings.json`. The examples below show the `Feed` section's contents.
+
+## Addresses
+
+NuDepot listens on `http://localhost:3333`, or the port and address you chose when installing, for a reverse proxy
+that serves HTTPS. See [Serve NuDepot over HTTPS](installation/https.md), which also covers serving HTTPS without a
+proxy, and the `PathBase` and `UseForwardedHeaders` settings.
 
 ## Require an API key
 
@@ -172,8 +191,9 @@ for NuGet clients and Visual Studio.
 }
 ```
 
-The gallery shows "Sign in" in its navigation bar. The first person to sign up becomes an `Admin`, so
-set up your account before sharing the feed's address, or turn `AllowSignUp` off afterwards. Everyone
+Or install with `USERS=1` on Windows, or `--users` on Linux. The gallery shows "Sign in" in its
+navigation bar. The first person to sign up becomes an `Admin`, so set up your account before sharing
+the feed's address, or turn `AllowSignUp` off afterwards. Everyone
 after that gets the `DefaultRole`. Users don't need configured API keys: requests without a key or
 a signed-in user get the `AnonymousRole`, `ReadOnly` unless set.
 
@@ -197,8 +217,9 @@ old cookie for a minute.
 Each user can have one passkey request in progress at a time, and the browser has 5 minutes to
 answer it. Starting another, like signing in from a second tab, replaces it.
 
-Passkeys belong to the gallery's domain, and only work over HTTPS or on `localhost`. Behind a reverse
-proxy, set the domain and origins the browser sees, if they differ from what the feed sees:
+Passkeys belong to the gallery's domain, and only work over HTTPS or on `localhost`, so share the feed through a
+reverse proxy that serves HTTPS (see [Serve NuDepot over HTTPS](installation/https.md)). If the proxy doesn't pass
+on the request's `Host` header, set the domain and origins the browser sees:
 
 ```json
 "Users": {
@@ -212,28 +233,34 @@ The application must call `UseApiKeys()` and `UsePasskeys()` for users (see
 [Applications that host the feed](#applications-that-host-the-feed)). The gallery only offers sign-in
 when it's hosted with the feed.
 
-## Enable read-through caching
+## Mirror nuget.org
 
-Read-through caching lets you index packages from an upstream source. You can use read-through
-caching to:
+Mirroring, or read-through caching, gets packages the feed doesn't have from an upstream feed, and keeps them. Use
+it to:
 
 1. Speed up your builds if restores from [nuget.org](https://nuget.org) are slow
-1. Enable package restores in offline scenarios
+1. Restore packages when nuget.org can't be reached
 
-The following `Mirror` setting configures NuDepot to index packages from [nuget.org](https://nuget.org):
+Mirroring is off by default. Turn it on to mirror nuget.org:
 
 ```json
 "Feed": {
-    "Mirror": {
-        "Enabled":  true,
-        "PackageSource": "https://api.nuget.org/v3/index.json"
-    },
+    "Mirror": { "Enabled": true },
     ...
 }
 ```
 
-!!! info
-    `PackageSource` is the value of the [NuGet service index](https://docs.microsoft.com/en-us/nuget/api/service-index).
+To mirror another feed, set `PackageSource` to its [service index](https://learn.microsoft.com/nuget/api/service-index):
+
+```json
+"Feed": {
+    "Mirror": {
+        "Enabled": true,
+        "PackageSource": "https://feed.example.com/v3/index.json"
+    },
+    ...
+}
+```
 
 ## Enable package hard deletions
 
@@ -270,16 +297,41 @@ See [Require an API key](#require-an-api-key) and [Users and passkeys](#users-an
 
 ## Repository signing
 
-With a code signing certificate, packages pushed over HTTPS get the feed's repository signature, and
-the [repository signatures resource](https://learn.microsoft.com/nuget/api/repository-signatures-resource)
-tells NuGet clients which certificates the feed signs with. Packages that already have a repository
-signature, like packages mirrored from nuget.org, keep it.
+With repository signing on, pushed packages get the feed's repository signature, and the
+[repository signatures resource](https://learn.microsoft.com/nuget/api/repository-signatures-resource) tells NuGet
+clients which certificates the feed signs with. Packages that already have a repository signature, like packages
+mirrored from nuget.org, keep it. Signing is off by default. Turn it on:
+
+```json
+"Feed": {
+    "RepositorySigning": { "Enabled": true },
+    ...
+}
+```
+
+Or install with `SIGNING=1` on Windows, or `--signing` on Linux. Without a certificate of your own, the feed
+generates one each year; see [Generated certificates](#generated-certificates).
+
+A signature names the feed's HTTPS address, so with signing on, the feed only answers HTTPS requests, and refuses
+HTTP ones with a 403. Serve it through a reverse proxy that serves HTTPS, or serve HTTPS itself; see
+[Serve NuDepot over HTTPS](installation/https.md). The gallery hosted with the feed still reads it over HTTP on
+localhost.
+
+Signatures use SHA-512, whatever the certificate itself was signed with. NuGet only accepts RSA certificates, of
+at least 2048 bits. Certificates are identified by their SHA-256 fingerprints, as NuGet's trusted signers and the
+repository signatures resource expect.
+
+### Your own certificate
+
+NuGet clients trust packages signed with a code signing certificate from a certificate authority, so they don't
+warn about them. Give the feed the certificate as a PFX file, with its private key:
 
 ```json
 "Feed": {
     "RepositorySigning": {
+        "Enabled": true,
         "CertificatePath": "signing.pfx",
-        "CertificatePassword": "",
+        "CertificatePassword": "the PFX file's password",
         // Recommended: without a timestamp, signatures stop being valid when the certificate expires.
         "TimestampServerUrl": "http://timestamp.digicert.com"
     },
@@ -287,51 +339,60 @@ signature, like packages mirrored from nuget.org, keep it.
 }
 ```
 
-To load the certificate from a certificate store instead, set `CertificateThumbprint`, with
-`CertificateStoreLocation` (`CurrentUser` or `LocalMachine`) and `CertificateStoreName` (usually `My`).
+- A relative `CertificatePath` is relative to the settings folder, so put the file there: `C:\ProgramData\NuDepot`
+  on Windows, or `/etc/nudepot` on Linux.
+- The service's account must be able to read the file. A file in `C:\ProgramData\NuDepot` already is, for the
+  installer's `LocalSystem` account or the account you chose. On Linux, give it to the `nudepot` group:
+  `sudo install -m 0640 -o root -g nudepot signing.pfx /etc/nudepot/signing.pfx`.
+- Leave `CertificatePassword` out if the file has no password. To keep the password out of `appsettings.json`, set it
+  in the service's environment as `Feed__RepositorySigning__CertificatePassword` instead. On Linux, add
+  `Environment="Feed__RepositorySigning__CertificatePassword=..."` to the service with `sudo systemctl edit nudepot`.
+  On Windows, add it to the service's `Environment` value, under
+  `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NuDepot` in the registry.
 
-Signatures use SHA-512, whatever the certificate itself was signed with. NuGet only accepts RSA certificates, of
-at least 2048 bits. Certificates are identified by their SHA-256 fingerprints, as NuGet's trusted signers and the
-repository signatures resource expect.
+To load the certificate from a certificate store instead, set `CertificateThumbprint`, with
+`CertificateStoreLocation` (`CurrentUser`, the default, or `LocalMachine`) and `CertificateStoreName` (usually `My`).
+On Windows, use `LocalMachine` for a certificate the service uses, and let its account read the private key: in the
+Certificates snap-in for the computer, right-click the certificate, then **All Tasks** > **Manage Private Keys**.
+`CertificatePath` can't be used with `CertificateThumbprint`, and neither can be used without `Enabled`.
 
 ### Generated certificates
 
-Not recommended. Without a certificate, the feed can generate its own:
-
-```json
-"Feed": {
-    "RepositorySigning": {
-        "GenerateCertificates": true
-    },
-    ...
-}
-```
-
-The feed generates a self-signed certificate for each year: an RSA-8192 key, signed with SHA-512, which
-signs packages with SHA-512.
+With signing on and no certificate of your own, the feed generates a self-signed certificate for each year: an
+RSA-8192 key, signed with SHA-512, which signs packages with SHA-512. It has no password: its private key is
+encrypted in the database, by [data protection](#data-protection-keys).
 
 - Each year's certificate is generated the first time the feed signs a package or lists its certificates that
   year, and expires at the end of December 31st. The repository signatures resource lists the current
   certificate. The gallery's upload page shows it, with the `trustedSigners` section to add to a `nuget.config`.
 - The feed records which certificate signed each package. A package signed with an older certificate is
-  re-signed with the current one the first time it's downloaded over HTTPS, before it's served. Its hash,
-  size and catalog entry are updated to match. Packages that aren't downloaded aren't re-signed.
-- The certificates are stored in the database, with their private keys encrypted by ASP.NET Core data
-  protection. If a certificate can't be decrypted, because data protection's keys were lost, the feed
-  generates a new one, and packages are re-signed with it when they're downloaded.
+  re-signed with the current one the first time it's downloaded, before it's served. Its hash, size and catalog
+  entry are updated to match. Packages that aren't downloaded aren't re-signed.
+- If a certificate can't be decrypted, because data protection's keys were lost, the feed generates a new one, and
+  packages are re-signed with it when they're downloaded.
 
-If a certificate's key leaks, replace it early. Run this command with the server's settings, while it runs; the
-server switches to the new certificate within a minute:
+#### Replace a generated certificate
 
-```sh
-NuDepot rotate signing-certificate
+If a certificate's key leaks, replace it early with the `rotate signing-certificate` command. Run it on the server,
+while the service runs; the service switches to the new certificate within a minute. On Windows, from an elevated
+PowerShell prompt:
+
+```powershell
+& "C:\Program Files\NuDepot\NuDepot.exe" rotate signing-certificate
 ```
 
-The new certificate expires at the end of the year, like the one it replaces. The replaced certificate is revoked:
-the feed stops listing it, and re-signs packages it signed when they're downloaded. NuGet clients don't check
-revocation for these certificates, so remove the old fingerprint from your trusted signers.
+On Linux:
 
-What clients see:
+```sh
+sudo -u nudepot /usr/share/nudepot/NuDepot rotate signing-certificate
+```
+
+The command prints the new certificate's fingerprint, and the ones it revoked. The new certificate expires at the end
+of the year, like the one it replaces. The replaced certificate is revoked: the feed stops listing it, and re-signs
+packages it signed when they're downloaded. NuGet clients don't check revocation for these certificates, so remove
+the old fingerprint from your trusted signers, and add the new one.
+
+#### What clients see
 
 - NuGet clients don't trust self-signed certificates. With the default `signatureValidationMode`, restores
   warn about each package: `NU3018` (the certificate isn't trusted) and `NU3027` (the signature isn't
@@ -348,8 +409,6 @@ What clients see:
   self-signed certificate. When a feed says that, NuGet requires a trusted certificate from the list it read,
   so every restore would fail. A client that read the list shortly before the certificate changed warns
   `NU3034` (signed with a certificate the repository didn't list) until it reads the list again.
-
-`GenerateCertificates` can't be used with `CertificatePath` or `CertificateThumbprint`.
 
 ### Mirroring a feed that signs packages
 
@@ -370,21 +429,21 @@ including its algorithms, apply.
 
 ## Database, storage and search
 
-NuDepot stores package information in a SQLite database. Set its connection string to choose where
-the database file is; see [SQLite connection strings](https://learn.microsoft.com/dotnet/standard/data/sqlite/connection-strings).
-Package and symbol files are stored in a folder, and searches query the database:
+NuDepot stores package information in a SQLite database, and package and symbol files in a folder. Searches query
+the database. The defaults are:
 
 ```json
 "Feed": {
     "Database": {
-        // Required.
+        // On Linux, Data Source=/var/lib/nudepot/nudepot.db.
         "ConnectionString": "Data Source=nudepot.db"
     },
     "Storage": {
         // FileSystem (the default) or Null, which doesn't store files.
         "Type": "FileSystem",
-        // The folder files are stored in. Defaults to the working directory.
-        "Path": "packages"
+        // The folder files are stored in, in a "packages" folder. Defaults to the working directory, or
+        // /var/lib/nudepot on Linux.
+        "Path": ""
     },
     "Search": {
         // Database (the default) or Null, which finds nothing.
@@ -394,22 +453,29 @@ Package and symbol files are stored in a folder, and searches query the database
 }
 ```
 
-As environment variables, these are `Feed__Database__ConnectionString`, `Feed__Storage__Type`,
-`Feed__Storage__Path` and `Feed__Search__Type`.
+Relative paths are relative to the settings folder. See
+[SQLite connection strings](https://learn.microsoft.com/dotnet/standard/data/sqlite/connection-strings) for what the
+connection string can say. As environment variables, these are `Feed__Database__ConnectionString`,
+`Feed__Storage__Type`, `Feed__Storage__Path` and `Feed__Search__Type`.
 
-## IIS server options
+## Logging
 
-IIS Server options can be configured under the top-level `IISServerOptions` key. The available options are detailed at [docs.microsoft.com](https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.builder.iisserveroptions)
-Note: If not specified, the MaxRequestBodySize in NuDepot defaults to 250MB (262144000 bytes), rather than the ASP.NET Core default of 30MB
+On Linux, the service logs to systemd's journal at the `Information` level, and `Warning` for ASP.NET Core. On
+Windows, it logs warnings and errors to the Event Log (Application log, source `NuDepot`). Change the levels with the
+[`Logging` section](https://learn.microsoft.com/aspnet/core/fundamentals/logging/#configure-logging). The Event Log
+has its own:
 
 ```json
 {
-    ...
-
-    "IISServerOptions": {
-        "MaxRequestBodySize": 262144000
-    },
-
-    ...
+    "Logging": {
+        "LogLevel": {
+            "Default": "Warning"
+        },
+        "EventLog": {
+            "LogLevel": {
+                "Default": "Information"
+            }
+        }
+    }
 }
 ```

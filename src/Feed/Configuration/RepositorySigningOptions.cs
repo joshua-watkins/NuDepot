@@ -7,7 +7,17 @@ namespace NuDepot.Feed.Configuration;
 public class RepositorySigningOptions
 {
     /// <summary>
-    /// The path to a PFX file holding the signing certificate and its private key.
+    /// Whether pushed packages are repository signed. Off by default. When it's on, the feed only accepts HTTPS
+    /// requests, since signatures name the feed's HTTPS address. Without <see cref="CertificatePath"/> or
+    /// <see cref="CertificateThumbprint"/>, the feed generates a self-signed certificate each year. NuGet clients
+    /// don't trust self-signed certificates, so they warn about every package, and packages signed by an older
+    /// certificate are re-signed when they're downloaded, which changes their hash.
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// The path to a PFX file holding the signing certificate and its private key. A relative path is relative
+    /// to the working directory.
     /// </summary>
     public string? CertificatePath { get; set; }
 
@@ -38,15 +48,17 @@ public class RepositorySigningOptions
     public string? TimestampServerUrl { get; set; }
 
     /// <summary>
-    /// Not recommended. Generate a self-signed certificate each year instead of using <see cref="CertificatePath"/> or
-    /// <see cref="CertificateThumbprint"/>. NuGet clients don't trust self-signed certificates, so they warn about every
-    /// package. Each certificate signs packages for a year, and packages signed by an older one are re-signed when
-    /// they're downloaded, which changes their hash.
+    /// Whether a certificate is configured, with <see cref="CertificatePath"/> or <see cref="CertificateThumbprint"/>.
     /// </summary>
-    public bool GenerateCertificates { get; set; }
+    public bool HasCertificate => !string.IsNullOrEmpty(CertificatePath) || !string.IsNullOrEmpty(CertificateThumbprint);
 
     /// <summary>
-    /// Whether a certificate is set, or generated, so pushed packages are signed.
+    /// Whether pushed packages are signed.
     /// </summary>
-    public bool IsEnabled => !string.IsNullOrEmpty(CertificatePath) || !string.IsNullOrEmpty(CertificateThumbprint) || GenerateCertificates;
+    public bool IsEnabled => Enabled;
+
+    /// <summary>
+    /// Whether the feed signs with certificates it generates, because signing is on without a configured certificate.
+    /// </summary>
+    public bool GeneratesCertificates => Enabled && !HasCertificate;
 }

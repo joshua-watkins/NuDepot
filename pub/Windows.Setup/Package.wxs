@@ -10,6 +10,47 @@
     <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
     <MediaTemplate EmbedCab="yes" />
 
+    <!--
+      Installer options, like "msiexec /i NuDepot-x64.msi PORT=8080 USERS=1". They're saved in setup.ini, which
+      appsettings.json overrides. An upgrade keeps the installed version's options, unless they're given again.
+        PORT             The port to listen on. Default: 3333.
+        LISTEN           The address to listen on: localhost (the default), * for every address, or an IP address.
+        USERS            1 lets people sign in to the gallery with passkeys. The first account is an Admin.
+        SIGNING          1 repository signs pushed packages. The feed then only answers HTTPS.
+        MIRROR           1 mirrors nuget.org.
+        SERVICEACCOUNT   The account the service runs as. Default: LocalSystem.
+        SERVICEPASSWORD  The account's password, if it has one. It isn't saved, so give it again when upgrading.
+    -->
+    <Property Id="PORT" Secure="yes" />
+    <Property Id="LISTEN" Secure="yes" />
+    <Property Id="USERS" Secure="yes" />
+    <Property Id="SIGNING" Secure="yes" />
+    <Property Id="MIRROR" Secure="yes" />
+    <Property Id="SERVICEACCOUNT" Secure="yes" />
+    <Property Id="SERVICEPASSWORD" Secure="yes" Hidden="yes" />
+
+    <!-- The installed version's options. -->
+    <Property Id="SAVED_PORT"><RegistrySearch Root="HKLM" Key="SOFTWARE\NuDepot" Name="Port" Type="raw" Bitness="always64" /></Property>
+    <Property Id="SAVED_LISTEN"><RegistrySearch Root="HKLM" Key="SOFTWARE\NuDepot" Name="Listen" Type="raw" Bitness="always64" /></Property>
+    <Property Id="SAVED_USERS"><RegistrySearch Root="HKLM" Key="SOFTWARE\NuDepot" Name="Users" Type="raw" Bitness="always64" /></Property>
+    <Property Id="SAVED_SIGNING"><RegistrySearch Root="HKLM" Key="SOFTWARE\NuDepot" Name="Signing" Type="raw" Bitness="always64" /></Property>
+    <Property Id="SAVED_MIRROR"><RegistrySearch Root="HKLM" Key="SOFTWARE\NuDepot" Name="Mirror" Type="raw" Bitness="always64" /></Property>
+    <Property Id="SAVED_SERVICEACCOUNT"><RegistrySearch Root="HKLM" Key="SOFTWARE\NuDepot" Name="ServiceAccount" Type="raw" Bitness="always64" /></Property>
+
+    <!-- An option that wasn't given is the installed version's, or else its default. -->
+    <SetProperty Id="PORT" Action="RestorePort" Value="[SAVED_PORT]" After="AppSearch" Sequence="first" Condition="NOT PORT AND SAVED_PORT" />
+    <SetProperty Id="PORT" Action="DefaultPort" Value="3333" After="RestorePort" Sequence="first" Condition="NOT PORT" />
+    <SetProperty Id="LISTEN" Action="RestoreListen" Value="[SAVED_LISTEN]" After="DefaultPort" Sequence="first" Condition="NOT LISTEN AND SAVED_LISTEN" />
+    <SetProperty Id="LISTEN" Action="DefaultListen" Value="localhost" After="RestoreListen" Sequence="first" Condition="NOT LISTEN" />
+    <SetProperty Id="USERS" Action="RestoreUsers" Value="[SAVED_USERS]" After="DefaultListen" Sequence="first" Condition="NOT USERS AND SAVED_USERS" />
+    <SetProperty Id="USERS" Action="DefaultUsers" Value="0" After="RestoreUsers" Sequence="first" Condition="NOT USERS" />
+    <SetProperty Id="SIGNING" Action="RestoreSigning" Value="[SAVED_SIGNING]" After="DefaultUsers" Sequence="first" Condition="NOT SIGNING AND SAVED_SIGNING" />
+    <SetProperty Id="SIGNING" Action="DefaultSigning" Value="0" After="RestoreSigning" Sequence="first" Condition="NOT SIGNING" />
+    <SetProperty Id="MIRROR" Action="RestoreMirror" Value="[SAVED_MIRROR]" After="DefaultSigning" Sequence="first" Condition="NOT MIRROR AND SAVED_MIRROR" />
+    <SetProperty Id="MIRROR" Action="DefaultMirror" Value="0" After="RestoreMirror" Sequence="first" Condition="NOT MIRROR" />
+    <SetProperty Id="SERVICEACCOUNT" Action="RestoreServiceAccount" Value="[SAVED_SERVICEACCOUNT]" After="DefaultMirror" Sequence="first" Condition="NOT SERVICEACCOUNT AND SAVED_SERVICEACCOUNT" />
+    <SetProperty Id="SERVICEACCOUNT" Action="DefaultServiceAccount" Value="LocalSystem" After="RestoreServiceAccount" Sequence="first" Condition="NOT SERVICEACCOUNT" />
+
     <Feature Id="Main">
       <ComponentGroupRef Id="ServiceComponents" />
       <ComponentGroupRef Id="ApplicationFiles" />

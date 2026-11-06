@@ -1,34 +1,22 @@
+using NuDepot;
 using NuDepot.Feed;
-
-// --port 3333 --proxy, everything else through NuDepot.ini
-// maybe "secret" --migrate/upgrade/initialize switch for updating sqlite schema file.
 
 // Runs the NuGet feed server and website as a systemd service.
 // When started from a shell instead, it runs as a normal console application.
 if (NuDepotCommands.TryWriteHelp(args))
     return;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+// The settings are in /etc/nudepot, which is the working directory. The database and packages are in
+// /var/lib/nudepot, which systemd creates for the service (StateDirectory= in nudepot.service).
+WebApplicationBuilder builder = NuDepotService.CreateBuilder(args, "/etc/nudepot", new Dictionary<string, string?>
 {
-    Args = args,
-
-    // Read appsettings.json and the website's static files from the application's folder,
-    // wherever the service or shell started it from.
-    ContentRootPath = AppContext.BaseDirectory,
+    ["Feed:Database:ConnectionString"] = "Data Source=/var/lib/nudepot/nudepot.db",
+    ["Feed:Storage:Path"] = "/var/lib/nudepot",
 });
-
-builder.UseNuDepotConfigRoot();
 
 // Notifies systemd when the service has started and is stopping (Type=notify),
 // and formats console logs for the journal.
 builder.Services.AddSystemd();
-
-builder.WebHost.ConfigureKestrel(options =>
-{
-    // Remove the upload limit from Kestrel. If needed, an upload limit can
-    // be enforced by a reverse proxy server, like nginx.
-    options.Limits.MaxRequestBodySize = null;
-});
 
 // The feed reads its settings from the "Feed" section, and the gallery from "Gallery".
 builder.Services

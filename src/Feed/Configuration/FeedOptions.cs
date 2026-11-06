@@ -28,6 +28,13 @@ public class FeedOptions
     public string? PathBase { get; set; }
 
     /// <summary>
+    /// Whether requests' X-Forwarded-Proto and X-Forwarded-For headers, which a reverse proxy sets, give their
+    /// scheme and client address. On by default, for a reverse proxy that serves HTTPS. Any client that reaches
+    /// the feed directly can set them too, so turn this off if the feed isn't only reached through a proxy.
+    /// </summary>
+    public bool UseForwardedHeaders { get; set; } = true;
+
+    /// <summary>
     /// If enabled, the database will be updated at app startup by running
     /// Entity Framework migrations. This is not recommended in production.
     /// </summary>
@@ -59,7 +66,7 @@ public class FeedOptions
     public string? PackageDetailsUriTemplate { get; set; }
 
     /// <summary>
-    /// The certificate used to repository sign pushed packages. Signing is off if no certificate is set.
+    /// Whether, and with which certificate, pushed packages are repository signed. Off by default.
     /// </summary>
     public RepositorySigningOptions RepositorySigning { get; set; } = new();
 
