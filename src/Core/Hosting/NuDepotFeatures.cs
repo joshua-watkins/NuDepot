@@ -14,10 +14,10 @@ public sealed class NuDepotFeatures
     public const string CoHostedTokenHeader = "X-NuDepot-CoHosted";
 
     /// <summary>
-    /// Whether people can sign in with passkeys: the application uses the feed's users. The gallery then shows
-    /// who's signed in, lets people sign in, and lets them create API keys for NuGet clients.
+    /// Whether the application uses the feed's users, who sign in with passkeys. The gallery then shows who's
+    /// signed in, lets people sign in, and lets them create API keys for NuGet clients.
     /// </summary>
-    public bool Passkeys { get; set; }
+    public bool Users { get; set; }
 
     /// <summary>
     /// A secret of this application's, which the gallery sends with its requests to the feed hosted in the same

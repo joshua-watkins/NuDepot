@@ -159,24 +159,26 @@ An application adds NuDepot's parts to its services and its request pipeline:
 ```csharp
 builder.Services.AddNuDepot()
     .AddFeed()      // Binds the "Feed" section. Pass a lambda to change the options in code.
-    .AddPasskeys()  // Optional: users who sign in with passkeys, and create API keys.
+    .AddUsers()  // Optional: users who sign in with passkeys, and create API keys.
     .AddGallery();  // Binds the "Gallery" section.
 
 var app = builder.Build();
 
 app.UseNuDepot()
     .UseFeed()      // The NuGet V3 API, with the feed's API keys.
-    .UsePasskeys()  // Lets people sign up and sign in with passkeys, and create API keys.
+    .MapUsers()     // The endpoints people sign up, sign in and create API keys with.
     .UseGallery();  // The gallery's pages.
 ```
 
-The feed's own API keys, one for each role, only need `AddFeed()` and `UseFeed()`. `AddPasskeys()` and
-`UsePasskeys()` turn on users, who create their own API keys, since NuGet clients can't use passkeys. The
-application doesn't start if it calls `AddPasskeys()` without `UsePasskeys()`, and `UsePasskeys()` without
-`AddPasskeys()` throws.
+The feed's own API keys, one for each role, only need `AddFeed()` and `UseFeed()`. `AddUsers()` turns on
+users, who create their own API keys, since NuGet clients can't use passkeys: it sets
+`Users:IsEnabled`, which configuration can't, and makes anonymous requests read-only. `MapUsers()` maps the
+endpoints the gallery uses for them. The application doesn't start if it calls `AddUsers()` without
+`MapUsers()`, and `MapUsers()` without `AddUsers()` throws.
 
 An application that only hosts one part can use the shortcuts: `services.AddNuDepotFeed()` with
-`app.UseNuDepotFeed()`, which host the feed with its API keys but without users, or
+`app.UseNuDepotFeed()`, which host the feed with its API keys, plus `services.AddNuDepotUsers()` with
+`app.MapNuDepotUsers()` for users, or
 `services.AddNuDepotGallery()` with `app.UseNuDepotGallery()`. Both take the same options lambda as
 `AddFeed` and `AddGallery`. The libraries are on NuGet as `NuDepot.Feed` and `NuDepot.Gallery`.
 
@@ -206,7 +208,7 @@ clients and Visual Studio, which can't use passkeys. In the Windows and Linux se
 ```
 
 Or install with `USERS=1` on Windows, or `--users` on Linux. An application that hosts the feed itself
-calls `AddPasskeys()` and `UsePasskeys()` instead of setting `Enabled` (see
+calls `AddUsers()` and `MapUsers()` instead of setting `Enabled` (see
 [Applications that host the feed](#applications-that-host-the-feed)).
 
 The gallery shows "Sign in" in its navigation bar. The first person to sign up becomes an `Admin`, so set up

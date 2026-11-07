@@ -67,16 +67,16 @@ public static class FeedServiceCollectionExtensions
     /// Adds the feed's users, who sign up and sign in to the gallery with passkeys, and create API keys for NuGet
     /// clients, which present them as the password of a package source's credentials, with the user's name. Each
     /// user has a role, like the feed's API keys. With users, requests without a key or a signed-in user may only
-    /// read the feed. The application uses them with <c>UsePasskeys()</c>. It needs the feed, from <see cref="AddFeed"/>.
+    /// read the feed. It sets <see cref="UserOptions.IsEnabled"/>. The application maps their endpoints with
+    /// <c>MapUsers()</c>. It needs the feed, from <see cref="AddFeed"/>.
     /// </summary>
-    public static NuDepotBuilder AddPasskeys(this NuDepotBuilder builder)
+    public static NuDepotBuilder AddUsers(this NuDepotBuilder builder)
     {
         IServiceCollection services = builder.Services;
-        FeedPipeline pipeline = FeedPipeline.Get(services);
-        if (pipeline.AddsPasskeys)
+        if (services.Any(service => service.ServiceType == typeof(UserService)))
             return builder;
 
-        pipeline.AddsPasskeys = true;
+        services.Configure<FeedOptions>(options => options.Authorization.Users.IsEnabled = true);
         services.TryAddScoped<UserService>();
         services.TryAddScoped<PasskeyService>();
         services.TryAddSingleton<UserCookieEvents>();
@@ -97,6 +97,18 @@ public static class FeedServiceCollectionExtensions
             });
 
         return builder;
+    }
+
+    /// <summary>
+    /// Adds the feed's users, like <c>services.AddNuDepot().AddUsers()</c>, to an application that adds the feed,
+    /// like with <see cref="AddNuDepotFeed"/>. Use it with
+    /// <see cref="FeedApplicationBuilderExtensions.MapNuDepotUsers{TApplication}"/>.
+    /// </summary>
+    public static NuDepotBuilder AddNuDepotUsers(this IServiceCollection services)
+    {
+        return services
+            .AddNuDepot()
+            .AddUsers();
     }
 
     /// <summary>

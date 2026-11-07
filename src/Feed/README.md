@@ -37,12 +37,12 @@ or to add [NuDepot.Gallery](https://www.nuget.org/packages/NuDepot.Gallery) to t
 ```csharp
 builder.Services.AddNuDepot()
     .AddFeed()
-    .AddPasskeys()   // Users, who sign in to the gallery with passkeys, and create API keys for NuGet clients.
+    .AddUsers()   // Users, who sign in to the gallery with passkeys, and create API keys for NuGet clients.
     .AddGallery();
 
 app.UseNuDepot()
     .UseFeed()
-    .UsePasskeys()
+    .MapUsers()
     .UseGallery();
 ```
 
@@ -64,7 +64,7 @@ The important folders are:
 * Authentication - API keys and their roles. Each endpoint requires a `FeedPermissions`. The API keys of
   the options, one for each role, decide what anonymous requests may do; see `FeedAccess` and
   [the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#require-an-api-key)
-* Users - People who sign in with passkeys (`AddPasskeys()`), and the API keys they create
+* Users - People who sign in with passkeys (`AddUsers()`), and the API keys they create
 * Signing - Repository signing of pushed packages
 * Entities - The package database (SQLite by default)
 * Storage - Stores the content of packages and symbols on the file system

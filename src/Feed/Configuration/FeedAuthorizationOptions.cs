@@ -16,8 +16,8 @@ public class FeedAuthorizationOptions
     public ApiKeyOptions ApiKeys { get; set; } = new();
 
     /// <summary>
-    /// People who sign in with passkeys, when the application uses them, with <c>AddPasskeys()</c> and
-    /// <c>UsePasskeys()</c>.
+    /// People who sign in with passkeys, when the application adds them with <c>AddUsers()</c>, and maps their
+    /// endpoints with <c>MapUsers()</c>.
     /// </summary>
     public UserOptions Users { get; set; } = new();
 }
@@ -50,11 +50,17 @@ public class ApiKeyOptions
 
 /// <summary>
 /// People who sign in to the gallery with passkeys, and create API keys for NuGet clients, which can't use
-/// passkeys. The application lets them with <c>AddPasskeys()</c> and <c>UsePasskeys()</c>. With users, requests
+/// passkeys. The application lets them with <c>AddUsers()</c> and <c>MapUsers()</c>. With users, requests
 /// without a key or a signed-in user may only read the feed.
 /// </summary>
 public class UserOptions
 {
+    /// <summary>
+    /// Whether the application added the feed's users, with <c>AddUsers()</c>. Configuration can't set it, since
+    /// users need their services: with them, requests without a key or a signed-in user may only read the feed.
+    /// </summary>
+    public bool IsEnabled { get; internal set; }
+
     /// <summary>
     /// Whether requests without a key or a signed-in user may read the feed. If false, they may do nothing.
     /// </summary>

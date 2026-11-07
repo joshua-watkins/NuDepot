@@ -117,6 +117,9 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
     {
         { new(), FeedRole.ReadWrite },
         { new() { { "Authorization:ApiKeys:ReadOnly", "" } }, FeedRole.ReadWrite },
+
+        // Only AddUsers() turns users on, since they need their services.
+        { new() { { "Authorization:Users:IsEnabled", "true" } }, FeedRole.ReadWrite },
         { new() { { "Authorization:ApiKeys:Admin", AdminKey } }, FeedRole.ReadWrite },
         { new() { { "Authorization:ApiKeys:ReadWrite", ReadWriteKey } }, FeedRole.ReadOnly },
         { new() { { "Authorization:ApiKeys:ReadOnly", ReadOnlyKey } }, FeedRole.None },
@@ -269,7 +272,7 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
     [MemberData(nameof(AnonymousRolesWithUsers))]
     public void UsersMakeAnonymousRequestsReadOnly(Dictionary<string, string> configuration, FeedRole expected)
     {
-        NuDepotTestApplication app = new(Output, configuration: configuration, passkeys: true);
+        NuDepotTestApplication app = new(Output, configuration: configuration, users: true);
         Disposables.Add(app);
 
         Assert.Equal(expected, app.Services.GetRequiredService<FeedAccess>().AnonymousRole);
@@ -278,23 +281,23 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
     [Fact]
     public void UsersTheApplicationAddsMustBeUsed()
     {
-        NuDepotTestApplication app = new(Output, passkeys: true, usePasskeys: false);
+        NuDepotTestApplication app = new(Output, users: true, mapUsers: false);
         Disposables.Add(app);
 
         OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
 
-        Assert.Contains(exception.Failures, failure => failure.Contains("Call UsePasskeys()"));
+        Assert.Contains(exception.Failures, failure => failure.Contains("Call MapUsers()"));
     }
 
     [Fact]
     public void UsingUsersThatWerentAddedFails()
     {
-        NuDepotTestApplication app = new(Output, passkeys: false, usePasskeys: true);
+        NuDepotTestApplication app = new(Output, users: false, mapUsers: true);
         Disposables.Add(app);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => app.Services);
 
-        Assert.Contains("Call AddPasskeys()", exception.Message);
+        Assert.Contains("Call AddUsers()", exception.Message);
     }
 
     private static Dictionary<string, string> RoleKeys() => new()

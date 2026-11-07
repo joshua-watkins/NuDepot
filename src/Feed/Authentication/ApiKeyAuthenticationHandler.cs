@@ -19,7 +19,7 @@ namespace NuDepot.Feed.Authentication;
 /// nuget.config with HTTP Basic authentication, whenever the feed asks for them.
 /// <list type="bullet">
 /// <item>The feed's configured keys work either way. In credentials, the user name is the key's role, like "ReadWrite".</item>
-/// <item>Keys users create only work in credentials, with the user's name, and only if the application uses <c>UsePasskeys()</c>.</item>
+/// <item>Keys users create only work in credentials, with the user's name, and only if the application uses <c>MapUsers()</c>.</item>
 /// </list>
 /// </summary>
 internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, FeedAccess access) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)

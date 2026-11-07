@@ -92,7 +92,7 @@ internal static class NuDepotService
 
     /// <summary>
     /// The setting that lets people sign in to the gallery with passkeys, and create API keys: the service then
-    /// calls <c>AddPasskeys()</c> and <c>UsePasskeys()</c>.
+    /// calls <c>AddUsers()</c> and <c>MapUsers()</c>.
     /// </summary>
     public const string UsersSetting = "Feed:Authorization:Users:Enabled";
 
@@ -106,8 +106,8 @@ internal static class NuDepotService
             .AddFeed()
             .AddGallery();
 
-        if (UsesUsers(builder.Configuration))
-            nuDepot.AddPasskeys();
+        if (MapsUsers(builder.Configuration))
+            nuDepot.AddUsers();
     }
 
     /// <summary>
@@ -119,13 +119,13 @@ internal static class NuDepotService
             .UseNuDepot()
             .UseFeed();
 
-        if (UsesUsers(app.Configuration))
-            nuDepot.UsePasskeys();
+        if (MapsUsers(app.Configuration))
+            nuDepot.MapUsers();
 
         nuDepot.UseGallery();
     }
 
-    private static bool UsesUsers(IConfiguration configuration) => configuration.GetValue<bool>(UsersSetting);
+    private static bool MapsUsers(IConfiguration configuration) => configuration.GetValue<bool>(UsersSetting);
 
     // Reads setup.ini under appsettings.json, which the content root's folder holds.
     private static void ReadSetupFrom(IConfigurationBuilder configuration, string folder)

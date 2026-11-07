@@ -455,7 +455,7 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
 
     private NuDepotTestApplication CreateApp(Dictionary<string, string>? configuration = null)
     {
-        NuDepotTestApplication app = new(Output, configuration: configuration, passkeys: true);
+        NuDepotTestApplication app = new(Output, configuration: configuration, users: true);
         Disposables.Add(app);
         return app;
     }

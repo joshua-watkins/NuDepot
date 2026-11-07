@@ -3,8 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace NuDepot.Feed.Extensions;
 
 /// <summary>
-/// What the application uses of the feed: the services it added, with <c>AddPasskeys()</c>, and the request
-/// pipeline it built, with <c>UseFeed()</c> and <c>UsePasskeys()</c>.
+/// What the application's request pipeline uses of the feed: its endpoints, with <c>UseFeed()</c>, and the
+/// endpoints of its users, with <c>MapUsers()</c>. Whether the application added users is in
+/// <see cref="Configuration.UserOptions.IsEnabled"/>.
 /// </summary>
 public sealed class FeedPipeline
 {
@@ -14,17 +15,12 @@ public sealed class FeedPipeline
     public bool UsesFeed { get; internal set; }
 
     /// <summary>
-    /// Whether the application added the services of users who sign in with passkeys.
+    /// Whether the application maps the endpoints people sign up, sign in and create API keys with.
     /// </summary>
-    public bool AddsPasskeys { get; internal set; }
+    public bool MapsUsers { get; internal set; }
 
     /// <summary>
-    /// Whether the application lets people sign up and sign in with passkeys, and create API keys.
-    /// </summary>
-    public bool UsesPasskeys { get; internal set; }
-
-    /// <summary>
-    /// The application's pipeline, which <c>AddFeed()</c> and <c>AddPasskeys()</c> share.
+    /// The application's pipeline, which <c>AddFeed()</c> registers.
     /// </summary>
     internal static FeedPipeline Get(IServiceCollection services)
     {

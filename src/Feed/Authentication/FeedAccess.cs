@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
-using NuDepot.Feed.Extensions;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,16 +9,15 @@ namespace NuDepot.Feed.Authentication;
 /// <summary>
 /// Decides what a request may do on the feed, from its API key or signed-in user.
 /// </summary>
-public class FeedAccess(IOptionsMonitor<FeedOptions> options, FeedPipeline pipeline)
+public class FeedAccess(IOptionsMonitor<FeedOptions> options)
 {
     private IOptionsMonitor<FeedOptions> Options { get; } = options;
-    private FeedPipeline Pipeline { get; } = pipeline;
 
     /// <summary>
-    /// Whether people can sign in with passkeys, and create API keys for NuGet clients: the application uses
-    /// <c>UsePasskeys()</c>.
+    /// Whether people can sign in with passkeys, and create API keys for NuGet clients: the application added
+    /// users, with <c>AddUsers()</c>.
     /// </summary>
-    public bool UsersEnabled => Pipeline.UsesPasskeys;
+    public bool UsersEnabled => Options.CurrentValue.Authorization.Users.IsEnabled;
 
     /// <summary>
     /// The role of requests without a valid API key or a signed-in user: <see cref="FeedRole.ReadWrite"/>, unless
@@ -27,7 +25,7 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options, FeedPipeline pipel
     /// <see cref="ApiKeyOptions.ReadOnly"/> key, or users without <see cref="UserOptions.AnonymousReads"/>, make
     /// it <see cref="FeedRole.None"/>.
     /// </summary>
-    public FeedRole AnonymousRole => GetAnonymousRole(Options.CurrentValue.Authorization, UsersEnabled);
+    public FeedRole AnonymousRole => GetAnonymousRole(Options.CurrentValue.Authorization);
 
     /// <summary>
     /// What the user may do. An API key or a signed-in user adds their role to what requests without
@@ -124,9 +122,10 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options, FeedPipeline pipel
         return keys;
     }
 
-    internal static FeedRole GetAnonymousRole(FeedAuthorizationOptions authorization, bool usersEnabled)
+    internal static FeedRole GetAnonymousRole(FeedAuthorizationOptions authorization)
     {
         ApiKeyOptions apiKeys = authorization.ApiKeys;
+        bool usersEnabled = authorization.Users.IsEnabled;
         if (!string.IsNullOrEmpty(apiKeys.ReadOnly) || (usersEnabled && !authorization.Users.AnonymousReads))
             return FeedRole.None;
 

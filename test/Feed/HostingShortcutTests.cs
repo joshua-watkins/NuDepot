@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
+using NuDepot.Feed.Tests.Support;
 using System.Net;
 using Xunit;
 
@@ -48,8 +49,26 @@ public class HostingShortcutTests
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
         Assert.Equal(HttpStatusCode.OK, withKey.StatusCode);
 
-        // Users need AddPasskeys() and UsePasskeys().
+        // Users need AddUsers() and MapUsers().
         Assert.Equal(HttpStatusCode.NotFound, account.StatusCode);
+    }
+
+    [Fact]
+    public async Task UserShortcutsAddUsersToTheFeed()
+    {
+        await using WebApplication app = await StartAsync(new Dictionary<string, string?>(), users: true);
+        using HttpClient client = app.GetTestClient();
+
+        using HttpResponseMessage account = await client.GetAsync("api/account");
+        using HttpResponseMessage push = await client.PutAsync("api/v2/package", new MultipartFormDataContent
+        {
+            { new StreamContent(TestPackages.Create("Anonymous.Package", "1.0.0")), "package", "package.nupkg" },
+        });
+
+        Assert.Equal(HttpStatusCode.OK, account.StatusCode);
+
+        // With users, anonymous requests may only read.
+        Assert.Equal(HttpStatusCode.Unauthorized, push.StatusCode);
     }
 
     [Fact]
@@ -71,7 +90,7 @@ public class HostingShortcutTests
         Assert.Same(app.UseNuDepot(), app.UseNuDepot());
     }
 
-    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> configuration, Action<FeedOptions>? configure = null)
+    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> configuration, Action<FeedOptions>? configure = null, bool users = false)
     {
         string testId = Guid
             .NewGuid()
@@ -92,9 +111,13 @@ public class HostingShortcutTests
         builder.Configuration.AddInMemoryCollection(configuration);
 
         builder.Services.AddNuDepotFeed(configure);
+        if (users)
+            builder.Services.AddNuDepotUsers();
 
         WebApplication app = builder.Build();
         app.UseNuDepotFeed();
+        if (users)
+            app.MapNuDepotUsers();
 
         await app.RunMigrationsAsync();
         await app.StartAsync();

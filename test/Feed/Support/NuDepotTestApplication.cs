@@ -25,23 +25,23 @@ internal sealed class NuDepotTestApplication : IDisposable
     private ITestOutputHelper Output { get; }
     private HttpClient? UpstreamClient { get; }
     private IReadOnlyDictionary<string, string?> Configuration { get; }
-    private bool AddPasskeys { get; }
-    private bool UsePasskeys { get; }
+    private bool AddUsers { get; }
+    private bool MapUsers { get; }
     private Action<IServiceCollection>? ConfigureServices { get; }
     private Lazy<WebApplication> App { get; }
 
     /// <param name="output">Receives the server's logs.</param>
     /// <param name="upstreamClient">If set, the server mirrors the upstream feed this client reaches.</param>
     /// <param name="configuration">The feed's configuration, which overrides the test defaults. Keys are in the "Feed" section, like "Authorization:ApiKeys:Admin".</param>
-    /// <param name="passkeys">Whether the application calls AddPasskeys() and UsePasskeys(), for users and their API keys.</param>
-    /// <param name="usePasskeys">Whether the application calls UsePasskeys(), if it isn't the same as <paramref name="passkeys"/>.</param>
+    /// <param name="users">Whether the application calls AddUsers() and MapUsers(), for users and their API keys.</param>
+    /// <param name="mapUsers">Whether the application calls MapUsers(), if it isn't the same as <paramref name="users"/>.</param>
     /// <param name="configureServices">Replaces the feed's services, after they're added.</param>
-    public NuDepotTestApplication(ITestOutputHelper output, HttpClient? upstreamClient = null, IReadOnlyDictionary<string, string>? configuration = null, bool passkeys = false, bool? usePasskeys = null, Action<IServiceCollection>? configureServices = null)
+    public NuDepotTestApplication(ITestOutputHelper output, HttpClient? upstreamClient = null, IReadOnlyDictionary<string, string>? configuration = null, bool users = false, bool? mapUsers = null, Action<IServiceCollection>? configureServices = null)
     {
         Output = output;
         UpstreamClient = upstreamClient;
-        AddPasskeys = passkeys;
-        UsePasskeys = usePasskeys ?? passkeys;
+        AddUsers = users;
+        MapUsers = mapUsers ?? users;
         ConfigureServices = configureServices;
         Configuration = (configuration ?? new Dictionary<string, string>())
             .ToDictionary(setting => $"{FeedOptions.Section}:{setting.Key}", setting => (string?)setting.Value);
@@ -134,8 +134,8 @@ internal sealed class NuDepotTestApplication : IDisposable
         NuDepotBuilder nuDepotServices = builder.Services
             .AddNuDepot()
             .AddFeed();
-        if (AddPasskeys)
-            nuDepotServices.AddPasskeys();
+        if (AddUsers)
+            nuDepotServices.AddUsers();
 
         // Make time deterministic for testing purposes. Tests can move it forward with the clock.
         Mock<SystemTime> time = new();
@@ -158,8 +158,8 @@ internal sealed class NuDepotTestApplication : IDisposable
         NuDepotApplicationBuilder nuDepot = app
             .UseNuDepot()
             .UseFeed();
-        if (UsePasskeys)
-            nuDepot.UsePasskeys();
+        if (MapUsers)
+            nuDepot.MapUsers();
 
         try
         {

@@ -82,7 +82,7 @@ public class FeedConnectionFacts
     public void SignInIsAvailableWhenCoHostedWithUsers(bool coHosted, bool users, bool expected)
     {
         NuDepotFeatures features = new()
-        { Passkeys = users };
+        { Users = users };
 
         FeedConnection target = coHosted
             ? CreateCoHostedFeed(["http://localhost:5000"], features)

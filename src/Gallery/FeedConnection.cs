@@ -56,7 +56,7 @@ public class FeedConnection
     /// Whether people can sign in: the gallery is hosted with a feed whose users sign in with passkeys.
     /// Signed-in users read the feed as themselves, so they can browse a feed that's closed to anonymous users.
     /// </summary>
-    public bool SignInAvailable => IsCoHosted && Features.Passkeys;
+    public bool SignInAvailable => IsCoHosted && Features.Users;
 
     /// <summary>
     /// The service index URL the website uses to call the feed.

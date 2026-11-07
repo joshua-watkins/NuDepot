@@ -30,7 +30,7 @@ public class NuDepotEndpointBuilder
     }
 
     /// <summary>
-    /// Maps the accounts of people who sign in with passkeys. <c>UsePasskeys()</c> maps them.
+    /// Maps the accounts of people who sign in with passkeys. <c>MapUsers()</c> maps them.
     /// </summary>
     public static void MapAccountRoutes(IEndpointRouteBuilder endpoints)
     {

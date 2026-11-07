@@ -6,10 +6,11 @@ using NuDepot.Feed.Extensions;
 namespace NuDepot.Feed.Validation;
 
 /// <summary>
-/// Checks, when the application starts, that it uses what it added: the users of <c>AddPasskeys()</c>, with
-/// <c>UsePasskeys()</c>.
+/// Checks, when the application starts, that it maps the endpoints of what it added: the users of
+/// <c>AddUsers()</c>, with <c>MapUsers()</c>. Otherwise users would be on, so anonymous requests could only read,
+/// but nobody could sign up.
 /// </summary>
-internal sealed class ValidateFeedPipeline(FeedPipeline pipeline) : IHostedService
+internal sealed class ValidateFeedPipeline(IOptions<FeedOptions> options, FeedPipeline pipeline) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -17,7 +18,7 @@ internal sealed class ValidateFeedPipeline(FeedPipeline pipeline) : IHostedServi
         if (!pipeline.UsesFeed)
             return Task.CompletedTask;
 
-        List<string> failures = Validate(pipeline);
+        List<string> failures = Validate(options.Value, pipeline);
         if (failures.Count > 0)
             throw new OptionsValidationException(Options.DefaultName, typeof(FeedOptions), failures);
 
@@ -26,12 +27,12 @@ internal sealed class ValidateFeedPipeline(FeedPipeline pipeline) : IHostedServi
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    internal static List<string> Validate(FeedPipeline pipeline)
+    internal static List<string> Validate(FeedOptions options, FeedPipeline pipeline)
     {
         List<string> failures = [];
 
-        if (pipeline.AddsPasskeys && !pipeline.UsesPasskeys)
-            failures.Add("The application adds the feed's users with AddPasskeys(), but doesn't use them. Call UsePasskeys() on app.UseNuDepot().");
+        if (options.Authorization.Users.IsEnabled && !pipeline.MapsUsers)
+            failures.Add("The application adds the feed's users with AddUsers(), but doesn't map their endpoints. Call MapUsers() on app.UseNuDepot().");
 
         return failures;
     }
