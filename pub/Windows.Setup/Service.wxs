@@ -85,14 +85,14 @@
       <Component Id="SetupAddress" Guid="{5EBE1303-9BFE-46FC-B829-1B64156650C1}">
         <IniFile Id="SetupUrl" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Kestrel:Endpoints:Http" Key="Url" Value="http://[LISTEN]:[PORT]" />
       </Component>
-      <Component Id="SetupUsers" Guid="{4EB08A06-0C13-459D-ABDA-0C05D1797C70}" Condition="USERS = &quot;1&quot;">
-        <IniFile Id="SetupUsersEnabled" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Feed:Authorization:Users" Key="Enabled" Value="true" />
+      <Component Id="SetupUsers" Guid="{A4F4E927-15C0-41FB-9FE4-D89276543E4E}" Condition="USERS = &quot;1&quot;">
+        <IniFile Id="SetupUsersEnabled" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Feed:Authorization:Users" Key="IsEnabled" Value="true" />
       </Component>
-      <Component Id="SetupSigning" Guid="{80F70F90-5BDA-4B44-8D41-E97507AFA906}" Condition="SIGNING = &quot;1&quot;">
-        <IniFile Id="SetupSigningEnabled" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Feed:RepositorySigning" Key="Enabled" Value="true" />
+      <Component Id="SetupSigning" Guid="{D1D76A54-55A4-4BE5-994B-E850BC908EA5}" Condition="SIGNING = &quot;1&quot;">
+        <IniFile Id="SetupSigningEnabled" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Feed:RepositorySigning" Key="IsEnabled" Value="true" />
       </Component>
-      <Component Id="SetupMirror" Guid="{A32A25EC-4C7E-4063-9831-8760926ED496}" Condition="MIRROR = &quot;1&quot;">
-        <IniFile Id="SetupMirrorEnabled" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Feed:Mirror" Key="Enabled" Value="true" />
+      <Component Id="SetupMirror" Guid="{B03BE0E2-CA8D-4D9A-893B-35A50C30513D}" Condition="MIRROR = &quot;1&quot;">
+        <IniFile Id="SetupMirrorEnabled" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Feed:Mirroring" Key="IsEnabled" Value="true" />
       </Component>
     </ComponentGroup>
   </Fragment>

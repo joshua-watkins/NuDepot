@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration.Ini;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
-using NuDepot.Core.Hosting;
 
 namespace NuDepot;
 
@@ -91,41 +90,58 @@ internal static class NuDepotService
         });
 
     /// <summary>
-    /// The setting that lets people sign in to the gallery with passkeys, and create API keys: the service then
-    /// calls <c>AddUsers()</c> and <c>MapUsers()</c>.
+    /// The example API keys in the appsettings.json the installers start with, which everyone who installs NuDepot
+    /// has.
     /// </summary>
-    public const string UsersSetting = "Feed:Authorization:Users:Enabled";
+    internal static IReadOnlyList<string> ExampleApiKeys { get; } =
+    [
+        "63ffea38ce443e60fc53b9cfde476b6e4b4188c2667257e2",
+        "41d521b060687fec5dc036a747b1423d27672ab0a0d96ebe",
+    ];
+
+    // The examples work, so the feed works out of the box, but anyone could use them.
+    private static void WarnAboutExampleApiKeys(WebApplication app)
+    {
+        IEnumerable<IConfigurationSection> keys = app.Configuration
+            .GetSection("Feed:Authorization:ApiKeys")
+            .GetChildren();
+        foreach (IConfigurationSection key in keys.Where(key => key.Value != null && ExampleApiKeys.Contains(key.Value)))
+        {
+            app.Logger.LogWarning(
+                "The {Role} API key is still the example from appsettings.json, which everyone who installs NuDepot has. Replace it with a random key of your own.",
+                key.Key);
+        }
+    }
 
     /// <summary>
-    /// Adds the feed and the gallery, and the users if the settings turn them on.
+    /// Adds the feed and the gallery, with the optional features, which are off unless their settings turn them on
+    /// with <c>IsEnabled</c>: users, signing and mirrors. Each one that's on checks its settings when the service
+    /// starts.
     /// </summary>
     public static void AddNuDepot(WebApplicationBuilder builder)
     {
-        NuDepotBuilder nuDepot = builder.Services
+        builder.Services
             .AddNuDepot()
             .AddFeed()
+            .EnableUsers()
+            .EnableSigning()
+            .EnableMirroring()
             .AddGallery();
-
-        if (MapsUsers(builder.Configuration))
-            nuDepot.AddUsers();
     }
 
     /// <summary>
-    /// Uses what <see cref="AddNuDepot"/> added.
+    /// Uses what <see cref="AddNuDepot"/> added. The users' endpoints are only mapped if users are on.
     /// </summary>
     public static void UseNuDepot(WebApplication app)
     {
-        NuDepotApplicationBuilder nuDepot = app
+        WarnAboutExampleApiKeys(app);
+
+        app
             .UseNuDepot()
-            .UseFeed();
-
-        if (MapsUsers(app.Configuration))
-            nuDepot.MapUsers();
-
-        nuDepot.UseGallery();
+            .UseFeed()
+            .MapUsers()
+            .UseGallery();
     }
-
-    private static bool MapsUsers(IConfiguration configuration) => configuration.GetValue<bool>(UsersSetting);
 
     // Reads setup.ini under appsettings.json, which the content root's folder holds.
     private static void ReadSetupFrom(IConfigurationBuilder configuration, string folder)

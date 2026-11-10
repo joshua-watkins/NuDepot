@@ -118,7 +118,7 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
         { new(), FeedRole.ReadWrite },
         { new() { { "Authorization:ApiKeys:ReadOnly", "" } }, FeedRole.ReadWrite },
 
-        // Only AddUsers() turns users on, since they need their services.
+        // Without AddUsers() or EnableUsers(), the users' configuration isn't read.
         { new() { { "Authorization:Users:IsEnabled", "true" } }, FeedRole.ReadWrite },
         { new() { { "Authorization:ApiKeys:Admin", AdminKey } }, FeedRole.ReadWrite },
         { new() { { "Authorization:ApiKeys:ReadWrite", ReadWriteKey } }, FeedRole.ReadOnly },
@@ -298,6 +298,32 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => app.Services);
 
         Assert.Contains("Call AddUsers()", exception.Message);
+    }
+
+    [Fact]
+    public void TheConfigurationCanTurnOffAddedUsers()
+    {
+        // MapUsers() maps nothing for users that are off, so the application starts.
+        NuDepotTestApplication app = new(Output, configuration: new Dictionary<string, string> { { "Authorization:Users:IsEnabled", "false" } }, users: true);
+        Disposables.Add(app);
+
+        Assert.Equal(FeedRole.ReadWrite, app.Services.GetRequiredService<FeedAccess>().AnonymousRole);
+    }
+
+    [Theory]
+    [InlineData(null, FeedRole.ReadWrite)]
+    [InlineData("false", FeedRole.ReadWrite)]
+    [InlineData("true", FeedRole.ReadOnly)]
+    public void EnabledUsersAreOffUnlessTheConfigurationTurnsThemOn(string? isEnabled, FeedRole expected)
+    {
+        Dictionary<string, string> configuration = [];
+        if (isEnabled != null)
+            configuration["Authorization:Users:IsEnabled"] = isEnabled;
+
+        NuDepotTestApplication app = new(Output, configuration: configuration, mapUsers: true, configureServices: services => services.AddNuDepot().EnableUsers());
+        Disposables.Add(app);
+
+        Assert.Equal(expected, app.Services.GetRequiredService<FeedAccess>().AnonymousRole);
     }
 
     private static Dictionary<string, string> RoleKeys() => new()

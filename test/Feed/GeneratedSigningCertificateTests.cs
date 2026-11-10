@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NuDepot.Core.Hosting;
+using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Signing;
 using NuDepot.Feed.Tests.Support;
@@ -17,7 +19,7 @@ using Xunit.Abstractions;
 namespace NuDepot.Feed.Tests;
 
 /// <summary>
-/// Tests the yearly self-signed certificates the feed generates with <c>RepositorySigning:Enabled</c> and no certificate,
+/// Tests the yearly self-signed certificates the feed generates with <c>RepositorySigning:IsEnabled</c> and no certificate,
 /// and re-signing packages signed with an older one when they're downloaded. The keys are smaller than the feed's,
 /// so they generate quickly.
 /// </summary>
@@ -241,7 +243,7 @@ public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDispo
         NuDepotTestApplication mirror = new(
             Output,
             upstreamClient,
-            new Dictionary<string, string> { { "Mirror:PackageSource", "https://localhost/v3/index.json" } },
+            new Dictionary<string, string> { { "Mirroring:Mirrors:0:PackageSource", "https://localhost/v3/index.json" } },
             configureServices: services => services.AddSingleton<TimeProvider>(mirrorTime));
         Disposables.Add(mirror);
         HttpClient mirrorClient = mirror.CreateHttpsClient();
@@ -317,16 +319,67 @@ public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDispo
     }
 
     [Fact]
-    public void ACertificateNeedsSigningToBeEnabled()
+    public void SigningCanBeConfiguredWhileItsOff()
     {
+        // The certificate isn't loaded, or checked, while signing is off.
         NuDepotTestApplication app = new(Output, configuration: new Dictionary<string, string>
         {
-            { "RepositorySigning:CertificatePath", "signing.pfx" },
+            { "RepositorySigning:IsEnabled", "false" },
+            { "RepositorySigning:CertificatePath", "missing.pfx" },
+            { "RepositorySigning:CertificateThumbprint", "ABCDEF" },
         });
         Disposables.Add(app);
 
+        Assert.False(app.Services.GetRequiredService<IRepositorySigningService>().IsEnabled);
+    }
+
+    [Fact]
+    public void WithoutSigningItsConfigurationIsIgnored()
+    {
+        ServiceCollection services = new();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Feed:RepositorySigning:IsEnabled"] = "true" })
+            .Build());
+        services
+            .AddNuDepot()
+            .AddFeed();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.False(provider.GetRequiredService<IOptions<RepositorySigningOptions>>().Value.IsEnabled);
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("false", false)]
+    public void AddedSigningIsOnUnlessTheConfigurationTurnsItOff(string? isEnabled, bool expected)
+    {
+        Dictionary<string, string?> settings = [];
+        if (isEnabled != null)
+            settings["Feed:RepositorySigning:IsEnabled"] = isEnabled;
+
+        ServiceCollection services = new();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+            .AddInMemoryCollection(settings)
+            .Build());
+        services
+            .AddNuDepot()
+            .AddFeed()
+            .AddSigning();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.Equal(expected, provider.GetRequiredService<IOptions<RepositorySigningOptions>>().Value.IsEnabled);
+    }
+
+    [Fact]
+    public void AConfiguredCertificateIsLoadedAtStartup()
+    {
+        NuDepotTestApplication app = CreateApp(configuration: new Dictionary<string, string>
+        {
+            { "RepositorySigning:CertificatePath", "missing.pfx" },
+        });
+
         OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
-        Assert.Contains("A signing certificate is set, but 'Feed:RepositorySigning:Enabled' isn't true", exception.Message);
+        Assert.Contains("The repository signing certificate couldn't be loaded", exception.Message);
     }
 
     [Fact]
@@ -347,7 +400,7 @@ public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDispo
         // Signing without a certificate generates them.
         Dictionary<string, string> settings = new(configuration ?? new Dictionary<string, string>())
         {
-            ["RepositorySigning:Enabled"] = "true",
+            ["RepositorySigning:IsEnabled"] = "true",
         };
 
         NuDepotTestApplication app = new(Output, configuration: settings, configureServices: services =>

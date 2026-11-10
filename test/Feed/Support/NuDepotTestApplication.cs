@@ -117,7 +117,7 @@ internal sealed class NuDepotTestApplication : IDisposable
         builder.Logging.AddProvider(new XunitLoggerProvider(Output));
 
         // Setup the integration test configuration.
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        Dictionary<string, string?> settings = new()
         {
             { "Feed:PackageDeletionBehavior", "HardDelete" },
             { "Feed:AllowPackageOverwrites", "true" },
@@ -125,15 +125,25 @@ internal sealed class NuDepotTestApplication : IDisposable
             { "Feed:Storage:Type", "FileSystem" },
             { "Feed:Storage:Path", storagePath },
             { "Feed:Search:Type", "Database" },
-            { "Feed:Mirror:Enabled", UpstreamClient != null ? "true": "false" },
-            { "Feed:Mirror:PackageSource", "http://localhost/v3/index.json" },
-        });
+        };
+        if (UpstreamClient != null)
+        {
+            settings["Feed:Mirroring:IsEnabled"] = "true";
+            settings["Feed:Mirroring:Mirrors:0:Name"] = "Upstream";
+            settings["Feed:Mirroring:Mirrors:0:PackageSource"] = "http://localhost/v3/index.json";
+        }
+
+        builder.Configuration.AddInMemoryCollection(settings);
 
         builder.Configuration.AddInMemoryCollection(Configuration);
 
+        // Signing and mirrors are added like the Windows and Linux services add them: off unless their
+        // "IsEnabled" settings turn them on.
         NuDepotBuilder nuDepotServices = builder.Services
             .AddNuDepot()
-            .AddFeed();
+            .AddFeed()
+            .EnableSigning()
+            .EnableMirroring();
         if (AddUsers)
             nuDepotServices.AddUsers();
 

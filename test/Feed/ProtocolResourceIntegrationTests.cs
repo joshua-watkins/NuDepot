@@ -387,7 +387,7 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
         {
             NuDepotTestApplication app = CreateApp(new Dictionary<string, string>
             {
-                { "RepositorySigning:Enabled", "true" },
+                { "RepositorySigning:IsEnabled", "true" },
                 { "RepositorySigning:CertificatePath", pfxPath },
                 { "RepositorySigning:CertificatePassword", "password" },
             });

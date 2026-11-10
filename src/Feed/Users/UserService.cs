@@ -18,7 +18,7 @@ namespace NuDepot.Feed.Users;
 /// <summary>
 /// The feed's users, their passkeys and their API keys.
 /// </summary>
-public partial class UserService(NuDepotContext context, SystemTime time, IOptionsMonitor<FeedOptions> options, ILogger<UserService> logger)
+public partial class UserService(NuDepotContext context, SystemTime time, IOptionsMonitor<UserOptions> options, ILogger<UserService> logger)
 {
     /// <summary>
     /// The start of every user API key, which tells them apart from configured keys.
@@ -44,7 +44,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
 
     private NuDepotContext Context { get; } = context;
     private SystemTime Time { get; } = time;
-    private IOptionsMonitor<FeedOptions> Options { get; } = options;
+    private IOptionsMonitor<UserOptions> Options { get; } = options;
     private ILogger<UserService> Logger { get; } = logger;
 
     /// <summary>
@@ -59,7 +59,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     /// Whether someone may create an account. The first account can always be created.
     /// </summary>
     public async Task<bool> CanSignUpAsync(CancellationToken cancellationToken)
-        => Options.CurrentValue.Authorization.Users.AllowSignUp || !await AnyAsync(cancellationToken);
+        => Options.CurrentValue.AllowSignUp || !await AnyAsync(cancellationToken);
 
     /// <summary>
     /// Whether anyone has an account.
@@ -119,7 +119,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         user = new User
         {
             UserName = userName,
-            Role = Options.CurrentValue.Authorization.Users.DefaultRole,
+            Role = Options.CurrentValue.DefaultRole,
             CreatedAt = now,
             Handle = handle,
         };
@@ -145,7 +145,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         await using IDbContextTransaction transaction = await Context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
         bool isFirst = !await AnyAsync(cancellationToken);
-        FeedRole role = isFirst ? FeedRole.Admin : Options.CurrentValue.Authorization.Users.DefaultRole;
+        FeedRole role = isFirst ? FeedRole.Admin : Options.CurrentValue.DefaultRole;
         DateTime now = Time.UtcNow;
 
         int key = user.Key;

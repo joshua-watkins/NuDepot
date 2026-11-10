@@ -53,12 +53,16 @@ public static class FeedApplicationBuilderExtensions
 
     /// <summary>
     /// Maps the endpoints the gallery uses for the feed's users: signing up and signing in with passkeys, and
-    /// creating API keys for NuGet clients. What users may do comes from <c>AddUsers()</c>, which it needs.
+    /// creating API keys for NuGet clients. It needs users, from <c>AddUsers()</c> or <c>EnableUsers()</c>. If
+    /// they're off, because <see cref="UserOptions.IsEnabled"/> is false, it doesn't map anything.
     /// </summary>
     public static NuDepotApplicationBuilder MapUsers(this NuDepotApplicationBuilder app)
     {
-        if (!app.Services.GetRequiredService<IOptions<FeedOptions>>().Value.Authorization.Users.IsEnabled)
-            throw new InvalidOperationException("MapUsers() needs the feed's users. Call AddUsers() on services.AddNuDepot().");
+        if (app.Services.GetService<FeedFeatures>() is not { Users: true })
+            throw new InvalidOperationException("MapUsers() needs the feed's users. Call AddUsers() or EnableUsers() on services.AddNuDepot().");
+
+        if (!app.Services.GetRequiredService<IOptions<UserOptions>>().Value.IsEnabled)
+            return app;
 
         GetPipeline(app).MapsUsers = true;
         NuDepotEndpointBuilder.MapAccountRoutes(app.Endpoints);

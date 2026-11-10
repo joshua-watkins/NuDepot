@@ -7,6 +7,7 @@ using NuDepot.Feed.Entities;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Storage;
 using NuDepot.Feed.Upstream;
+using NuDepot.Feed.Upstream.Clients;
 using NuGet.Packaging;
 using NuGet.Versioning;
 
@@ -29,11 +30,10 @@ namespace NuDepot.Feed.Signing;
 /// <param name="catalog">The catalog that records the change.</param>
 /// <param name="upstream">The repository mirrored packages come from.</param>
 /// <param name="url">Generates the service index URL that the signatures record.</param>
-/// <param name="options">The feed's options.</param>
 /// <param name="time">The current time, which signatures expire by.</param>
 /// <param name="locks">The feed's package locks, and when mirrored packages were last downloaded again.</param>
 /// <param name="logger">The logger.</param>
-public class PackageResigner(IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, IOptionsSnapshot<FeedOptions> options, TimeProvider time, PackageResignerLocks locks, ILogger<PackageResigner> logger)
+public class PackageResigner(IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, TimeProvider time, PackageResignerLocks locks, ILogger<PackageResigner> logger)
 {
     // A mirrored package whose upstream copy is also expired is only downloaded again after this long.
     private static readonly TimeSpan UpstreamRetryInterval = TimeSpan.FromHours(1);
@@ -45,10 +45,12 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
     private ICatalogService Catalog { get; } = catalog;
     private IUpstreamClient Upstream { get; } = upstream;
     private IUrlGenerator Url { get; } = url;
-    private FeedOptions Options { get; } = options.Value;
     private TimeProvider Time { get; } = time;
     private PackageResignerLocks Locks { get; } = locks;
     private ILogger<PackageResigner> Logger { get; } = logger;
+
+    // An upstream client other than the feed's mirror chain is taken to mirror something.
+    private bool IsMirroring => Upstream is not MirrorChain chain || chain.HasMirrors;
 
     /// <summary>
     /// Makes a package that's being downloaded carry a current repository signature, if it has one.
@@ -81,7 +83,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
             });
         }
 
-        if (!Options.Mirror.Enabled || state.ExpiresAt == null || state.ExpiresAt > Time.GetUtcNow().UtcDateTime)
+        if (!IsMirroring || state.ExpiresAt == null || state.ExpiresAt > Time.GetUtcNow().UtcDateTime)
             return content;
 
         DateTimeOffset now = Time.GetUtcNow();

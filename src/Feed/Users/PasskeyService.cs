@@ -15,14 +15,14 @@ namespace NuDepot.Feed.Users;
 /// gets options with a challenge, then sends back what the authenticator signed. Between the steps,
 /// the options are kept on the user's row, so each user has one ceremony in progress at a time.
 /// </summary>
-public class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<FeedOptions> options)
+public class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<UserOptions> options)
 {
     private const string ServerName = "NuDepot";
     private const string ExpiredError = "The passkey request expired. Try again.";
 
     private UserService Users { get; } = users;
     private SystemTime Time { get; } = time;
-    private IOptionsMonitor<FeedOptions> Options { get; } = options;
+    private IOptionsMonitor<UserOptions> Options { get; } = options;
 
     /// <summary>
     /// Start creating an account with a passkey.
@@ -230,7 +230,7 @@ public class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<
     /// </summary>
     private Fido2 CreateFido2(HttpRequest request)
     {
-        UserOptions settings = Options.CurrentValue.Authorization.Users;
+        UserOptions settings = Options.CurrentValue;
         HashSet<string> origins = settings.Origins.Count > 0
             ? new HashSet<string>(settings.Origins, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>(StringComparer.OrdinalIgnoreCase) { $"{request.Scheme}://{request.Host.ToUriComponent()}" };

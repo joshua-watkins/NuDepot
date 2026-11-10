@@ -1,23 +1,33 @@
 namespace NuDepot.Feed.Configuration;
 
 /// <summary>
-/// Read-through caching: packages that aren't on the feed are indexed from an upstream feed.
+/// An upstream feed in <see cref="MirroringOptions.Mirrors"/>, whose packages are downloaded when they're asked for,
+/// and kept.
 /// </summary>
 public class MirrorOptions
 {
     /// <summary>
-    /// If true, packages that aren't found locally will be indexed
-    /// using the upstream source. Off by default.
+    /// nuget.org's service index.
     /// </summary>
-    public bool Enabled { get; set; }
+    public static Uri NuGetPackageSource { get; } = new("https://api.nuget.org/v3/index.json");
 
     /// <summary>
-    /// The v3 index that will be mirrored. Defaults to nuget.org's.
+    /// The mirror's name, for logs and errors. If unset, the package source's host name.
     /// </summary>
-    public Uri? PackageSource { get; set; } = new("https://api.nuget.org/v3/index.json");
+    public string? Name { get; set; }
 
     /// <summary>
-    /// The time before a download from the package source times out. Can't be negative.
+    /// The service index of the V3 feed that's mirrored. Required.
+    /// </summary>
+    public Uri? PackageSource { get; set; }
+
+    /// <summary>
+    /// The time a request to the package source, like a download, may take. Must be positive.
     /// </summary>
     public int PackageDownloadTimeoutSeconds { get; set; } = 600;
+
+    /// <summary>
+    /// The mirror's name, or its package source's host name.
+    /// </summary>
+    public string DisplayName => !string.IsNullOrEmpty(Name) ? Name : PackageSource?.Host ?? "upstream";
 }

@@ -89,17 +89,17 @@ if [ -n "$setup" ] || [ ! -e "$settings/setup.ini" ]; then
         if [ -n "$users" ]; then
             echo
             echo "[Feed:Authorization:Users]"
-            echo "Enabled=true"
+            echo "IsEnabled=true"
         fi
         if [ -n "$signing" ]; then
             echo
             echo "[Feed:RepositorySigning]"
-            echo "Enabled=true"
+            echo "IsEnabled=true"
         fi
         if [ -n "$mirror" ]; then
             echo
-            echo "[Feed:Mirror]"
-            echo "Enabled=true"
+            echo "[Feed:Mirroring]"
+            echo "IsEnabled=true"
         fi
     } > "$settings/setup.ini.new"
     chown root:nudepot "$settings/setup.ini.new"

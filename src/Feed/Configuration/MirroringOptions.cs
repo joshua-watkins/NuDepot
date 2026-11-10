@@ -1,0 +1,29 @@
+namespace NuDepot.Feed.Configuration;
+
+/// <summary>
+/// Mirroring, or read-through caching: packages that aren't on the feed are downloaded from upstream feeds when
+/// they're asked for, and kept. The options are bound from the <see cref="Section"/> configuration section only once
+/// the application adds mirroring, with <c>AddMirroring()</c> or <c>EnableMirroring()</c>.
+/// </summary>
+public class MirroringOptions
+{
+    /// <summary>
+    /// The configuration section the options are bound from.
+    /// </summary>
+    public const string Section = "Feed:Mirroring";
+
+    /// <summary>
+    /// Whether the feed mirrors <see cref="Mirrors"/>. True by default with <c>AddMirroring()</c>, and false by
+    /// default with <c>EnableMirroring()</c>. Either way, the configuration can change it. Without either, it's
+    /// false, and the configuration is ignored.
+    /// </summary>
+    public bool IsEnabled { get; set; }
+
+    /// <summary>
+    /// The upstream feeds, asked in this order. The first one that has a package ID provides all of its versions,
+    /// so a later mirror can't add versions of a package an earlier mirror has: put private feeds before public
+    /// ones. If a mirror can't be reached, the later ones aren't asked either. Mirroring that's on needs at least
+    /// one, like nuget.org's, <see cref="MirrorOptions.NuGetPackageSource"/>.
+    /// </summary>
+    public List<MirrorOptions> Mirrors { get; set; } = [];
+}

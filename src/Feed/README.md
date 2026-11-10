@@ -37,7 +37,9 @@ or to add [NuDepot.Gallery](https://www.nuget.org/packages/NuDepot.Gallery) to t
 ```csharp
 builder.Services.AddNuDepot()
     .AddFeed()
-    .AddUsers()   // Users, who sign in to the gallery with passkeys, and create API keys for NuGet clients.
+    .AddUsers()    // Users, who sign in to the gallery with passkeys, and create API keys for NuGet clients.
+    .AddSigning()  // Repository sign pushed packages.
+    .AddMirroring() // Mirror nuget.org, or the feeds in Feed:Mirroring:Mirrors, in order.
     .AddGallery();
 
 app.UseNuDepot()
@@ -45,6 +47,23 @@ app.UseNuDepot()
     .MapUsers()
     .UseGallery();
 ```
+
+Users, signing and mirrors have their own options, which are only bound from the configuration once the application
+adds the feature: without it, their settings are ignored. The `Add` methods turn a feature on unless its
+`IsEnabled` setting is `false`. The `Enable` methods, which the Windows and Linux services use, leave it off unless
+`IsEnabled` is `true`. So a feature can be configured and left off. Once it's on, it checks its settings when the
+application starts.
+
+```csharp
+builder.Services.AddNuDepot()
+    .AddFeed()
+    .EnableUsers()     // Feed:Authorization:Users:IsEnabled
+    .EnableSigning()   // Feed:RepositorySigning:IsEnabled
+    .EnableMirroring() // Feed:Mirroring:IsEnabled
+    .AddGallery();
+```
+
+`MapUsers()` maps nothing while users are off.
 
 The methods are in the `Microsoft.Extensions.DependencyInjection`, `Microsoft.AspNetCore.Builder` and
 `Microsoft.Extensions.Hosting` namespaces, so they don't need a `using`.
@@ -68,7 +87,7 @@ The important folders are:
 * Signing - Repository signing of pushed packages
 * Entities - The package database (SQLite by default)
 * Storage - Stores the content of packages and symbols on the file system
-* Upstream - Interactions with an upstream NuGet feed when mirroring
+* Upstream - The chain of mirrored upstream feeds (`AddMirroring()`)
 
 ## Resources
 
@@ -82,7 +101,7 @@ Besides package push, delete, content, metadata, search and autocomplete, the se
 | `ReadmeUriTemplate/6.13.0` | Package readmes. |
 | `VulnerabilityInfo/6.7.0` | Only advertised once a vulnerability is recorded. |
 | `PackageDetailsUriTemplate/5.1.0` | Set `PackageDetailsUriTemplate` in appsettings.json. HTTPS only. |
-| `RepositorySignatures/4.7.0`, `4.9.0`, `5.0.0` | Set `RepositorySigning:Enabled` in appsettings.json. HTTPS only. |
+| `RepositorySignatures/4.7.0`, `4.9.0`, `5.0.0` | With `AddSigning()`. HTTPS only. |
 
 ## NuGet V2
 
@@ -121,16 +140,10 @@ curl -X DELETE "https://nuget.example.com/api/vulnerabilities?packageId=Contoso.
 
 ## Repository signing
 
-Signing is off by default. With `Feed:RepositorySigning:Enabled`, pushed packages get this server's
-repository signature, and the repository signatures resource lists the certificate. The feed then only
-answers HTTPS requests (as the forwarded headers describe them), since signatures name its HTTPS address.
-Packages that already have a repository signature, like packages from nuget.org, keep it.
-
-```json
-"Feed": {
-  "RepositorySigning": { "Enabled": true }
-}
-```
+Signing is off by default. With `AddSigning()` (or `EnableSigning()` and `Feed:RepositorySigning:IsEnabled`),
+pushed packages get this server's repository signature, and the repository signatures resource lists the
+certificate. The feed then only answers HTTPS requests (as the forwarded headers describe them), since signatures
+name its HTTPS address. Packages that already have a repository signature, like packages from nuget.org, keep it.
 
 Without a certificate, the feed generates a self-signed one each year, and re-signs packages signed with an
 older one when they're downloaded. `NuDepot rotate signing-certificate` replaces this year's early, like after
@@ -140,7 +153,6 @@ signing certificate is better:
 ```json
 "Feed": {
   "RepositorySigning": {
-    "Enabled": true,
     "CertificatePath": "signing.pfx",
     "CertificatePassword": "",
     "TimestampServerUrl": "http://timestamp.digicert.com"
@@ -149,7 +161,8 @@ signing certificate is better:
 ```
 
 Use `CertificateThumbprint` (with `CertificateStoreLocation` and `CertificateStoreName`) instead of
-`CertificatePath` to load the certificate from a certificate store. See the
+`CertificatePath` to load the certificate from a certificate store. The certificate is loaded when the application
+starts, so a missing file or a wrong password stops it. See the
 [configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#repository-signing).
 
 The signing code is in `Signing`: `RepositorySigningService` signs, `ConfiguredSigningCertificate` and

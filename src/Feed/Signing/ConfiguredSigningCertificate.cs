@@ -9,9 +9,9 @@ namespace NuDepot.Feed.Signing;
 /// <see cref="RepositorySigningOptions.CertificateThumbprint"/>. It's loaded once, when the feed first signs a package.
 /// </summary>
 /// <param name="options">The feed's options.</param>
-internal sealed class ConfiguredSigningCertificate(IOptions<FeedOptions> options) : ISigningCertificateSource, IDisposable
+internal sealed class ConfiguredSigningCertificate(IOptions<RepositorySigningOptions> options) : ISigningCertificateSource, IDisposable
 {
-    private Lazy<X509Certificate2> Certificate { get; } = new(() => Load(options.Value.RepositorySigning));
+    private Lazy<X509Certificate2> Certificate { get; } = new(() => Load(options.Value));
 
     public NuGet.Common.HashAlgorithmName HashAlgorithm => NuGet.Common.HashAlgorithmName.SHA512;
 

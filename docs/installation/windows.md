@@ -33,14 +33,14 @@ account's password isn't saved, so give it again when you upgrade.
 | --- | --- |
 | `C:\Program Files\NuDepot` | The application. Upgrades replace it. |
 | `C:\ProgramData\NuDepot` | The settings, database (`nudepot.db`) and packages (`packages`). It's the service's working directory, so relative paths in the settings are relative to it. Only SYSTEM, Administrators and the service account may use it. |
-| `C:\ProgramData\NuDepot\appsettings.json` | Your settings. Every setting is commented out at first, so the defaults apply. Upgrades and uninstalling keep it. |
+| `C:\ProgramData\NuDepot\appsettings.json` | Your settings. At first, they set up users, signing and mirroring, which are off, and example API keys to replace. Upgrades and uninstalling keep it. |
 | `C:\ProgramData\NuDepot\setup.ini` | The installer's options. `appsettings.json` overrides it. |
 | Event Viewer, Windows Logs, Application | The service's logs, with the source `NuDepot`. |
 
 ## Turn on features
 
-Edit `C:\ProgramData\NuDepot\appsettings.json` as an administrator: uncomment the feature you want, like users or
-signing, then restart the service:
+Edit `C:\ProgramData\NuDepot\appsettings.json` as an administrator: uncomment `"IsEnabled": true` in the feature
+you want, like users or signing, then restart the service:
 
 ```powershell
 Restart-Service NuDepot
@@ -53,9 +53,16 @@ See the [configuration](../configuration.md) guide for every setting.
 - **Serve it over HTTPS.** The service listens on HTTP on localhost, for a reverse proxy that serves HTTPS on your
   feed's address. Passkeys and signing need HTTPS, and API keys travel with every request. See
   [Serve NuDepot over HTTPS](https.md).
-- **Set API keys, or turn on users.** Without either, anyone who can reach the feed may push and unlist packages.
-  A `ReadWrite` key, or users, stop that, and a `ReadOnly` key makes the feed private, as do users with
-  `AnonymousReads` off. See [Require an API key](../configuration.md#require-an-api-key).
+- **Replace the example API keys.** `appsettings.json` starts with example `ReadWrite` and `Admin` keys, which
+  everyone who installs NuDepot has, and the service logs a warning while they're in use. Make your own random keys
+  in PowerShell:
+
+  ```powershell
+  $b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | % { $_.ToString('x2') })
+  ```
+
+  A `ReadOnly` key makes the feed private, as do users with `AnonymousReads` off. See
+  [Require an API key](../configuration.md#require-an-api-key).
 - **Create your account first.** With users on, the first person to sign up becomes an Admin, so sign up before you
   share the feed's address.
 

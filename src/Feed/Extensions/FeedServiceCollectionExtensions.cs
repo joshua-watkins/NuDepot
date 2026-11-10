@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -67,16 +68,41 @@ public static class FeedServiceCollectionExtensions
     /// Adds the feed's users, who sign up and sign in to the gallery with passkeys, and create API keys for NuGet
     /// clients, which present them as the password of a package source's credentials, with the user's name. Each
     /// user has a role, like the feed's API keys. With users, requests without a key or a signed-in user may only
-    /// read the feed. It sets <see cref="UserOptions.IsEnabled"/>. The application maps their endpoints with
-    /// <c>MapUsers()</c>. It needs the feed, from <see cref="AddFeed"/>.
+    /// read the feed. Their <see cref="UserOptions"/> are bound from the <see cref="UserOptions.Section"/>
+    /// configuration section, where <see cref="UserOptions.IsEnabled"/> can turn them off, then changed by
+    /// <paramref name="configure"/>. The application maps their endpoints with <c>MapUsers()</c>. To leave them
+    /// off unless the configuration turns them on, use <see cref="EnableUsers"/>.
     /// </summary>
-    public static NuDepotBuilder AddUsers(this NuDepotBuilder builder)
+    public static NuDepotBuilder AddUsers(this NuDepotBuilder builder, Action<UserOptions>? configure = null)
+    {
+        FeedFeatures
+            .Get(builder.Services)
+            .UsersByDefault = true;
+        builder.EnableUsers();
+        if (configure != null)
+            builder.Services.Configure(configure);
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds the feed's users, like <see cref="AddUsers"/>, but off unless the configuration turns them on, with
+    /// <c>Feed:Authorization:Users:IsEnabled</c>. The application maps their endpoints with <c>MapUsers()</c>
+    /// when <see cref="UserOptions.IsEnabled"/> is true.
+    /// </summary>
+    public static NuDepotBuilder EnableUsers(this NuDepotBuilder builder)
     {
         IServiceCollection services = builder.Services;
-        if (services.Any(service => service.ServiceType == typeof(UserService)))
+        FeedFeatures features = FeedFeatures.Get(services);
+        if (features.Users)
             return builder;
 
-        services.Configure<FeedOptions>(options => options.Authorization.Users.IsEnabled = true);
+        features.Users = true;
+        services
+            .AddOptions<UserOptions>()
+            .Configure(options => options.IsEnabled = features.UsersByDefault)
+            .BindConfiguration(UserOptions.Section);
+
         services.TryAddScoped<UserService>();
         services.TryAddScoped<PasskeyService>();
         services.TryAddSingleton<UserCookieEvents>();
@@ -95,6 +121,87 @@ public static class FeedServiceCollectionExtensions
                 options.SlidingExpiration = false;
                 options.EventsType = typeof(UserCookieEvents);
             });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Signs pushed packages with the feed's repository signature, and re-signs packages it signed with an older
+    /// certificate when they're downloaded. The feed then only answers HTTPS requests. Its
+    /// <see cref="RepositorySigningOptions"/> are bound from the <see cref="RepositorySigningOptions.Section"/>
+    /// configuration section, where <see cref="RepositorySigningOptions.IsEnabled"/> can turn it off, then changed by
+    /// <paramref name="configure"/>. Without a certificate, the feed generates one each year. A configured
+    /// certificate is loaded when the application starts, so a missing file or a wrong password stops it. To leave
+    /// signing off unless the configuration turns it on, use <see cref="EnableSigning"/>.
+    /// </summary>
+    public static NuDepotBuilder AddSigning(this NuDepotBuilder builder, Action<RepositorySigningOptions>? configure = null)
+    {
+        FeedFeatures
+            .Get(builder.Services)
+            .SigningByDefault = true;
+        builder.EnableSigning();
+        if (configure != null)
+            builder.Services.Configure(configure);
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds signing, like <see cref="AddSigning"/>, but off unless the configuration turns it on, with
+    /// <c>Feed:RepositorySigning:IsEnabled</c>. The certificate can be configured while signing is off.
+    /// </summary>
+    public static NuDepotBuilder EnableSigning(this NuDepotBuilder builder)
+    {
+        IServiceCollection services = builder.Services;
+        FeedFeatures features = FeedFeatures.Get(services);
+        if (features.Signing)
+            return builder;
+
+        features.Signing = true;
+        services
+            .AddOptions<RepositorySigningOptions>()
+            .Configure(options => options.IsEnabled = features.SigningByDefault)
+            .BindConfiguration(RepositorySigningOptions.Section);
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Mirrors upstream feeds: packages that aren't on the feed are downloaded from them when they're asked for, and
+    /// kept. Its <see cref="MirroringOptions"/> are bound from the <see cref="MirroringOptions.Section"/>
+    /// configuration section, where <see cref="MirroringOptions.IsEnabled"/> can turn it off, then changed by
+    /// <paramref name="configure"/>, which can add mirrors to <see cref="MirroringOptions.Mirrors"/>. The application
+    /// doesn't start if mirroring is on without mirrors. To leave mirroring off unless the configuration turns it on, use
+    /// <see cref="EnableMirroring"/>.
+    /// </summary>
+    public static NuDepotBuilder AddMirroring(this NuDepotBuilder builder, Action<MirroringOptions>? configure = null)
+    {
+        FeedFeatures
+            .Get(builder.Services)
+            .MirroringByDefault = true;
+        builder.EnableMirroring();
+        if (configure != null)
+            builder.Services.Configure(configure);
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds mirroring, like <see cref="AddMirroring"/>, but off unless the configuration turns it on, with
+    /// <c>Feed:Mirroring:IsEnabled</c>. The mirrors can be configured while mirroring is off.
+    /// </summary>
+    public static NuDepotBuilder EnableMirroring(this NuDepotBuilder builder)
+    {
+        IServiceCollection services = builder.Services;
+        FeedFeatures features = FeedFeatures.Get(services);
+        if (features.Mirroring)
+            return builder;
+
+        features.Mirroring = true;
+        services
+            .AddOptions<MirroringOptions>()
+            .Configure(options => options.IsEnabled = features.MirroringByDefault)
+            .BindConfiguration(MirroringOptions.Section);
 
         return builder;
     }
@@ -144,7 +251,16 @@ public static class FeedServiceCollectionExtensions
             .ValidateOnStart();
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FeedOptions>, ValidateFeedOptions>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<RepositorySigningOptions>, ValidateRepositorySigningOptions>());
+        services
+            .AddOptions<RepositorySigningOptions>()
+            .ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<MirroringOptions>, ValidateMirroringOptions>());
+        services
+            .AddOptions<MirroringOptions>()
+            .ValidateOnStart();
         FeedPipeline.Get(services);
+        FeedFeatures.Get(services);
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ValidateFeedPipeline>());
 
         // Forwarded headers and the path base come before routing, so the routes see the request's real path.
@@ -215,14 +331,12 @@ public static class FeedServiceCollectionExtensions
         services.TryAddSingleton<IPackageDownloadsSource, PackageDownloadsJsonSource>();
 
         services.TryAddSingleton<ISearchResponseBuilder, SearchResponseBuilder>();
-        services.TryAddSingleton<NuGetClient>();
         services.TryAddSingleton<NullSearchIndexer>();
         services.TryAddSingleton<NullSearchService>();
         services.TryAddSingleton<RegistrationBuilder>();
         services.TryAddSingleton<SystemTime>();
 
         services.TryAddSingleton(HttpClientFactory);
-        services.TryAddSingleton(NuGetClientFactoryFactory);
 
         services.TryAddScoped<DownloadsImporter>();
 
@@ -249,21 +363,19 @@ public static class FeedServiceCollectionExtensions
         services.TryAddTransient<DatabaseSearchService>();
         services.TryAddTransient<FileStorageService>();
         services.TryAddTransient<PackageService>();
-        services.TryAddTransient<V3UpstreamClient>();
-        services.TryAddTransient<DisabledUpstreamClient>();
         services.TryAddSingleton<NullStorageService>();
+        services.TryAddSingleton<IUpstreamClient, MirrorChain>();
 
         // The options choose the implementations.
         services.TryAddTransient(StorageServiceFactory);
         services.TryAddTransient(SearchServiceFactory);
         services.TryAddSingleton(SigningCertificateSourceFactory);
         services.TryAddTransient<ISearchIndexer>(provider => provider.GetRequiredService<NullSearchIndexer>());
-        services.TryAddTransient(UpstreamClientFactory);
     }
 
     private static ISigningCertificateSource SigningCertificateSourceFactory(IServiceProvider provider)
     {
-        return GetOptions(provider).RepositorySigning.GeneratesCertificates
+        return provider.GetRequiredService<IOptions<RepositorySigningOptions>>().Value.GeneratesCertificates
             ? provider.GetRequiredService<GeneratedSigningCertificates>()
             : provider.GetRequiredService<ConfiguredSigningCertificate>();
     }
@@ -286,10 +398,9 @@ public static class FeedServiceCollectionExtensions
         };
     }
 
+    // The client for upstream feeds and nuget.org's download counts. Each mirror has its own timeout.
     private static HttpClient HttpClientFactory(IServiceProvider provider)
     {
-        MirrorOptions options = GetOptions(provider).Mirror;
-
         Assembly assembly = Assembly.GetEntryAssembly() ?? typeof(FeedServiceCollectionExtensions).Assembly;
         string? assemblyName = assembly.GetName().Name;
         string assemblyVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
@@ -300,27 +411,9 @@ public static class FeedServiceCollectionExtensions
         });
 
         client.DefaultRequestHeaders.Add("User-Agent", $"{assemblyName}/{assemblyVersion}");
-        client.Timeout = TimeSpan.FromSeconds(options.PackageDownloadTimeoutSeconds);
+        client.Timeout = Timeout.InfiniteTimeSpan;
 
         return client;
-    }
-
-    private static NuGetClientFactory NuGetClientFactoryFactory(IServiceProvider provider)
-    {
-        HttpClient httpClient = provider.GetRequiredService<HttpClient>();
-        Uri packageSource = GetOptions(provider).Mirror.PackageSource
-            ?? throw new InvalidOperationException(
-                $"The '{FeedOptions.Section}:{nameof(FeedOptions.Mirror)}:{nameof(MirrorOptions.PackageSource)}' config is required to mirror packages.");
-
-        return new NuGetClientFactory(httpClient, packageSource.ToString());
-    }
-
-    private static IUpstreamClient UpstreamClientFactory(IServiceProvider provider)
-    {
-        if (!GetOptions(provider).Mirror.Enabled)
-            return provider.GetRequiredService<DisabledUpstreamClient>();
-
-        return provider.GetRequiredService<V3UpstreamClient>();
     }
 
     private static FeedOptions GetOptions(IServiceProvider provider)
@@ -333,7 +426,7 @@ public static class FeedServiceCollectionExtensions
     /// Adds the middleware that has to come before routing: forwarded headers from a reverse proxy, the
     /// HTTPS requirement of a feed that signs packages, and the <see cref="FeedOptions.PathBase"/>.
     /// </summary>
-    private sealed class FeedStartupFilter(IOptions<FeedOptions> options) : IStartupFilter
+    private sealed class FeedStartupFilter(IOptions<FeedOptions> options, IOptions<RepositorySigningOptions> signing) : IStartupFilter
     {
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
         {
@@ -362,7 +455,7 @@ public static class FeedServiceCollectionExtensions
 
                 // Signatures name the feed's HTTPS address, and packages are signed when they're pushed and
                 // re-signed when they're downloaded over HTTPS, so a feed that signs doesn't answer HTTP.
-                if (options.Value.RepositorySigning.IsEnabled)
+                if (signing.Value.IsEnabled)
                 {
                     app.Use(async (context, nextMiddleware) =>
                     {

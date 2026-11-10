@@ -12,12 +12,12 @@ namespace NuDepot.Feed.Signing;
 /// <summary>
 /// Signs packages with the certificate that <paramref name="certificates"/> says signs packages now.
 /// </summary>
-/// <param name="options">The feed's options.</param>
+/// <param name="options">The signing options.</param>
 /// <param name="certificates">The configured certificate, or the generated ones.</param>
 /// <param name="logger">The logger.</param>
-public sealed class RepositorySigningService(IOptions<FeedOptions> options, ISigningCertificateSource certificates, ILogger<RepositorySigningService> logger) : IRepositorySigningService, IDisposable
+public sealed class RepositorySigningService(IOptions<RepositorySigningOptions> options, ISigningCertificateSource certificates, ILogger<RepositorySigningService> logger) : IRepositorySigningService, IDisposable
 {
-    private RepositorySigningOptions Options { get; } = options.Value.RepositorySigning;
+    private RepositorySigningOptions Options { get; } = options.Value;
     private ISigningCertificateSource Certificates { get; } = certificates;
     private ILogger<RepositorySigningService> Logger { get; } = logger;
 

@@ -1,7 +1,9 @@
 namespace NuDepot.Feed.Configuration;
 
 /// <summary>
-/// The feed's options, bound from the <see cref="Section"/> configuration section.
+/// The feed's options, bound from the <see cref="Section"/> configuration section. The optional features' options,
+/// <see cref="UserOptions"/>, <see cref="RepositorySigningOptions"/> and <see cref="MirrorOptions"/>, are in
+/// subsections of it, but are only bound when the application adds those features.
 /// </summary>
 public class FeedOptions
 {
@@ -11,8 +13,7 @@ public class FeedOptions
     public const string Section = "Feed";
 
     /// <summary>
-    /// The API key for each role, which decide what anonymous requests may do, and the users who sign in with
-    /// passkeys.
+    /// The API key for each role, which decide what anonymous requests may do.
     /// </summary>
     public FeedAuthorizationOptions Authorization { get; set; } = new();
 
@@ -60,11 +61,6 @@ public class FeedOptions
     public string? PackageDetailsUriTemplate { get; set; }
 
     /// <summary>
-    /// Whether, and with which certificate, pushed packages are repository signed. Off by default.
-    /// </summary>
-    public RepositorySigningOptions RepositorySigning { get; set; } = new();
-
-    /// <summary>
     /// The package database.
     /// </summary>
     public DatabaseOptions Database { get; set; } = new();
@@ -78,9 +74,4 @@ public class FeedOptions
     /// How packages are searched.
     /// </summary>
     public SearchOptions Search { get; set; } = new();
-
-    /// <summary>
-    /// Read-through caching of packages from an upstream feed.
-    /// </summary>
-    public MirrorOptions Mirror { get; set; } = new();
 }

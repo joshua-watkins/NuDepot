@@ -11,10 +11,11 @@ browsing packages. Releases are self-contained, so you don't need to install .NE
    - Windows: run `NuDepot-x64.msi` (or `NuDepot-arm64.msi`). See [Install on Windows](docs/installation/windows.md).
    - Linux: extract the archive and run `sudo sh install.sh`. See [Install on Linux](docs/installation/linux.md).
 3. Browse <http://localhost:3333/> to see the gallery.
-4. Push a package: `dotnet nuget push -s http://localhost:3333/v3/index.json package.1.0.0.nupkg`
+4. Push a package with the `ReadWrite` key from `appsettings.json` in the settings folder (`C:\ProgramData\NuDepot`
+   or `/etc/nudepot`): `dotnet nuget push -s http://localhost:3333/v3/index.json -k <key> package.1.0.0.nupkg`
 
-NuDepot listens on `http://localhost:3333`, ready for a reverse proxy that serves HTTPS. Until you set API keys,
-anyone who can reach it may push and unlist packages. Before you share it, see
+NuDepot listens on `http://localhost:3333`, ready for a reverse proxy that serves HTTPS. It starts with example
+`ReadWrite` and `Admin` API keys, which everyone who installs it has: replace them before you share it. See
 [Serve NuDepot over HTTPS](docs/installation/https.md) and [Require an API key](docs/configuration.md#require-an-api-key).
 
 ## Features
@@ -26,7 +27,8 @@ anyone who can reach it may push and unlist packages. Before you share it, see
 - Mirroring of nuget.org, so restores work offline and builds don't wait on it.
 - The catalog, vulnerability, deprecation and package details resources.
 
-API keys, users, signing and mirroring are off until you turn them on. See the [documentation](docs/index.md).
+Users, signing and mirroring are set up in the settings, but off until you turn them on. See the
+[documentation](docs/index.md).
 
 ## Libraries
 

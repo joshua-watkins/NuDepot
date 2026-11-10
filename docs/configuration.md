@@ -11,9 +11,14 @@ NuDepot's settings are in `appsettings.json`, in its settings folder:
 The settings folder is NuDepot's working directory, so relative paths in the settings, like a certificate's, are
 relative to it. The `NUDEPOT_CONFIG_ROOT` environment variable chooses another settings folder.
 
-The installer starts you off with an `appsettings.json` whose settings are all commented out: uncomment what you
-want, then restart the service. Upgrades never change it. The installer's own options, like the port, are in
-`setup.ini` in the same folder, and `appsettings.json` overrides them.
+The installer starts you off with an `appsettings.json` that sets up users, signing and mirroring of nuget.org, but
+leaves them off, and has example `ReadWrite` and `Admin` API keys. **Replace the example keys**: everyone who
+installs NuDepot has them, and the service logs a warning while they're in use. Edit the file, then restart the
+service. Upgrades never change it.
+
+The installer's own options, like the port and `MIRROR=1`, are in `setup.ini` in the same folder, and
+`appsettings.json` overrides them. That's why `appsettings.json` leaves each feature's `IsEnabled` commented out:
+set it to `true` to turn the feature on, or to `false` to turn off what the installer turned on.
 
 The feed's settings are in the `Feed` section, and the gallery's in the `Gallery` section. ASP.NET Core's own
 settings, like `Logging` and `Kestrel`, stay at the top level:
@@ -21,7 +26,7 @@ settings, like `Logging` and `Kestrel`, stay at the top level:
 ```json
 {
     "Feed": {
-        "Authorization": { "Users": { "Enabled": true } },
+        "Authorization": { "Users": { "IsEnabled": true } },
         ...
     },
     "Gallery": {
@@ -32,7 +37,7 @@ settings, like `Logging` and `Kestrel`, stay at the top level:
 ```
 
 Environment variables and command line arguments set the same settings with the section in front,
-like `Feed__RepositorySigning__CertificatePassword` or `--Feed:Mirror:Enabled=true`. They override
+like `Feed__RepositorySigning__CertificatePassword` or `--Feed:Mirroring:IsEnabled=true`. They override
 `appsettings.json`. The examples below show the `Feed` section's contents.
 
 ## Addresses
@@ -45,7 +50,13 @@ proxy, and the `PathBase` and `UseForwardedHeaders` settings.
 
 Without API keys or [users](#users-and-passkeys), the feed is open: anyone may read, push, unlist and
 relist packages. Nobody may do what only an `Admin` may, like permanently deleting packages, until you
-set an `Admin` key or a user has the `Admin` role.
+set an `Admin` key or a user has the `Admin` role. The Windows and Linux services start with example `ReadWrite`
+and `Admin` keys, so anonymous requests may only read. Replace them with random keys of your own, like from
+`openssl rand -hex 24`, or in PowerShell:
+
+```powershell
+$b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | % { $_.ToString('x2') })
+```
 
 The feed has one API key for each role:
 
@@ -159,7 +170,9 @@ An application adds NuDepot's parts to its services and its request pipeline:
 ```csharp
 builder.Services.AddNuDepot()
     .AddFeed()      // Binds the "Feed" section. Pass a lambda to change the options in code.
-    .AddUsers()  // Optional: users who sign in with passkeys, and create API keys.
+    .AddUsers()     // Optional: users who sign in with passkeys, and create API keys.
+    .AddSigning()   // Optional: repository sign pushed packages.
+    .AddMirroring() // Optional: mirror nuget.org, or the feeds in Feed:Mirroring:Mirrors.
     .AddGallery();  // Binds the "Gallery" section.
 
 var app = builder.Build();
@@ -170,11 +183,10 @@ app.UseNuDepot()
     .UseGallery();  // The gallery's pages.
 ```
 
-The feed's own API keys, one for each role, only need `AddFeed()` and `UseFeed()`. `AddUsers()` turns on
-users, who create their own API keys, since NuGet clients can't use passkeys: it sets
-`Users:IsEnabled`, which configuration can't, and makes anonymous requests read-only. `MapUsers()` maps the
-endpoints the gallery uses for them. The application doesn't start if it calls `AddUsers()` without
-`MapUsers()`, and `MapUsers()` without `AddUsers()` throws.
+The feed's own API keys, one for each role, only need `AddFeed()` and `UseFeed()`. `AddUsers()` adds users, who
+create their own API keys, since NuGet clients can't use passkeys. With users, anonymous requests are read-only.
+`MapUsers()` maps the endpoints the gallery uses for them. The application doesn't start if users are on and it
+doesn't call `MapUsers()`, and `MapUsers()` throws if users weren't added.
 
 An application that only hosts one part can use the shortcuts: `services.AddNuDepotFeed()` with
 `app.UseNuDepotFeed()`, which host the feed with its API keys, plus `services.AddNuDepotUsers()` with
@@ -182,7 +194,39 @@ An application that only hosts one part can use the shortcuts: `services.AddNuDe
 `services.AddNuDepotGallery()` with `app.UseNuDepotGallery()`. Both take the same options lambda as
 `AddFeed` and `AddGallery`. The libraries are on NuGet as `NuDepot.Feed` and `NuDepot.Gallery`.
 
-The Windows and Linux services turn on users with the `Feed:Authorization:Users:Enabled` setting.
+#### Optional features
+
+Users, signing and mirrors are the optional features. Each has its own options, in a section of `Feed`, which are
+only read if the application adds the feature. Otherwise the settings, `IsEnabled` included, are ignored. An
+application adds each feature one of two ways:
+
+| Method | The feature is | Settings |
+| --- | --- | --- |
+| `AddUsers()`, `AddSigning()`, `AddMirroring()` | On, unless its settings set `IsEnabled` to `false` | Read |
+| `EnableUsers()`, `EnableSigning()`, `EnableMirroring()` | Off, unless its settings set `IsEnabled` to `true` | Read |
+
+So a feature can be set up and left off, like a signing certificate for later: only `IsEnabled` decides. Once a
+feature is on, it checks its settings when the application starts, and stops it if they're incomplete: a mirror
+without a `PackageSource`, or a signing certificate that doesn't load. A feature that's off isn't checked.
+Everything else the feed serves, like the catalog, symbols and vulnerabilities, is always on, since it costs
+nothing until it's used.
+
+The Windows and Linux services use the `Enable` methods, so every optional feature is off until its settings turn
+it on:
+
+```csharp
+builder.Services.AddNuDepot()
+    .AddFeed()
+    .EnableUsers()     // On with Feed:Authorization:Users:IsEnabled.
+    .EnableSigning()   // On with Feed:RepositorySigning:IsEnabled.
+    .EnableMirroring() // On with Feed:Mirroring:IsEnabled.
+    .AddGallery();
+
+app.UseNuDepot()
+    .UseFeed()
+    .MapUsers()        // Maps nothing while users are off.
+    .UseGallery();
+```
 
 ## Users and passkeys
 
@@ -194,7 +238,7 @@ clients and Visual Studio, which can't use passkeys. In the Windows and Linux se
 "Feed": {
     "Authorization": {
         "Users": {
-            "Enabled": true,
+            "IsEnabled": true,
             // Whether requests without a key or a signed-in user may read the feed. If unset, true.
             "AnonymousReads": true,
             // Whether anyone can create an account. The first account can always be created.
@@ -208,7 +252,7 @@ clients and Visual Studio, which can't use passkeys. In the Windows and Linux se
 ```
 
 Or install with `USERS=1` on Windows, or `--users` on Linux. An application that hosts the feed itself
-calls `AddUsers()` and `MapUsers()` instead of setting `Enabled` (see
+calls `AddUsers()` and `MapUsers()`, and its settings can only turn users off (see
 [Applications that host the feed](#applications-that-host-the-feed)).
 
 The gallery shows "Sign in" in its navigation bar. The first person to sign up becomes an `Admin`, so set up
@@ -259,7 +303,7 @@ on the request's `Host` header, set the domain and origins the browser sees:
 
 ```json
 "Users": {
-    "Enabled": true,
+    "IsEnabled": true,
     "Domain": "nuget.example.com",
     "Origins": [ "https://nuget.example.com" ]
 }
@@ -275,26 +319,56 @@ it to:
 1. Speed up your builds if restores from [nuget.org](https://nuget.org) are slow
 1. Restore packages when nuget.org can't be reached
 
-Mirroring is off by default. Turn it on to mirror nuget.org:
+Mirroring is off by default. The Windows and Linux services' `appsettings.json` already lists nuget.org, so turn
+it on to mirror it:
 
 ```json
 "Feed": {
-    "Mirror": { "Enabled": true },
-    ...
-}
-```
-
-To mirror another feed, set `PackageSource` to its [service index](https://learn.microsoft.com/nuget/api/service-index):
-
-```json
-"Feed": {
-    "Mirror": {
-        "Enabled": true,
-        "PackageSource": "https://feed.example.com/v3/index.json"
+    "Mirroring": {
+        "IsEnabled": true,
+        "Mirrors": [
+            { "Name": "nuget.org", "PackageSource": "https://api.nuget.org/v3/index.json" }
+        ]
     },
     ...
 }
 ```
+
+Or install with `MIRROR=1` on Windows, or `--mirror` on Linux. An application that hosts the feed itself calls
+`AddMirroring()`, which mirrors unless the settings set `IsEnabled` to `false`. Mirroring that's on needs at least
+one mirror, each with a `PackageSource`, or the service doesn't start.
+
+To mirror other feeds, add them to `Mirrors`, each with its
+[service index](https://learn.microsoft.com/nuget/api/service-index) as its `PackageSource`, and a `Name` for the
+logs:
+
+```json
+"Feed": {
+    "Mirroring": {
+        "IsEnabled": true,
+        "Mirrors": [
+            { "Name": "Internal", "PackageSource": "https://feed.example.com/v3/index.json" },
+            { "Name": "nuget.org", "PackageSource": "https://api.nuget.org/v3/index.json" }
+        ]
+    },
+    ...
+}
+```
+
+- **Order.** The mirrors are asked in the list's order.
+- **The first mirror that has a package provides it.** All of that package's versions come from it. A later
+  mirror can't add versions of it, so put your private feeds before nuget.org: then nobody can publish a package
+  with the same ID on nuget.org to get it into your builds.
+- **A mirror that can't be reached stops the chain.** Mirrors are only contacted when a client asks for a package
+  the feed doesn't have, not when the service starts. If that request to a mirror fails or times out, the later
+  mirrors aren't asked, so a package isn't taken from another feed while the feed that has it is down. The client
+  gets the versions the feed has itself, or a 404, and the failure is logged. Nothing is remembered: the next
+  request asks the mirrors again. Packages the feed already downloaded keep working while a mirror is down.
+- **Timeouts.** Each request to a mirror, like a download, may take its `PackageDownloadTimeoutSeconds`, which is
+  600 by default.
+- Packages the feed has itself always come first.
+- Arrays in settings are merged item by item, by position: an environment variable like
+  `Feed__Mirroring__Mirrors__0__PackageSource` changes the first mirror's source. Keep the list in one file.
 
 ## Enable package hard deletions
 
@@ -348,13 +422,14 @@ mirrored from nuget.org, keep it. Signing is off by default. Turn it on:
 
 ```json
 "Feed": {
-    "RepositorySigning": { "Enabled": true },
+    "RepositorySigning": { "IsEnabled": true },
     ...
 }
 ```
 
-Or install with `SIGNING=1` on Windows, or `--signing` on Linux. Without a certificate of your own, the feed
-generates one each year; see [Generated certificates](#generated-certificates).
+Or install with `SIGNING=1` on Windows, or `--signing` on Linux. An application that hosts the feed itself calls
+`AddSigning()`, which signs unless the settings set `IsEnabled` to `false`. Without a certificate of your own, the feed generates one each year; see
+[Generated certificates](#generated-certificates).
 
 A signature names the feed's HTTPS address, so with signing on, the feed only answers HTTPS requests, and refuses
 HTTP ones with a 403. Serve it through a reverse proxy that serves HTTPS, or serve HTTPS itself; see
@@ -373,7 +448,7 @@ warn about them. Give the feed the certificate as a PFX file, with its private k
 ```json
 "Feed": {
     "RepositorySigning": {
-        "Enabled": true,
+        "IsEnabled": true,
         "CertificatePath": "signing.pfx",
         "CertificatePassword": "the PFX file's password",
         // Recommended: without a timestamp, signatures stop being valid when the certificate expires.
@@ -398,7 +473,11 @@ To load the certificate from a certificate store instead, set `CertificateThumbp
 `CertificateStoreLocation` (`CurrentUser`, the default, or `LocalMachine`) and `CertificateStoreName` (usually `My`).
 On Windows, use `LocalMachine` for a certificate the service uses, and let its account read the private key: in the
 Certificates snap-in for the computer, right-click the certificate, then **All Tasks** > **Manage Private Keys**.
-`CertificatePath` can't be used with `CertificateThumbprint`, and neither can be used without `Enabled`.
+`CertificatePath` can't be used with `CertificateThumbprint`. While `IsEnabled` is `false`, the certificate settings
+are kept, but not used or checked, so a certificate can be set up before signing is turned on.
+
+The certificate is loaded when the service starts. If the file is missing, the password is wrong, the certificate
+isn't in the store, or it has no private key, the service doesn't start, and its log says why.
 
 ### Generated certificates
 

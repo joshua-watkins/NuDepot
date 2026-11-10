@@ -86,12 +86,12 @@ public static class NuDepotCommands
 
     private static async Task RotateSigningCertificateAsync(IHost host)
     {
-        FeedOptions options = host.Services.GetRequiredService<IOptions<FeedOptions>>().Value;
-        if (!options.RepositorySigning.GeneratesCertificates)
+        RepositorySigningOptions options = host.Services.GetRequiredService<IOptions<RepositorySigningOptions>>().Value;
+        if (!options.GeneratesCertificates)
         {
             Console.Error.WriteLine(
-                $"Only generated certificates can be rotated. Set '{FeedOptions.Section}:{nameof(FeedOptions.RepositorySigning)}:{nameof(RepositorySigningOptions.Enabled)}' " +
-                "to true, without a certificate, to use them.");
+                "Only generated certificates can be rotated: signing must be on, without a certificate. In the NuDepot " +
+                $"service, set '{RepositorySigningOptions.Section}:{nameof(RepositorySigningOptions.IsEnabled)}' to true.");
             Environment.ExitCode = 1;
             return;
         }

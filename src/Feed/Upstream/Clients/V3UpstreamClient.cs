@@ -11,64 +11,100 @@ namespace NuDepot.Feed.Upstream.Clients;
 /// <summary>
 /// The mirroring client for a NuGet server that uses the V3 protocol.
 /// </summary>
-public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logger) : IUpstreamClient
+/// <param name="client">The upstream feed's client.</param>
+/// <param name="logger">The logger.</param>
+/// <param name="name">The mirror's name, for the logs.</param>
+/// <param name="timeout">The time each request may take, or null for no limit.</param>
+public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logger, string name = "upstream", TimeSpan? timeout = null) : IUpstreamClient
 {
     private NuGetClient Client { get; } = client;
     private ILogger<V3UpstreamClient> Logger { get; } = logger;
+    private string Name { get; } = name;
+    private TimeSpan? Timeout { get; } = timeout;
 
     /// <inheritdoc />
     public async Task<Stream?> DownloadPackageOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         try
         {
-            using (Stream downloadStream = await Client.DownloadPackageAsync(id, version, cancellationToken))
+            using CancellationTokenSource? timeout = StartTimeout(cancellationToken);
+            CancellationToken token = timeout?.Token ?? cancellationToken;
+            using (Stream downloadStream = await Client.DownloadPackageAsync(id, version, token))
             {
-                return await downloadStream.AsTemporaryFileStreamAsync(cancellationToken);
+                return await downloadStream.AsTemporaryFileStreamAsync(token);
             }
         }
         catch (PackageNotFoundException)
         {
             return null;
         }
-        catch (Exception e)
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested)
         {
             Logger.LogError(
                 e,
-                "Failed to download {PackageId} {PackageVersion} from upstream",
+                "Failed to download {PackageId} {PackageVersion} from mirror {Mirror}",
                 id,
-                version);
+                version,
+                Name);
             return null;
         }
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<Package>> ListPackagesAsync(string id, CancellationToken cancellationToken)
-    {
-        try
-        {
-            IReadOnlyList<PackageMetadata> packages = await Client.GetPackageMetadataAsync(id, cancellationToken);
-
-            return [.. packages.Select(ToPackage)];
-        }
-        catch (Exception e)
-        {
-            Logger.LogError(e, "Failed to mirror {PackageId}'s upstream metadata", id);
-            return [];
-        }
-    }
+        => await TryListPackagesAsync(id, cancellationToken) ?? [];
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(string id, CancellationToken cancellationToken)
+        => await TryListPackageVersionsAsync(id, cancellationToken) ?? [];
+
+    /// <summary>
+    /// Like <see cref="ListPackagesAsync"/>, but null if the upstream feed couldn't be asked, rather than empty,
+    /// which means it doesn't have the package.
+    /// </summary>
+    internal async Task<IReadOnlyList<Package>?> TryListPackagesAsync(string id, CancellationToken cancellationToken)
     {
         try
         {
-            return await Client.ListPackageVersionsAsync(id, includeUnlisted: true, cancellationToken);
+            using CancellationTokenSource? timeout = StartTimeout(cancellationToken);
+            IReadOnlyList<PackageMetadata> packages = await Client.GetPackageMetadataAsync(id, timeout?.Token ?? cancellationToken);
+
+            return [.. packages.Select(ToPackage)];
         }
-        catch (Exception e)
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested)
         {
-            Logger.LogError(e, "Failed to mirror {PackageId}'s upstream versions", id);
-            return [];
+            Logger.LogError(e, "Failed to get {PackageId}'s metadata from mirror {Mirror}", id, Name);
+            return null;
         }
+    }
+
+    /// <summary>
+    /// Like <see cref="ListPackageVersionsAsync"/>, but null if the upstream feed couldn't be asked, rather than
+    /// empty, which means it doesn't have the package.
+    /// </summary>
+    internal async Task<IReadOnlyList<NuGetVersion>?> TryListPackageVersionsAsync(string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using CancellationTokenSource? timeout = StartTimeout(cancellationToken);
+            return await Client.ListPackageVersionsAsync(id, includeUnlisted: true, timeout?.Token ?? cancellationToken);
+        }
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested)
+        {
+            Logger.LogError(e, "Failed to get {PackageId}'s versions from mirror {Mirror}", id, Name);
+            return null;
+        }
+    }
+
+    // Null without a timeout, so requests get the caller's token.
+    private CancellationTokenSource? StartTimeout(CancellationToken cancellationToken)
+    {
+        if (Timeout is not TimeSpan limit)
+            return null;
+
+        CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(limit);
+        return timeout;
     }
 
     private Package ToPackage(Core.Models.PackageMetadata metadata)

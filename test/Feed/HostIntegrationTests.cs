@@ -130,6 +130,53 @@ public class HostIntegrationTests
         Assert.True(configuration.GetValue<bool>("Feed:Storage:Temporary"));
     }
 
+    [Theory]
+    [InlineData("Windows", false)]
+    [InlineData("Windows", true)]
+    [InlineData("Linux", false)]
+    [InlineData("Linux", true)]
+    public void HostSettingsSetUpTheFeaturesButLeaveThemToTheInstaller(string host, bool installerTurnedThemOn)
+    {
+        // The installer's choices are in setup.ini, which the services read before appsettings.json.
+        Dictionary<string, string?> setup = installerTurnedThemOn
+            ? new()
+            {
+                ["Feed:Authorization:Users:IsEnabled"] = "true",
+                ["Feed:RepositorySigning:IsEnabled"] = "true",
+                ["Feed:Mirroring:IsEnabled"] = "true",
+            }
+            : [];
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(setup)
+            .SetBasePath(Path.Combine(AppContext.BaseDirectory, "Hosts", host))
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+        ServiceCollection services = new();
+        services.AddSingleton<IConfiguration>(configuration);
+        services
+            .AddNuDepot()
+            .AddFeed()
+            .EnableUsers()
+            .EnableSigning()
+            .EnableMirroring();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        UserOptions users = provider.GetRequiredService<IOptions<UserOptions>>().Value;
+        MirroringOptions mirroring = provider.GetRequiredService<IOptions<MirroringOptions>>().Value;
+        Assert.Equal(installerTurnedThemOn, users.IsEnabled);
+        Assert.True(users.AnonymousReads);
+        Assert.Equal(installerTurnedThemOn, provider.GetRequiredService<IOptions<RepositorySigningOptions>>().Value.IsEnabled);
+        Assert.Equal(installerTurnedThemOn, mirroring.IsEnabled);
+        Assert.Equal(MirrorOptions.NuGetPackageSource, Assert.Single(mirroring.Mirrors).PackageSource);
+
+        // The example keys, which the services warn about.
+        ApiKeyOptions keys = provider.GetRequiredService<IOptions<FeedOptions>>().Value.Authorization.ApiKeys;
+        Assert.Null(keys.ReadOnly);
+        Assert.NotEmpty(keys.ReadWrite!);
+        Assert.NotEmpty(keys.Admin!);
+    }
+
     [Fact]
     public void TemporaryStorageUsesNewFolderThatIsDeletedOnShutdown()
     {
