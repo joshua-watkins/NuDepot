@@ -6,10 +6,10 @@ using NuDepot.Core.PackageDetails;
 using NuGet.Frameworks;
 using NuGet.Versioning;
 
-namespace NuDepot.Gallery.Pages;
+namespace NuDepot.Gallery.Slices;
 
 /// <summary>
-/// A package's details page.
+/// The model of <see cref="Package"/>, a package's details page.
 /// </summary>
 public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 {
@@ -56,6 +56,11 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     public bool IsDotnetTool { get; private set; }
 
     /// <summary>
+    /// Whether the package is a PowerShell module or script, installed with Install-PSResource.
+    /// </summary>
+    public bool IsPowerShellResource { get; private set; }
+
+    /// <summary>
     /// When the package last had a version published.
     /// </summary>
     public DateTime LastUpdated { get; private set; }
@@ -68,7 +73,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     /// <summary>
     /// The packages on the feed that depend on this one, most downloaded first.
     /// </summary>
-    public IReadOnlyList<PackageDependent> UsedBy { get; set; } = [];
+    public IReadOnlyList<PackageDependent> UsedBy { get; private set; } = [];
 
     /// <summary>
     /// The package's dependencies, or null if the package wasn't found.
@@ -157,6 +162,10 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         if (IsDotnetTool)
             return [new InstallInstructions(".NET CLI", ">", [$"dotnet tool install --global {id} --version {version}"])];
 
+        // PSResourceGet comes with PowerShell 7.4 and later. The repository is registered as on the upload page.
+        if (IsPowerShellResource)
+            return [new InstallInstructions("PowerShell", "PS>", [$"Install-PSResource -Name {id} -Version {version} -Repository NuDepot"])];
+
         return
         [
             new InstallInstructions(".NET CLI", ">", [$"dotnet add package {id} --version {version}"]),
@@ -172,8 +181,8 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     /// <param name="id">The package's ID.</param>
     /// <param name="version">The version to show, or null for the latest listed version.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
-    /// <returns>A task that completes when the page's properties are set.</returns>
-    public async Task OnGetAsync(string id, string? version, CancellationToken cancellationToken)
+    /// <returns>A task that completes when the model's properties are set.</returns>
+    public async Task LoadAsync(string id, string? version, CancellationToken cancellationToken)
     {
         IReadOnlyList<NuDepotPackageMetadata> packages = await Packages.GetPackageMetadataAsync(id, cancellationToken);
         List<NuDepotPackageMetadata> listedPackages = [.. packages.Where(p => p.IsListed())];
@@ -204,6 +213,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         Found = true;
         IsDotnetTemplate = packageTypes.Any(t => t.Equals("Template", StringComparison.OrdinalIgnoreCase));
         IsDotnetTool = packageTypes.Any(t => t.Equals("DotnetTool", StringComparison.OrdinalIgnoreCase));
+        IsPowerShellResource = (Package.Tags ?? []).Any(t => t.Equals("PSModule", StringComparison.OrdinalIgnoreCase) || t.Equals("PSScript", StringComparison.OrdinalIgnoreCase));
         LastUpdated = packages.Max(p => p.Published).UtcDateTime;
         TotalDownloads = packages.Sum(p => p.Downloads);
 

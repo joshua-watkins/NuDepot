@@ -3,9 +3,8 @@ using NuDepot.Core.Hosting;
 using NuDepot.Core.PackageDetails;
 using NuDepot.Core.RepositorySignatures;
 using NuDepot.Core.Search;
-using NuDepot.Core.ServiceIndex;
 using NuDepot.Gallery;
-using NuDepot.Gallery.Pages;
+using NuDepot.Gallery.Slices;
 
 // In the namespace of IServiceCollection, so applications see AddNuDepotGallery() without a using.
 namespace Microsoft.Extensions.DependencyInjection;
@@ -31,11 +30,11 @@ public static class GalleryServiceCollectionExtensions
             options.Configure(configure);
 
         services.AddSingleton<FeedConnection>();
-        services.AddSingleton<IServiceIndexClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateServiceIndexClient());
         services.AddSingleton<ISearchClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateSearchClient());
         services.AddSingleton<IPackageDetailsClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreatePackageDetailsClient());
         services.AddSingleton<IRepositorySignaturesClient>(provider => provider.GetRequiredService<FeedConnection>().CreateRepositorySignaturesClient());
 
+        // The models the slices render, which the endpoints load.
         services.AddTransient<IndexModel>();
         services.AddTransient<PackageModel>();
         services.AddTransient<UploadModel>();

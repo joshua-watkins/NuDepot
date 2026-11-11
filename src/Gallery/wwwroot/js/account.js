@@ -1,78 +1,68 @@
 // Signs in with passkeys and manages the signed-in user's account, through the feed server's
 // api/account endpoints. Passkey options and credentials are sent as WebAuthn's JSON, with
-// binary values encoded as base64url.
-(function () {
+// binary values encoded as base64url. Written for browsers that support passkeys.
+(() => {
     'use strict';
 
-    var settings = window.nudepotAccount || {};
-    var api = (settings.pathBase || '') + '/api/account';
+    const settings = window.nudepotAccount ?? {};
+    const api = `${settings.pathBase ?? ''}/api/account`;
 
     // Binary values
 
-    function toBase64Url(buffer) {
-        var bytes = new Uint8Array(buffer);
-        var binary = '';
-        for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const toBase64Url = (buffer) => {
+        const binary = String.fromCharCode(...new Uint8Array(buffer));
         return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    }
+    };
 
-    function fromBase64Url(value) {
-        var base64 = value.replace(/-/g, '+').replace(/_/g, '/');
-        while (base64.length % 4) base64 += '=';
-        var binary = atob(base64);
-        var bytes = new Uint8Array(binary.length);
-        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        return bytes.buffer;
-    }
+    const fromBase64Url = (value) => {
+        const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+        return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)).buffer;
+    };
 
     // The browser rejects null where it expects a value, so leave out what the server didn't set.
-    function withoutNulls(value) {
+    const withoutNulls = (value) => {
         if (Array.isArray(value)) return value.map(withoutNulls);
         if (value === null || typeof value !== 'object') return value;
 
-        var result = {};
-        Object.keys(value).forEach(function (key) {
-            if (value[key] !== null) result[key] = withoutNulls(value[key]);
-        });
-        return result;
-    }
+        return Object.fromEntries(Object.entries(value)
+            .filter(([, item]) => item !== null)
+            .map(([key, item]) => [key, withoutNulls(item)]));
+    };
 
-    function toDescriptors(descriptors) {
-        return (descriptors || []).map(function (d) {
-            return Object.assign({}, d, { id: fromBase64Url(d.id) });
-        });
-    }
+    const toDescriptors = (descriptors) => (descriptors ?? []).map((d) => ({ ...d, id: fromBase64Url(d.id) }));
 
-    function toCreationOptions(json) {
+    const toCreationOptions = (json) => {
         json = withoutNulls(json);
-        return Object.assign({}, json, {
+        return {
+            ...json,
             challenge: fromBase64Url(json.challenge),
-            user: Object.assign({}, json.user, { id: fromBase64Url(json.user.id) }),
+            user: { ...json.user, id: fromBase64Url(json.user.id) },
             excludeCredentials: toDescriptors(json.excludeCredentials),
-        });
-    }
+        };
+    };
 
-    function toRequestOptions(json) {
+    const toRequestOptions = (json) => {
         json = withoutNulls(json);
-        return Object.assign({}, json, {
+        return {
+            ...json,
             challenge: fromBase64Url(json.challenge),
             allowCredentials: toDescriptors(json.allowCredentials),
-        });
-    }
+        };
+    };
 
-    function credentialToJson(credential) {
-        var response = credential.response;
-        var json = {
+    const credentialToJson = (credential) => {
+        const { response } = credential;
+        const json = {
             id: credential.id,
             rawId: toBase64Url(credential.rawId),
             type: credential.type,
-            clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
+            clientExtensionResults: credential.getClientExtensionResults(),
             response: { clientDataJSON: toBase64Url(response.clientDataJSON) },
         };
 
         if (response.attestationObject) {
             json.response.attestationObject = toBase64Url(response.attestationObject);
-            json.response.transports = response.getTransports ? response.getTransports() : [];
+            json.response.transports = response.getTransports();
         } else {
             json.response.authenticatorData = toBase64Url(response.authenticatorData);
             json.response.signature = toBase64Url(response.signature);
@@ -80,54 +70,52 @@
         }
 
         return json;
-    }
+    };
 
     // Requests
 
-    function request(method, path, body) {
-        var init = { method: method, credentials: 'same-origin', headers: {} };
+    const request = async (method, path, body) => {
+        const init = { method, credentials: 'same-origin', headers: {} };
         if (body !== undefined) {
             init.headers['Content-Type'] = 'application/json';
             init.body = JSON.stringify(body);
         }
 
-        return fetch(api + path, init).then(function (response) {
-            var isJson = (response.headers.get('Content-Type') || '').indexOf('json') >= 0;
-            if (!response.ok) {
-                return response.text().then(function (message) {
-                    throw new Error(message || 'Something went wrong (' + response.status + ').');
-                });
-            }
+        const response = await fetch(api + path, init);
+        if (!response.ok) {
+            const message = await response.text();
+            throw new Error(message || `Something went wrong (${response.status}).`);
+        }
 
-            return isJson ? response.json() : null;
-        });
-    }
+        const isJson = (response.headers.get('Content-Type') ?? '').includes('json');
+        return isJson ? response.json() : null;
+    };
 
     // Creates a passkey for a new account, with its user name, or for the signed-in user.
-    function createPasskey(optionsPath, body) {
-        var path = body.userName ? '/passkeys?userName=' + encodeURIComponent(body.userName) : '/passkeys';
+    const createPasskey = async (optionsPath, body) => {
+        const path = body.userName ? `/passkeys?userName=${encodeURIComponent(body.userName)}` : '/passkeys';
 
-        return request('POST', optionsPath, body)
-            .then(function (options) { return navigator.credentials.create({ publicKey: toCreationOptions(options) }); })
-            .then(function (credential) { return request('POST', path, credentialToJson(credential)); });
-    }
+        const options = await request('POST', optionsPath, body);
+        const credential = await navigator.credentials.create({ publicKey: toCreationOptions(options) });
+        return request('POST', path, credentialToJson(credential));
+    };
 
-    function signIn(userName) {
-        return request('POST', '/signin/options', { userName: userName })
-            .then(function (options) { return navigator.credentials.get({ publicKey: toRequestOptions(options) }); })
-            .then(function (credential) { return request('POST', '/signin', credentialToJson(credential)); });
-    }
+    const signIn = async (userName) => {
+        const options = await request('POST', '/signin/options', { userName });
+        const credential = await navigator.credentials.get({ publicKey: toRequestOptions(options) });
+        return request('POST', '/signin', credentialToJson(credential));
+    };
 
-    // A name for a new passkey, so the user can tell their passkeys apart.
-    function guessPasskeyName() {
-        var platform = navigator.userAgentData && navigator.userAgentData.platform;
-        return platform ? 'Passkey on ' + platform : 'Passkey';
-    }
+    // A name for a new passkey, so the user can tell their passkeys apart. Only Chromium browsers say their platform.
+    const guessPasskeyName = () => {
+        const platform = navigator.userAgentData?.platform;
+        return platform ? `Passkey on ${platform}` : 'Passkey';
+    };
 
     // Page helpers
 
-    function showError(error) {
-        var element = document.querySelector('[data-account-error]');
+    const showError = (error) => {
+        const element = document.querySelector('[data-account-error]');
         if (!element) return;
 
         // Cancelling the browser's passkey prompt isn't an error worth showing.
@@ -138,191 +126,191 @@
 
         element.textContent = error.message || String(error);
         element.hidden = false;
-    }
+    };
 
-    function busy(button, promise) {
+    const busy = async (button, promise) => {
         button.disabled = true;
         showError(null);
-        return promise
-            .catch(showError)
-            .then(function () { button.disabled = false; });
-    }
+        try {
+            await promise;
+        } catch (error) {
+            showError(error);
+        } finally {
+            button.disabled = false;
+        }
+    };
 
-    function formatDate(value) {
-        return value ? new Date(value).toLocaleDateString() : 'Never';
-    }
+    const formatDate = (value) => value ? new Date(value).toLocaleDateString() : 'Never';
 
-    function cell(row, text) {
-        var td = document.createElement('td');
+    const cell = (row, text) => {
+        const td = document.createElement('td');
         td.textContent = text;
         row.appendChild(td);
         return td;
-    }
+    };
 
-    function removeButton(label, onClick) {
-        var button = document.createElement('button');
+    const removeButton = (label, onClick) => {
+        const button = document.createElement('button');
         button.type = 'button';
         button.className = 'link-button';
         button.textContent = label;
-        button.addEventListener('click', function () { busy(button, onClick()); });
+        button.addEventListener('click', () => busy(button, onClick()));
         return button;
-    }
+    };
 
-    function goTo(url) {
-        window.location.assign(url || settings.returnUrl || '/');
-    }
+    const goTo = (url) => window.location.assign(url || settings.returnUrl || '/');
 
     // Sign-in page
 
-    function initSignIn(page) {
+    const initSignIn = (page) => {
+        // Passkeys need HTTPS, or localhost: over HTTP, browsers don't offer them.
         if (!window.PublicKeyCredential) {
             page.querySelector('.passkey-unsupported').hidden = false;
             page.querySelector('#signin-button').disabled = true;
             return;
         }
 
-        var signInForm = page.querySelector('#signin-form');
-        signInForm.addEventListener('submit', function (event) {
+        const signInForm = page.querySelector('#signin-form');
+        signInForm.addEventListener('submit', (event) => {
             event.preventDefault();
-            var button = signInForm.querySelector('button');
-            var userName = signInForm.querySelector('#signin-username').value.trim();
+            const userName = signInForm.querySelector('#signin-username').value.trim();
 
-            busy(button, signIn(userName).then(function () { goTo(); }));
+            busy(signInForm.querySelector('button'), signIn(userName).then(() => goTo()));
         });
 
-        request('GET', '').then(function (account) {
-            if (account.signedIn) return goTo();
-            if (!account.canSignUp) return;
+        request('GET', '')
+            .then((account) => {
+                if (account.signedIn) return goTo();
+                if (!account.canSignUp) return;
 
-            page.querySelector('#signup-section').hidden = false;
-            page.querySelector('#signup-first').hidden = !account.isFirstUser;
-        }).catch(showError);
+                page.querySelector('#signup-section').hidden = false;
+                page.querySelector('#signup-first').hidden = !account.isFirstUser;
+            })
+            .catch(showError);
 
-        var form = page.querySelector('#signup-form');
-        form.addEventListener('submit', function (event) {
+        const form = page.querySelector('#signup-form');
+        form.addEventListener('submit', (event) => {
             event.preventDefault();
-            var button = form.querySelector('button');
-            var userName = form.querySelector('#signup-username').value.trim();
+            const userName = form.querySelector('#signup-username').value.trim();
 
-            busy(button, createPasskey('/signup', { userName: userName, passkeyName: guessPasskeyName() })
-                .then(function () { goTo(); }));
+            busy(form.querySelector('button'), createPasskey('/signup', { userName, passkeyName: guessPasskeyName() }).then(() => goTo()));
         });
-    }
+    };
 
     // Account page
 
-    function loadPasskeys(page) {
-        return request('GET', '/passkeys').then(function (passkeys) {
-            var body = page.querySelector('#passkeys');
-            body.textContent = '';
+    const loadPasskeys = async (page) => {
+        const passkeys = await request('GET', '/passkeys');
+        const body = page.querySelector('#passkeys');
+        body.textContent = '';
 
-            passkeys.forEach(function (passkey) {
-                var row = document.createElement('tr');
-                cell(row, passkey.name + (passkey.isBackedUp ? ' (synced)' : ''));
-                cell(row, formatDate(passkey.createdAt));
-                cell(row, formatDate(passkey.lastUsedAt));
-                cell(row, '').appendChild(removeButton('Remove', function () {
-                    if (!window.confirm('Remove the passkey "' + passkey.name + '"? You won\'t be able to sign in with it.')) {
-                        return Promise.resolve();
-                    }
+        for (const passkey of passkeys) {
+            const row = document.createElement('tr');
+            cell(row, passkey.name + (passkey.isBackedUp ? ' (synced)' : ''));
+            cell(row, formatDate(passkey.createdAt));
+            cell(row, formatDate(passkey.lastUsedAt));
+            cell(row, '').appendChild(removeButton('Remove', async () => {
+                if (!window.confirm(`Remove the passkey "${passkey.name}"? You won't be able to sign in with it.`)) return;
 
-                    return request('DELETE', '/passkeys/' + passkey.id).then(function () { return loadPasskeys(page); });
-                }));
-                body.appendChild(row);
-            });
-        });
-    }
+                await request('DELETE', `/passkeys/${passkey.id}`);
+                await loadPasskeys(page);
+            }));
+            body.appendChild(row);
+        }
+    };
 
-    function loadApiKeys(page) {
-        return request('GET', '/apikeys').then(function (apiKeys) {
-            var body = page.querySelector('#apikeys');
-            body.textContent = '';
+    const loadApiKeys = async (page) => {
+        const apiKeys = await request('GET', '/apikeys');
+        const body = page.querySelector('#apikeys');
+        body.textContent = '';
 
-            if (apiKeys.length === 0) {
-                var empty = document.createElement('tr');
-                cell(empty, 'You have no API keys.').colSpan = 5;
-                body.appendChild(empty);
-            }
+        if (apiKeys.length === 0) {
+            const empty = document.createElement('tr');
+            cell(empty, 'You have no API keys.').colSpan = 5;
+            body.appendChild(empty);
+        }
 
-            apiKeys.forEach(function (apiKey) {
-                var row = document.createElement('tr');
-                cell(row, apiKey.name);
-                cell(row, apiKey.prefix + '…').className = 'text-nowrap';
-                cell(row, formatDate(apiKey.createdAt));
-                cell(row, formatDate(apiKey.lastUsedAt));
-                cell(row, '').appendChild(removeButton('Revoke', function () {
-                    if (!window.confirm('Revoke the API key "' + apiKey.name + '"? Clients using it will stop working.')) {
-                        return Promise.resolve();
-                    }
+        for (const apiKey of apiKeys) {
+            const row = document.createElement('tr');
+            cell(row, apiKey.name);
+            cell(row, `${apiKey.prefix}…`).className = 'text-nowrap';
+            cell(row, formatDate(apiKey.createdAt));
+            cell(row, formatDate(apiKey.lastUsedAt));
+            cell(row, '').appendChild(removeButton('Revoke', async () => {
+                if (!window.confirm(`Revoke the API key "${apiKey.name}"? Clients using it will stop working.`)) return;
 
-                    return request('DELETE', '/apikeys/' + apiKey.id).then(function () { return loadApiKeys(page); });
-                }));
-                body.appendChild(row);
-            });
-        });
-    }
+                await request('DELETE', `/apikeys/${apiKey.id}`);
+                await loadApiKeys(page);
+            }));
+            body.appendChild(row);
+        }
+    };
 
-    function showNewApiKey(page, key) {
+    const showNewApiKey = (page, key) => {
         page.querySelector('#new-apikey-value').textContent = key;
         page.querySelector('#new-apikey-config').textContent = [
             '<packageSources>',
-            '  <add key="NuDepot" value="' + (settings.serviceIndexUrl || '') + '" />',
+            `  <add key="NuDepot" value="${settings.serviceIndexUrl ?? ''}" />`,
             '</packageSources>',
             '<packageSourceCredentials>',
             '  <NuDepot>',
-            '    <add key="Username" value="' + page.querySelector('#account-name').textContent + '" />',
-            '    <add key="ClearTextPassword" value="' + key + '" />',
+            `    <add key="Username" value="${page.querySelector('#account-name').textContent}" />`,
+            `    <add key="ClearTextPassword" value="${key}" />`,
             '  </NuDepot>',
             '</packageSourceCredentials>',
         ].join('\n');
         page.querySelector('#new-apikey').hidden = false;
 
-        var copy = page.querySelector('#copy-apikey');
-        copy.onclick = function () { window.nudepot.copyTextToClipboard(key, copy); };
-    }
+        const copy = page.querySelector('#copy-apikey');
+        copy.onclick = () => window.nudepot.copyTextToClipboard(key, copy);
+    };
 
-    function initAccount(page) {
-        request('GET', '').then(function (account) {
-            if (!account.signedIn) return goTo((settings.pathBase || '') + '/account/signin?returnUrl=' + encodeURIComponent(window.location.pathname));
-            page.querySelector('#account-role').textContent = account.role;
-        }).catch(showError);
+    const initAccount = (page) => {
+        request('GET', '')
+            .then((account) => {
+                if (!account.signedIn) {
+                    return goTo(`${settings.pathBase ?? ''}/account/signin?returnUrl=${encodeURIComponent(window.location.pathname)}`);
+                }
+
+                page.querySelector('#account-role').textContent = account.role;
+            })
+            .catch(showError);
 
         loadPasskeys(page).catch(showError);
-
         loadApiKeys(page).catch(showError);
 
-        var apiKeyForm = page.querySelector('#create-apikey-form');
-        apiKeyForm.addEventListener('submit', function (event) {
+        const apiKeyForm = page.querySelector('#create-apikey-form');
+        apiKeyForm.addEventListener('submit', (event) => {
             event.preventDefault();
-            var input = apiKeyForm.querySelector('#apikey-name');
-            busy(apiKeyForm.querySelector('button'), request('POST', '/apikeys', { name: input.value.trim() })
-                .then(function (apiKey) {
-                    input.value = '';
-                    showNewApiKey(page, apiKey.key);
-                    return loadApiKeys(page);
-                }));
+            const input = apiKeyForm.querySelector('#apikey-name');
+
+            busy(apiKeyForm.querySelector('button'), (async () => {
+                const apiKey = await request('POST', '/apikeys', { name: input.value.trim() });
+                input.value = '';
+                showNewApiKey(page, apiKey.key);
+                await loadApiKeys(page);
+            })());
         });
 
-        var passkeyForm = page.querySelector('#add-passkey-form');
-        passkeyForm.addEventListener('submit', function (event) {
+        const passkeyForm = page.querySelector('#add-passkey-form');
+        passkeyForm.addEventListener('submit', (event) => {
             event.preventDefault();
-            var input = passkeyForm.querySelector('#passkey-name');
-            busy(passkeyForm.querySelector('button'), createPasskey('/passkeys/options', { passkeyName: input.value.trim() || guessPasskeyName() })
-                .then(function () {
-                    input.value = '';
-                    return loadPasskeys(page);
-                }));
+            const input = passkeyForm.querySelector('#passkey-name');
+
+            busy(passkeyForm.querySelector('button'), (async () => {
+                await createPasskey('/passkeys/options', { passkeyName: input.value.trim() || guessPasskeyName() });
+                input.value = '';
+                await loadPasskeys(page);
+            })());
         });
 
-        var signOutButton = page.querySelector('#signout-button');
-        signOutButton.addEventListener('click', function () {
-            busy(signOutButton, request('POST', '/signout').then(function () { goTo(); }));
-        });
-    }
+        const signOutButton = page.querySelector('#signout-button');
+        signOutButton.addEventListener('click', () => busy(signOutButton, request('POST', '/signout').then(() => goTo())));
+    };
 
-    var signInPage = document.getElementById('signin-page');
+    const signInPage = document.getElementById('signin-page');
     if (signInPage) initSignIn(signInPage);
 
-    var accountPage = document.getElementById('account-page');
+    const accountPage = document.getElementById('account-page');
     if (accountPage) initAccount(accountPage);
 })();

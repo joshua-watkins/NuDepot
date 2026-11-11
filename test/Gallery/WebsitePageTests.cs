@@ -8,7 +8,6 @@ using NuDepot.Core.Models;
 using NuDepot.Core.PackageDetails;
 using NuDepot.Core.RepositorySignatures;
 using NuDepot.Core.Search;
-using NuDepot.Core.ServiceIndex;
 using System.Net;
 using Xunit;
 
@@ -23,7 +22,6 @@ public class WebsitePageTests : IDisposable
 
     private Mock<ISearchClient> Search { get; } = new();
     private Mock<IPackageDetailsClient> Packages { get; } = new();
-    private Mock<IServiceIndexClient> ServiceIndex { get; } = new();
     private Mock<IRepositorySignaturesClient> RepositorySignatures { get; } = new();
     private WebApplication App { get; }
 
@@ -45,7 +43,6 @@ public class WebsitePageTests : IDisposable
         builder.Services.AddNuDepotGallery();
         builder.Services.AddSingleton(Search.Object);
         builder.Services.AddSingleton(Packages.Object);
-        builder.Services.AddSingleton(ServiceIndex.Object);
         builder.Services.AddSingleton(RepositorySignatures.Object);
 
         App = builder.Build();
@@ -169,21 +166,12 @@ public class WebsitePageTests : IDisposable
     [Fact]
     public async Task UploadPageShowsPushCommands()
     {
-        ServiceIndex
-            .Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ServiceIndexResponse
-            {
-                Version = "3.0.0",
-                Resources =
-                [
-                    new() { Type = "PackagePublish/2.0.0", ResourceUrl = "https://feed.test/api/v2/package" },
-                ],
-            });
-
         string html = await GetPageAsync("/upload");
 
         Assert.Contains($"<code>{ServiceIndexUrl}</code>", html);
         Assert.Contains($"\"dotnet nuget push -s {ServiceIndexUrl} package.nupkg\"", html);
+        Assert.Contains($"\"Register-PSResourceRepository -Name NuDepot -Uri {ServiceIndexUrl} -Trusted\"", html);
+        Assert.Contains("\"Publish-PSResource -Path ./MyModule -Repository NuDepot\"", html);
         Assert.Contains("class=\"active\"><span>Upload</span>", html);
 
         // The feed doesn't sign packages.
@@ -193,9 +181,6 @@ public class WebsitePageTests : IDisposable
     [Fact]
     public async Task UploadPageShowsTheFeedsSigningCertificates()
     {
-        ServiceIndex
-            .Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ServiceIndexResponse { Version = "3.0.0", Resources = [] });
         RepositorySignatures
             .Setup(s => s.GetOrNullAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new RepositorySignaturesResponse

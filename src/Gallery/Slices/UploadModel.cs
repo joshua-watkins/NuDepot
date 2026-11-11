@@ -1,19 +1,16 @@
-using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
 using NuDepot.Core.RepositorySignatures;
-using NuDepot.Core.ServiceIndex;
 
-namespace NuDepot.Gallery.Pages;
+namespace NuDepot.Gallery.Slices;
 
 /// <summary>
-/// The page that explains how to push packages, and how to trust the feed's repository signatures.
+/// The model of <see cref="Upload"/>, the page that explains how to push packages, and how to trust the feed's
+/// repository signatures.
 /// </summary>
-/// <param name="serviceIndex">Reads the feed's service index.</param>
 /// <param name="repositorySignatures">Reads the certificates the feed signs packages with.</param>
 /// <param name="feed">The feed the website shows.</param>
-public class UploadModel(IServiceIndexClient serviceIndex, IRepositorySignaturesClient repositorySignatures, FeedConnection feed)
+public class UploadModel(IRepositorySignaturesClient repositorySignatures, FeedConnection feed)
 {
-    private IServiceIndexClient ServiceIndex { get; } = serviceIndex;
     private IRepositorySignaturesClient RepositorySignatures { get; } = repositorySignatures;
     private FeedConnection Feed { get; } = feed;
 
@@ -33,27 +30,19 @@ public class UploadModel(IServiceIndexClient serviceIndex, IRepositorySignatures
     public string? ServiceIndexUrl { get; private set; }
 
     /// <summary>
-    /// The feed's package publish URL, as the browser reaches it.
-    /// </summary>
-    public string? PublishUrl { get; private set; }
-
-    /// <summary>
     /// The certificates the feed signs packages with, which are read from the feed each time the page is shown.
     /// Empty if the feed doesn't repository sign its packages.
     /// </summary>
     public IReadOnlyList<SigningCertificateModel> SigningCertificates { get; private set; } = [];
 
     /// <summary>
-    /// Reads the feed's URLs from its service index, and its signing certificates.
+    /// Reads the feed's signing certificates.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the task.</param>
-    /// <returns>A task that completes when the page's properties are set.</returns>
-    public async Task OnGetAsync(CancellationToken cancellationToken)
+    /// <returns>A task that completes when the model's properties are set.</returns>
+    public async Task LoadAsync(CancellationToken cancellationToken)
     {
-        ServiceIndexResponse serviceIndex = await ServiceIndex.GetAsync(cancellationToken);
-
         ServiceIndexUrl = Feed.ToPublicUrl(Feed.ServiceIndexUrl);
-        PublishUrl = Feed.ToPublicUrl(serviceIndex.GetPackagePublishResourceUrl());
 
         RepositorySignaturesResponse? signatures = await RepositorySignatures.GetOrNullAsync(cancellationToken);
         SigningCertificates = [.. (signatures?.SigningCertificates ?? [])
@@ -109,15 +98,15 @@ public class UploadModel(IServiceIndexClient serviceIndex, IRepositorySignatures
                 [$"paket push --url {BaseUrl} package.nupkg"],
                 "https://fsprojects.github.io/Paket/paket-push.html"),
 
-            // TODO: This is broken...
+            // PSResourceGet, which comes with PowerShell 7.4 and later, reads V3 feeds. The older PowerShellGet
+            // only reads V2 feeds, which NuDepot doesn't serve.
             new PushInstructions(
-                "PowerShellGet",
+                "PowerShell",
                 [
-                    $"Register-PSRepository -Name \"NuDepot\" -SourceLocation \"{ServiceIndexUrl}\" "
-                        + $"-PublishLocation \"{PublishUrl}\" -InstallationPolicy \"Trusted\"",
-                    "Publish-Module -Name PS-Module -Repository NuDepot",
+                    $"Register-PSResourceRepository -Name NuDepot -Uri {ServiceIndexUrl} -Trusted",
+                    "Publish-PSResource -Path ./MyModule -Repository NuDepot",
                 ],
-                "https://docs.microsoft.com/en-us/powershell/module/powershellget/publish-module"),
+                "https://learn.microsoft.com/powershell/module/microsoft.powershell.psresourceget/publish-psresource"),
         ];
     }
 }

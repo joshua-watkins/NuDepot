@@ -1,7 +1,7 @@
 using Moq;
 using NuDepot.Core.Models;
 using NuDepot.Core.PackageDetails;
-using NuDepot.Gallery.Pages;
+using NuDepot.Gallery.Slices;
 using NuGet.Versioning;
 using Xunit;
 
@@ -29,7 +29,7 @@ public class PackageModelFacts
     {
         SetupPackages();
 
-        await Target.OnGetAsync("testpackage", "1.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
 
         Assert.False(Target.Found);
         Assert.Equal("testpackage", Target.Package.PackageId);
@@ -42,7 +42,7 @@ public class PackageModelFacts
     {
         SetupPackages(CreatePackage("1.0.0", listed: false));
 
-        await Target.OnGetAsync("testpackage", version: null, Cancellation);
+        await Target.LoadAsync("testpackage", version: null, Cancellation);
 
         Assert.False(Target.Found);
         Assert.Equal("testpackage", Target.Package.PackageId);
@@ -58,7 +58,7 @@ public class PackageModelFacts
             CreatePackage("2.0.0"),
             CreatePackage("3.0.0"));
 
-        await Target.OnGetAsync("testpackage", "2.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "2.0.0", Cancellation);
 
         Assert.True(Target.Found);
         Assert.Equal("testpackage", Target.Package.PackageId);
@@ -81,7 +81,7 @@ public class PackageModelFacts
             CreatePackage("2.0.0", listed: false),
             CreatePackage("3.0.0"));
 
-        await Target.OnGetAsync("testpackage", "2.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "2.0.0", Cancellation);
 
         Assert.True(Target.Found);
         Assert.Equal("testpackage", Target.Package.PackageId);
@@ -102,7 +102,7 @@ public class PackageModelFacts
             CreatePackage("2.0.0"),
             CreatePackage("3.0.0", listed: false));
 
-        await Target.OnGetAsync("testpackage", "4.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "4.0.0", Cancellation);
 
         Assert.True(Target.Found);
         Assert.Equal("testpackage", Target.Package.PackageId);
@@ -125,11 +125,38 @@ public class PackageModelFacts
     {
         SetupPackages(CreatePackage("1.0.0", packageTypes: packageTypes));
 
-        await Target.OnGetAsync("testpackage", "1.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
 
         Assert.True(Target.Found);
         Assert.Equal(expectDotnetTemplate, Target.IsDotnetTemplate);
         Assert.Equal(expectDotnetTool, Target.IsDotnetTool);
+    }
+
+    [Theory]
+    [InlineData("PSModule")]
+    [InlineData("psscript")]
+    public async Task PowerShellResourcesInstallWithPSResourceGet(string tag)
+    {
+        NuDepotPackageMetadata package = CreatePackage("1.0.0");
+        package.Tags = ["PSEdition_Core", tag];
+        SetupPackages(package);
+
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
+
+        InstallInstructions instructions = Assert.Single(Target.GetInstallInstructions());
+        Assert.Equal("PowerShell", instructions.Name);
+        Assert.Equal(["Install-PSResource -Name testpackage -Version 1.0.0 -Repository NuDepot"], instructions.Content);
+    }
+
+    [Fact]
+    public async Task OtherPackagesInstallWithNuGetTools()
+    {
+        SetupPackages(CreatePackage("1.0.0"));
+
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
+
+        Assert.False(Target.IsPowerShellResource);
+        Assert.DoesNotContain(Target.GetInstallInstructions(), instructions => instructions.Name == "PowerShell");
     }
 
     [Fact]
@@ -139,7 +166,7 @@ public class PackageModelFacts
         package.PackageTypes = null;
         SetupPackages(package);
 
-        await Target.OnGetAsync("testpackage", "1.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
 
         Assert.True(Target.Found);
         Assert.False(Target.IsDotnetTemplate);
@@ -162,7 +189,7 @@ public class PackageModelFacts
                 ]
             });
 
-        await Target.OnGetAsync("testpackage", "1.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
 
         Assert.Equal(2, Target.UsedBy.Count);
         Assert.Equal("Used by 1", Target.UsedBy[0].Id);
@@ -193,7 +220,7 @@ public class PackageModelFacts
             },
         ]));
 
-        await Target.OnGetAsync("testpackage", "1.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
 
         Assert.True(Target.Found);
         Assert.Equal(2, Target.DependencyGroups!.Count);
@@ -233,7 +260,7 @@ public class PackageModelFacts
             },
         ]));
 
-        await Target.OnGetAsync("testpackage", "1.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
 
         Assert.True(Target.Found);
         PackageModel.DependencyGroupModel group = Assert.Single(Target.DependencyGroups!);
@@ -249,7 +276,7 @@ public class PackageModelFacts
             CreatePackage("1.0.0", downloads: 10, published: now.AddDays(-2)),
             CreatePackage("2.0.0", listed: false, downloads: 5, published: now));
 
-        await Target.OnGetAsync("testpackage", "1.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
 
         Assert.True(Target.Found);
         Assert.Equal(15, Target.TotalDownloads);
@@ -265,7 +292,7 @@ public class PackageModelFacts
         package.PackageContentUrl = "https://feed.test/testpackage.1.0.0.nupkg";
         SetupPackages(package);
 
-        await Target.OnGetAsync("testpackage", "1.0.0", Cancellation);
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
 
         Assert.Equal("https://feed.test/icon", Target.IconUrl);
         Assert.Null(Target.LicenseUrl);
@@ -295,7 +322,7 @@ public class PackageModelFacts
                     Cancellation))
                 .ReturnsAsync(readmeStream);
 
-            await Target.OnGetAsync("testpackage", "1.0.0", Cancellation);
+            await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
 
             Assert.Equal(
                 "<h1 id=\"my-readme\">My readme</h1>\n<p>Hello world!</p>\n",

@@ -13,7 +13,7 @@ internal static class WebsiteFiles
 {
     /// <summary>
     /// The path the files are served under, named after the assembly like a Razor class library's
-    /// static web assets. See <see cref="Pages.LayoutModel.Content"/>.
+    /// static web assets. See <see cref="Slices.LayoutModel.Content"/>.
     /// </summary>
     public static readonly string RequestPath = "/_content/" + typeof(WebsiteFiles).Assembly.GetName().Name;
 

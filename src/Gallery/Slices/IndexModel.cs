@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Http;
 using NuDepot.Core.Models;
 using NuDepot.Core.Search;
 
-namespace NuDepot.Gallery.Pages;
+namespace NuDepot.Gallery.Slices;
 
 /// <summary>
-/// The search page.
+/// The model of <see cref="Index"/>, the search page.
 /// </summary>
 public class IndexModel(ISearchClient search, FeedConnection feed)
 {
@@ -128,7 +128,7 @@ public class IndexModel(ISearchClient search, FeedConnection feed)
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>A task that completes when <see cref="Packages"/> is set.</returns>
-    public async Task OnGetAsync(CancellationToken cancellationToken)
+    public async Task LoadAsync(CancellationToken cancellationToken)
     {
         string? packageType = PackageType == "any" ? null : PackageType;
         string? framework = Framework == "any" ? null : Framework;

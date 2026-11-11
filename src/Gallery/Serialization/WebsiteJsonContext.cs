@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Html;
-using NuDepot.Gallery.Pages;
+using NuDepot.Gallery.Slices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace NuDepot.Gallery.Serialization;
 
 /// <summary>
-/// Source generated JSON serialization for the data the pages pass to their scripts.
+/// Source generated JSON serialization for the data the slices pass to their scripts.
 /// </summary>
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
 [JsonSerializable(typeof(IReadOnlyList<InstallInstructions>))]

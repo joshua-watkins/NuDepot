@@ -1,7 +1,7 @@
 using Moq;
 using NuDepot.Core.Models;
 using NuDepot.Core.Search;
-using NuDepot.Gallery.Pages;
+using NuDepot.Gallery.Slices;
 using Xunit;
 
 namespace NuDepot.Gallery.Tests;
@@ -35,7 +35,7 @@ public class IndexModelFacts
     [Fact]
     public async Task DefaultSearch()
     {
-        await Target.OnGetAsync(Cancellation);
+        await Target.LoadAsync(Cancellation);
 
         Search.Verify(s => s.SearchAsync(
             /*query: */ null,
@@ -57,7 +57,7 @@ public class IndexModelFacts
         Target.Framework = "bar";
         Target.Query = "Hello world";
 
-        await Target.OnGetAsync(Cancellation);
+        await Target.LoadAsync(Cancellation);
 
         Search.Verify(s => s.SearchAsync(
             /*query: */ "Hello world",

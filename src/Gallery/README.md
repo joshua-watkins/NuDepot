@@ -25,8 +25,10 @@ it shows the feed hosted in the same application:
 
 ## Developing it
 
-The pages are [Razor Slices](https://github.com/DamianEdwards/RazorSlices) in the `Slices` folder,
-served by minimal API endpoints. Each page's data comes from a model in the `Pages` folder.
+The pages are [Razor Slices](https://github.com/DamianEdwards/RazorSlices) in the `Slices` folder, served by
+minimal API endpoints in `WebsiteEndpoints`. Each slice's model is next to it, like `Package.cshtml` and
+`PackageModel.cs`: the endpoint loads the model from the feed with its `LoadAsync`, then renders the slice with it.
+`_Layout.cshtml` is the slices' shared layout, with `LayoutModel`.
 
 ## Hosting it
 

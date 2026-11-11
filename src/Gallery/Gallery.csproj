@@ -53,7 +53,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- The tests create the pages' models directly. -->
+		<!-- The tests create the slices' models directly. -->
 		<InternalsVisibleTo Include="$(AssemblyName).Tests" />
 	</ItemGroup>
 

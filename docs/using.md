@@ -37,6 +37,22 @@ dotnet nuget add source http://localhost:3333/v3/index.json -n NuDepot
 Or add it to a `nuget.config` file, or to [Visual Studio's package sources](https://learn.microsoft.com/nuget/consume-packages/install-use-packages-visual-studio#package-sources).
 For an `http://` source other than localhost, NuGet needs `allowInsecureConnections="true"` on the source.
 
+## PowerShell modules and scripts
+
+[PSResourceGet](https://learn.microsoft.com/powershell/gallery/powershellget/overview), which comes with
+PowerShell 7.4 and later, uses the feed as a repository. The older PowerShellGet 2 only reads NuGet V2 feeds, which
+NuDepot doesn't serve.
+
+```powershell
+Register-PSResourceRepository -Name NuDepot -Uri http://localhost:3333/v3/index.json -Trusted
+
+Publish-PSResource -Path ./MyModule -Repository NuDepot -ApiKey <ReadWrite key>
+Install-PSResource -Name MyModule -Repository NuDepot
+```
+
+Leave out `-ApiKey` if the feed has no `ReadWrite` key. The gallery's page for a package tagged `PSModule` or
+`PSScript` shows its `Install-PSResource` command.
+
 ## Load symbols
 
 Add this symbol location to your debugger, like in

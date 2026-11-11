@@ -2,14 +2,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NuDepot.Core;
-using NuDepot.Gallery.Pages;
+using NuDepot.Gallery.Slices;
 using System.Net;
 using System.Text.Json;
 
 namespace NuDepot.Gallery;
 
 /// <summary>
-/// The website's pages.
+/// The website's pages: each endpoint loads a slice's model, then renders the slice.
 /// </summary>
 internal static class WebsiteEndpoints
 {
@@ -32,7 +32,7 @@ internal static class WebsiteEndpoints
             request,
             feed,
             loggerFactory,
-            () => model.OnGetAsync(cancellationToken),
+            () => model.LoadAsync(cancellationToken),
             () => Results.RazorSlice<Slices.Index, IndexModel>(model));
     }
 
@@ -45,7 +45,7 @@ internal static class WebsiteEndpoints
             request,
             feed,
             loggerFactory,
-            () => model.OnGetAsync(id, version, cancellationToken),
+            () => model.LoadAsync(id, version, cancellationToken),
             () => Results.RazorSlice<Slices.Package, PackageModel>(model));
     }
 
@@ -64,7 +64,7 @@ internal static class WebsiteEndpoints
             request,
             feed,
             loggerFactory,
-            () => model.OnGetAsync(cancellationToken),
+            () => model.LoadAsync(cancellationToken),
             () => Results.RazorSlice<Slices.Upload, UploadModel>(model));
     }
 
@@ -117,8 +117,8 @@ internal static class WebsiteEndpoints
         => !string.IsNullOrEmpty(url) && url[0] == '/' && (url.Length == 1 || (url[1] != '/' && url[1] != '\\'));
 
     /// <summary>
-    /// Load the page's content from the feed, then render the page. If the feed can't be
-    /// reached or returns something unexpected, render a page that explains the problem.
+    /// Load the slice's model from the feed, then render the slice. If the feed can't be
+    /// reached or returns something unexpected, render <see cref="Slices.FeedError"/>, which explains the problem.
     /// </summary>
     private static async Task<IResult> RenderAsync(HttpRequest request, FeedConnection feed, ILoggerFactory loggerFactory, Func<Task> loadAsync, Func<IResult> render)
     {
