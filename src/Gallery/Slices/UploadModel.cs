@@ -25,6 +25,11 @@ public class UploadModel(IRepositorySignaturesClient repositorySignatures, FeedC
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// Who's visiting: a signed-in user who may push gets an upload form. Null if nobody is signed in.
+    /// </summary>
+    public Visitor? Visitor { get; set; }
+
+    /// <summary>
     /// The feed's service index URL, as the browser reaches it.
     /// </summary>
     public string? ServiceIndexUrl { get; private set; }

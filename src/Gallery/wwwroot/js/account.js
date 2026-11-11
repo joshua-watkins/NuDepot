@@ -246,6 +246,27 @@
         }
     };
 
+    const loadSessions = async (page) => {
+        const sessions = await request('GET', '/sessions');
+        const body = page.querySelector('#sessions');
+        body.textContent = '';
+
+        for (const session of sessions) {
+            const row = document.createElement('tr');
+            cell(row, session.isCurrent ? 'This browser' : 'Another browser');
+            cell(row, formatDate(session.createdAt));
+            cell(row, formatDate(session.lastUsedAt));
+            const actions = cell(row, '');
+            if (!session.isCurrent) {
+                actions.appendChild(removeButton('Sign out', async () => {
+                    await request('DELETE', `/sessions/${session.id}`);
+                    await loadSessions(page);
+                }));
+            }
+            body.appendChild(row);
+        }
+    };
+
     const showNewApiKey = (page, key) => {
         page.querySelector('#new-apikey-value').textContent = key;
         page.querySelector('#new-apikey-config').textContent = [
@@ -278,6 +299,7 @@
 
         loadPasskeys(page).catch(showError);
         loadApiKeys(page).catch(showError);
+        loadSessions(page).catch(showError);
 
         const apiKeyForm = page.querySelector('#create-apikey-form');
         apiKeyForm.addEventListener('submit', (event) => {

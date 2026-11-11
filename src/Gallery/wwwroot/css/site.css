@@ -649,3 +649,54 @@ h4 {
 .new-apikey .tabbed-info {
     margin-bottom: 15px;
 }
+
+/* Management, which only signed-in users who may manage see. */
+
+.manage-package h3 {
+    font-size: 18px;
+    margin-top: 20px;
+}
+
+.manage-package .table td {
+    vertical-align: middle;
+}
+
+.manage-package .form-inline .form-group,
+.upload-packages .form-inline .form-group,
+.admin-page .form-inline .form-group {
+    margin-right: 5px;
+}
+
+.manage-package .link-button + .link-button,
+.admin-page .link-button + .link-button {
+    margin-left: 10px;
+}
+
+.upload-packages {
+    margin: 20px 0 30px;
+}
+
+.upload-results {
+    margin-top: 15px;
+}
+
+.admin-page section {
+    margin-bottom: 40px;
+}
+
+.admin-table td {
+    vertical-align: middle;
+}
+
+.admin-table select {
+    width: auto;
+}
+
+.settings-table {
+    max-width: 900px;
+}
+
+.settings-table th {
+    width: 40%;
+    font-weight: normal;
+}

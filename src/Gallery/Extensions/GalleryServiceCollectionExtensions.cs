@@ -30,6 +30,7 @@ public static class GalleryServiceCollectionExtensions
             options.Configure(configure);
 
         services.AddSingleton<FeedConnection>();
+        services.AddScoped<Visitor>();
         services.AddSingleton<ISearchClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateSearchClient());
         services.AddSingleton<IPackageDetailsClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreatePackageDetailsClient());
         services.AddSingleton<IRepositorySignaturesClient>(provider => provider.GetRequiredService<FeedConnection>().CreateRepositorySignaturesClient());

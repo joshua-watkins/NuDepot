@@ -1,0 +1,73 @@
+@inherits RazorSlice<AdminModel>
+@implements IUsesLayout<_Layout, LayoutModel>
+
+<div class="col-sm-12 admin-page" id="admin-page">
+    <h1>Administration</h1>
+    <hr class="breadcrumb-divider" />
+
+    <div class="alert alert-danger" role="alert" data-manage-error hidden></div>
+
+    <section>
+        <h2>Users</h2>
+        <p>
+            A user's role decides what they, and their API keys, may do. The feed keeps at least one Admin. Deleting a
+            user signs them out, and revokes their passkeys and API keys.
+        </p>
+        <table class="table admin-table">
+            <thead>
+                <tr><th>User</th><th>Role</th><th>Created</th><th>Last signed in</th><th>Passkeys</th><th>API keys</th><th>Browsers</th><th></th></tr>
+            </thead>
+            <tbody id="users"></tbody>
+        </table>
+    </section>
+
+    <section id="signing-section">
+        <h2>Repository signing</h2>
+        <p id="signing-off" hidden>The feed doesn't sign packages. Turn it on in the settings, with <code>Feed:RepositorySigning:IsEnabled</code>.</p>
+        <div id="signing-on" hidden>
+            <table class="table admin-table">
+                <thead>
+                    <tr><th>SHA-256 fingerprint</th><th>Certificate</th><th>Valid</th><th>Status</th></tr>
+                </thead>
+                <tbody id="certificates"></tbody>
+            </table>
+            <div id="rotate-section" hidden>
+                <p>
+                    The feed generates its certificate. If its key leaked, replace it: the old one is revoked, and packages it
+                    signed are re-signed when they're downloaded. Anyone who trusts the old fingerprint needs the new one.
+                </p>
+                <button type="button" class="btn btn-danger" id="rotate-button">Replace this year's certificate</button>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Settings</h2>
+        <p>
+            The feed's settings are in <code id="settings-folder"></code>, in <code>appsettings.json</code>, which
+            overrides the installer's <code>setup.ini</code>. Restart the service after changing them.
+        </p>
+        <table class="table admin-table settings-table">
+            <tbody id="settings"></tbody>
+        </table>
+
+        <div id="mirrors-section" hidden>
+            <h3>Mirrors</h3>
+            <table class="table admin-table">
+                <thead>
+                    <tr><th>Mirror</th><th>Package source</th><th>When it can't be reached</th><th>Status</th></tr>
+                </thead>
+                <tbody id="mirrors"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<script type="text/javascript">
+    window.nudepotManage = @WebsiteJsonContext.ToScriptValue(new ManageScriptSettings(Model.PathBase));
+</script>
+<script src="@LayoutModel.Content("js/admin.js")" defer></script>
+
+@functions {
+    public LayoutModel LayoutModel => new("Administration", Model.PathBase, WebsitePage.Admin);
+}

@@ -32,6 +32,10 @@
                             <ul class="nav navbar-nav navbar-right account-nav">
                                 @if (WebsiteEndpoints.IsSignedIn(HttpContext))
                                 {
+                                    @if (HttpContext.RequestServices.GetService(typeof(Visitor)) is Visitor { CanAdminister: true })
+                                    {
+                                        <li><a href="@Model.PathBase/admin" class="@(Model.ActivePage == WebsitePage.Admin ? "active" : null)"><i class="ms-Icon ms-Icon--Settings" aria-hidden="true"></i> <span>Admin</span></a></li>
+                                    }
                                     <li><a href="@Model.PathBase/account" class="@(Model.ActivePage == WebsitePage.Account ? "active" : null)"><i class="ms-Icon ms-Icon--Contact" aria-hidden="true"></i> <span>@HttpContext.User.Identity!.Name</span></a></li>
                                 }
                                 else if (Model.ActivePage != WebsitePage.Account)

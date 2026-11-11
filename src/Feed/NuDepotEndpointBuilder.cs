@@ -48,6 +48,45 @@ public class NuDepotEndpointBuilder
         endpoints.MapGet("api/account/apikeys", AccountEndpoints.GetApiKeysAsync);
         endpoints.MapPost("api/account/apikeys", AccountEndpoints.CreateApiKeyAsync);
         endpoints.MapDelete("api/account/apikeys/{id:int}", AccountEndpoints.DeleteApiKeyAsync);
+
+        endpoints.MapGet("api/account/sessions", AccountEndpoints.GetSessionsAsync);
+        endpoints.MapDelete("api/account/sessions/{id:int}", AccountEndpoints.DeleteSessionAsync);
+
+        MapAdminRoutes(endpoints);
+    }
+
+    /// <summary>
+    /// Maps the feed's administration, which the gallery's administration page uses. Only signed-in users use it,
+    /// so it's mapped with the accounts.
+    /// </summary>
+    private static void MapAdminRoutes(IEndpointRouteBuilder endpoints)
+    {
+        endpoints
+            .MapGet("api/admin/users", AdminEndpoints.GetUsersAsync)
+            .RequireFeedPermission(FeedPermissions.Administer);
+        endpoints
+            .MapPut("api/admin/users/{id:int}", AdminEndpoints.SetRoleAsync)
+            .RequireFeedPermission(FeedPermissions.Administer);
+        endpoints
+            .MapDelete("api/admin/users/{id:int}", AdminEndpoints.DeleteUserAsync)
+            .RequireFeedPermission(FeedPermissions.Administer);
+        endpoints
+            .MapDelete("api/admin/users/{id:int}/sessions", AdminEndpoints.DeleteSessionsAsync)
+            .RequireFeedPermission(FeedPermissions.Administer);
+        endpoints
+            .MapDelete("api/admin/users/{id:int}/apikeys", AdminEndpoints.DeleteApiKeysAsync)
+            .RequireFeedPermission(FeedPermissions.Administer);
+
+        endpoints
+            .MapGet("api/admin/signing", AdminEndpoints.GetSigningAsync)
+            .RequireFeedPermission(FeedPermissions.Administer);
+        endpoints
+            .MapPost("api/admin/signing/rotate", AdminEndpoints.RotateSigningCertificateAsync)
+            .RequireFeedPermission(FeedPermissions.Administer);
+
+        endpoints
+            .MapGet("api/admin/status", AdminEndpoints.GetStatus)
+            .RequireFeedPermission(FeedPermissions.Administer);
     }
 
     /// <summary>
@@ -103,6 +142,10 @@ public class NuDepotEndpointBuilder
 
         endpoints
             .MapDelete("api/vulnerabilities", VulnerabilityEndpoints.DeleteAsync)
+            .RequireFeedPermission(FeedPermissions.ManageVulnerabilities);
+
+        endpoints
+            .MapGet("api/vulnerabilities", VulnerabilityEndpoints.ListAsync)
             .RequireFeedPermission(FeedPermissions.ManageVulnerabilities);
 
         endpoints

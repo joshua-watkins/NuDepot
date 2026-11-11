@@ -37,22 +37,24 @@ internal static class WebsiteEndpoints
     }
 
     // GET /packages/{id}/{version?}
-    public static async Task<IResult> PackageAsync(string id, string? version, HttpRequest request, PackageModel model, FeedConnection feed, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
+    public static async Task<IResult> PackageAsync(string id, string? version, HttpRequest request, PackageModel model, Visitor visitor, FeedConnection feed, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
         model.PathBase = request.PathBase.Value ?? string.Empty;
+        model.Visitor = visitor;
 
         return await RenderAsync(
             request,
             feed,
             loggerFactory,
-            () => model.LoadAsync(id, version, cancellationToken),
+            () => model.LoadAsync(id, version, includeUnlisted: visitor.CanManagePackages, cancellationToken),
             () => Results.RazorSlice<Slices.Package, PackageModel>(model));
     }
 
     // GET /upload
-    public static async Task<IResult> UploadAsync(HttpRequest request, UploadModel model, FeedConnection feed, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
+    public static async Task<IResult> UploadAsync(HttpRequest request, UploadModel model, Visitor visitor, FeedConnection feed, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
         model.PathBase = request.PathBase.Value ?? string.Empty;
+        model.Visitor = visitor;
         model.BaseUrl = string.Concat(
             request.Scheme,
             "://",
@@ -94,6 +96,23 @@ internal static class WebsiteEndpoints
         AccountModel model = new(pathBase, feed.ToPublicUrl(feed.ServiceIndexUrl) ?? feed.ServiceIndexUrl);
 
         return Results.RazorSlice<Slices.Account, AccountModel>(model);
+    }
+
+    // GET /admin
+    public static IResult Admin(HttpContext httpContext, FeedConnection feed, Visitor visitor)
+    {
+        if (!feed.SignInAvailable)
+            return Results.NotFound();
+
+        HttpRequest request = httpContext.Request;
+        if (!IsSignedIn(httpContext))
+            return Results.Redirect(GetSignInUrl(request));
+
+        // The page is only for administrators, and doesn't say it exists to anyone else.
+        if (!visitor.CanAdminister)
+            return Results.NotFound();
+
+        return Results.RazorSlice<Slices.Admin, AdminModel>(new AdminModel(request.PathBase.Value ?? string.Empty));
     }
 
     /// <summary>

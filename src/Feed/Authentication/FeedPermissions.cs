@@ -46,7 +46,13 @@ public enum FeedPermissions
     ManageVulnerabilities = 1 << 5,
 
     /// <summary>
+    /// Administer the feed: manage its users, rotate its generated signing certificate and see its settings.
+    /// It doesn't change packages, so read-only mode doesn't take it away.
+    /// </summary>
+    Administer = 1 << 6,
+
+    /// <summary>
     /// Every permission.
     /// </summary>
-    All = Read | Push | Unlist | Deprecate | HardDelete | ManageVulnerabilities,
+    All = Read | Push | Unlist | Deprecate | HardDelete | ManageVulnerabilities | Administer,
 }

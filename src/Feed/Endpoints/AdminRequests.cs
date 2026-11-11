@@ -51,3 +51,224 @@ public class AdvisoryRequest
     /// </summary>
     public int Severity { get; set; }
 }
+
+/// <summary>
+/// A user, for the administration page.
+/// </summary>
+public class AdminUserResponse
+{
+    /// <summary>
+    /// The user's ID.
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// The user's name.
+    /// </summary>
+    public string UserName { get; set; } = null!;
+
+    /// <summary>
+    /// The user's role: "ReadOnly", "ReadWrite" or "Admin".
+    /// </summary>
+    public string Role { get; set; } = null!;
+
+    /// <summary>
+    /// When the account was created, in UTC.
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// When the user last signed in with a passkey, in UTC.
+    /// </summary>
+    public DateTime? LastSignedInAt { get; set; }
+
+    /// <summary>
+    /// How many passkeys the user has.
+    /// </summary>
+    public int Passkeys { get; set; }
+
+    /// <summary>
+    /// How many API keys the user has.
+    /// </summary>
+    public int ApiKeys { get; set; }
+
+    /// <summary>
+    /// How many browsers the user is signed in on.
+    /// </summary>
+    public int Sessions { get; set; }
+
+    /// <summary>
+    /// Whether it's the user who asked.
+    /// </summary>
+    public bool IsCurrentUser { get; set; }
+}
+
+/// <summary>
+/// The body of a request to change a user's role.
+/// </summary>
+public class RoleRequest
+{
+    /// <summary>
+    /// The new role: "ReadOnly", "ReadWrite" or "Admin".
+    /// </summary>
+    public string? Role { get; set; }
+}
+
+/// <summary>
+/// The feed's repository signing.
+/// </summary>
+public class SigningResponse
+{
+    /// <summary>
+    /// Whether the feed signs pushed packages.
+    /// </summary>
+    public bool IsEnabled { get; set; }
+
+    /// <summary>
+    /// Whether the feed generates its certificates, which can be replaced early.
+    /// </summary>
+    public bool GeneratesCertificates { get; set; }
+
+    /// <summary>
+    /// The feed's certificates: the configured one, or every generated one, newest first.
+    /// </summary>
+    public SigningCertificateResponse[] Certificates { get; set; } = [];
+}
+
+/// <summary>
+/// A certificate the feed signs, or signed, packages with.
+/// </summary>
+public class SigningCertificateResponse
+{
+    /// <summary>
+    /// The lowercase hex SHA-256 fingerprint.
+    /// </summary>
+    public string Fingerprint { get; set; } = null!;
+
+    /// <summary>
+    /// The certificate's subject.
+    /// </summary>
+    public string? Subject { get; set; }
+
+    /// <summary>
+    /// When the certificate became valid.
+    /// </summary>
+    public DateTimeOffset NotBefore { get; set; }
+
+    /// <summary>
+    /// When the certificate expires.
+    /// </summary>
+    public DateTimeOffset NotAfter { get; set; }
+
+    /// <summary>
+    /// When the certificate was revoked, in UTC, if it was replaced early.
+    /// </summary>
+    public DateTime? RevokedAt { get; set; }
+
+    /// <summary>
+    /// Whether the feed signs packages with it now.
+    /// </summary>
+    public bool IsCurrent { get; set; }
+}
+
+/// <summary>
+/// The feed's settings, which are in its settings files, and the state of its mirrors.
+/// </summary>
+public class FeedStatusResponse
+{
+    /// <summary>
+    /// The folder the settings files are in, which is the feed's working directory.
+    /// </summary>
+    public string SettingsFolder { get; set; } = null!;
+
+    /// <summary>
+    /// Whether nobody may change the feed's packages.
+    /// </summary>
+    public bool IsReadOnlyMode { get; set; }
+
+    /// <summary>
+    /// What deleting a package does: "Unlist" or "HardDelete".
+    /// </summary>
+    public string PackageDeletionBehavior { get; set; } = null!;
+
+    /// <summary>
+    /// Whether pushing a package that exists replaces it.
+    /// </summary>
+    public bool AllowPackageOverwrites { get; set; }
+
+    /// <summary>
+    /// What requests without an API key or a signed-in user may do.
+    /// </summary>
+    public string AnonymousRole { get; set; } = null!;
+
+    /// <summary>
+    /// The roles whose API key is set in the settings.
+    /// </summary>
+    public string[] ApiKeyRoles { get; set; } = [];
+
+    /// <summary>
+    /// Whether anyone may create an account.
+    /// </summary>
+    public bool AllowSignUp { get; set; }
+
+    /// <summary>
+    /// The role of new accounts.
+    /// </summary>
+    public string DefaultRole { get; set; } = null!;
+
+    /// <summary>
+    /// Whether requests without a key or a signed-in user may read the feed.
+    /// </summary>
+    public bool AnonymousReads { get; set; }
+
+    /// <summary>
+    /// Whether the feed signs pushed packages.
+    /// </summary>
+    public bool IsSigning { get; set; }
+
+    /// <summary>
+    /// Whether the feed mirrors other feeds.
+    /// </summary>
+    public bool IsMirroring { get; set; }
+
+    /// <summary>
+    /// How long a mirror that couldn't be reached isn't asked, in minutes.
+    /// </summary>
+    public int UnreachableMirrorMinutes { get; set; }
+
+    /// <summary>
+    /// The mirrors, in the order they're asked.
+    /// </summary>
+    public MirrorResponse[] Mirrors { get; set; } = [];
+
+    /// <summary>
+    /// Where packages are stored.
+    /// </summary>
+    public string? StoragePath { get; set; }
+}
+
+/// <summary>
+/// A mirror, and whether it can be reached.
+/// </summary>
+public class MirrorResponse
+{
+    /// <summary>
+    /// The mirror's name.
+    /// </summary>
+    public string Name { get; set; } = null!;
+
+    /// <summary>
+    /// The mirrored feed's service index.
+    /// </summary>
+    public string PackageSource { get; set; } = null!;
+
+    /// <summary>
+    /// What requests do while the mirror can't be reached: "Skip" or "Stop".
+    /// </summary>
+    public string WhenUnreachable { get; set; } = null!;
+
+    /// <summary>
+    /// Until when the mirror isn't asked, because it couldn't be reached. Null while it's asked.
+    /// </summary>
+    public DateTimeOffset? UnreachableUntil { get; set; }
+}

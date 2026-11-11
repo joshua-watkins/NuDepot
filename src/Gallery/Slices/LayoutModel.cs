@@ -39,4 +39,9 @@ public enum WebsitePage
     /// The sign-in and account pages.
     /// </summary>
     Account,
+
+    /// <summary>
+    /// The administration page.
+    /// </summary>
+    Admin,
 }

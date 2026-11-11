@@ -487,7 +487,132 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         .Where(s => s.Key == sessionKey)
         .ExecuteDeleteAsync(cancellationToken);
 
+    /// <summary>
+    /// Gets the user's signed-in browsers that haven't expired, most recently used first.
+    /// </summary>
+    public async Task<List<UserSession>> GetSessionsAsync(int userKey, CancellationToken cancellationToken)
+    {
+        DateTime now = Time.UtcNow;
+        return await Context.UserSessions
+            .Where(s => s.UserKey == userKey && s.ExpiresAt > now)
+            .OrderByDescending(s => s.RotatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Signs one of the user's browsers out.
+    /// </summary>
+    /// <returns>False if the user doesn't have the session.</returns>
+    public async Task<bool> DeleteSessionAsync(int userKey, int sessionKey, CancellationToken cancellationToken)
+    {
+        int deleted = await Context.UserSessions
+            .Where(s => s.UserKey == userKey && s.Key == sessionKey)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return deleted > 0;
+    }
+
     private static string CreateSessionToken() => WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+
+    // Administration
+
+    /// <summary>
+    /// Gets every user who has signed up, by name, with how many passkeys, API keys and signed-in browsers they have.
+    /// </summary>
+    public async Task<List<UserSummary>> GetUsersAsync(CancellationToken cancellationToken)
+    {
+        DateTime now = Time.UtcNow;
+        return await Accounts
+            .OrderBy(u => u.UserName)
+            .Select(u => new UserSummary(
+                u.Key,
+                u.UserName,
+                u.Role,
+                u.CreatedAt,
+                u.Passkeys.Count,
+                u.ApiKeys.Count,
+                u.Sessions.Count(s => s.ExpiresAt > now),
+                u.Passkeys.Max(p => p.LastUsedAt)))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Changes a user's role. The feed's last Admin stays an Admin, so someone can still administer it.
+    /// </summary>
+    public async Task<UserChangeResult> SetRoleAsync(int userKey, FeedRole role, CancellationToken cancellationToken)
+    {
+        await using IDbContextTransaction transaction = await Context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+        User? user = await FindAsync(userKey, cancellationToken);
+        if (user == null)
+            return UserChangeResult.NotFound;
+        if (user.Role == FeedRole.Admin && role != FeedRole.Admin && await IsLastAdminAsync(userKey, cancellationToken))
+            return UserChangeResult.LastAdmin;
+
+        await Context.Users
+            .Where(u => u.Key == userKey)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.Role, role), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        Logger.LogInformation("Changed {UserName}'s role from {OldRole} to {Role}", user.UserName, user.Role, role);
+        return UserChangeResult.Changed;
+    }
+
+    /// <summary>
+    /// Deletes a user, with their passkeys, API keys and signed-in browsers. The feed's last Admin can't be deleted.
+    /// </summary>
+    public async Task<UserChangeResult> DeleteUserAsync(int userKey, CancellationToken cancellationToken)
+    {
+        await using IDbContextTransaction transaction = await Context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+        User? user = await FindAsync(userKey, cancellationToken);
+        if (user == null)
+            return UserChangeResult.NotFound;
+        if (user.Role == FeedRole.Admin && await IsLastAdminAsync(userKey, cancellationToken))
+            return UserChangeResult.LastAdmin;
+
+        await Context.UserSessions.Where(s => s.UserKey == userKey).ExecuteDeleteAsync(cancellationToken);
+        await Context.UserApiKeys.Where(k => k.UserKey == userKey).ExecuteDeleteAsync(cancellationToken);
+        await Context.UserPasskeys.Where(p => p.UserKey == userKey).ExecuteDeleteAsync(cancellationToken);
+        await Context.Users.Where(u => u.Key == userKey).ExecuteDeleteAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        Logger.LogWarning("Deleted the user {UserName}", user.UserName);
+        return UserChangeResult.Changed;
+    }
+
+    /// <summary>
+    /// Signs a user out of every browser.
+    /// </summary>
+    /// <returns>False if there's no such user.</returns>
+    public async Task<bool> DeleteSessionsAsync(int userKey, CancellationToken cancellationToken)
+    {
+        if (await FindAsync(userKey, cancellationToken) == null)
+            return false;
+
+        await Context.UserSessions
+            .Where(s => s.UserKey == userKey)
+            .ExecuteDeleteAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Revokes all of a user's API keys.
+    /// </summary>
+    /// <returns>False if there's no such user.</returns>
+    public async Task<bool> DeleteApiKeysAsync(int userKey, CancellationToken cancellationToken)
+    {
+        if (await FindAsync(userKey, cancellationToken) == null)
+            return false;
+
+        await Context.UserApiKeys
+            .Where(k => k.UserKey == userKey)
+            .ExecuteDeleteAsync(cancellationToken);
+        return true;
+    }
+
+    private async Task<bool> IsLastAdminAsync(int userKey, CancellationToken cancellationToken)
+        => !await Accounts.AnyAsync(u => u.Role == FeedRole.Admin && u.Key != userKey, cancellationToken);
 
     // Looking up the hash is safe: the stored hashes don't reveal the keys.
     private static byte[] Hash(string key) => SHA256.HashData(Encoding.UTF8.GetBytes(key));
@@ -505,6 +630,40 @@ public record SessionValidation(User? User, string? NewToken)
     /// The result for a request without a valid session.
     /// </summary>
     public static readonly SessionValidation SignedOut = new(null, null);
+}
+
+/// <summary>
+/// A user, for the administration page.
+/// </summary>
+/// <param name="Key">The user's key.</param>
+/// <param name="UserName">The user's name.</param>
+/// <param name="Role">The user's role.</param>
+/// <param name="CreatedAt">When the account was created, in UTC.</param>
+/// <param name="Passkeys">How many passkeys the user has.</param>
+/// <param name="ApiKeys">How many API keys the user has.</param>
+/// <param name="Sessions">How many browsers the user is signed in on.</param>
+/// <param name="LastSignedInAt">When the user last signed in with a passkey, in UTC.</param>
+public record UserSummary(int Key, string UserName, FeedRole Role, DateTime CreatedAt, int Passkeys, int ApiKeys, int Sessions, DateTime? LastSignedInAt);
+
+/// <summary>
+/// The outcome of changing or deleting a user.
+/// </summary>
+public enum UserChangeResult
+{
+    /// <summary>
+    /// The user was changed or deleted.
+    /// </summary>
+    Changed,
+
+    /// <summary>
+    /// There's no such user.
+    /// </summary>
+    NotFound,
+
+    /// <summary>
+    /// The user is the feed's last Admin, who can't be deleted or given another role.
+    /// </summary>
+    LastAdmin,
 }
 
 /// <summary>

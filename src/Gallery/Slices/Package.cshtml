@@ -56,6 +56,124 @@ else
                 </div>
             }
 
+            @if (!Model.Package.IsListed())
+            {
+                <div class="alert alert-info package-unlisted" role="alert">
+                    <i class="ms-Icon ms-Icon--Hide" aria-hidden="true"></i>
+                    This version is unlisted: searches don't show it, but it can still be restored.
+                </div>
+            }
+
+            @if (Model.IsManaged)
+            {
+                <div class="manage-package" id="manage-package">
+                    @BeginSection("Manage", expanded: false)
+                        <div class="alert alert-danger" role="alert" data-manage-error hidden></div>
+
+                        @if (Model.Visitor!.CanUnlist || Model.Visitor.CanDelete)
+                        {
+                            <h3>Versions</h3>
+                            <p class="text-muted">
+                                @(Model.Visitor.DeletesPermanently
+                                    ? "Deleting a version removes it from the feed permanently."
+                                    : "An unlisted version is hidden from searches, but projects that use it can still restore it.")
+                            </p>
+                            <table class="table manage-versions">
+                                <thead>
+                                    <tr><th>Version</th><th>Status</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var version in Model.AllVersions)
+                                    {
+                                        var normalized = version.Version.ToNormalizedString();
+                                        var packageUrl = $"{Model.PathBase}/api/v2/package/{Uri.EscapeDataString(Model.Package.PackageId)}/{Uri.EscapeDataString(normalized)}";
+
+                                        <tr>
+                                            <td><a href="@Model.PackageLink(Model.Package.PackageId, version.Version)">@normalized</a></td>
+                                            <td>@(version.Listed ? "Listed" : "Unlisted")</td>
+                                            <td class="text-right">
+                                                @if (version.Listed && !Model.Visitor.DeletesPermanently && Model.Visitor.CanUnlist)
+                                                {
+                                                    <button type="button" class="btn btn-default btn-sm" data-manage-method="DELETE" data-manage-url="@packageUrl">Unlist</button>
+                                                }
+                                                @if (!version.Listed && Model.Visitor.CanUnlist)
+                                                {
+                                                    <button type="button" class="btn btn-default btn-sm" data-manage-method="POST" data-manage-url="@packageUrl">Relist</button>
+                                                }
+                                                @if (Model.Visitor.DeletesPermanently && Model.Visitor.CanDelete)
+                                                {
+                                                    <button type="button" class="btn btn-danger btn-sm" data-manage-method="DELETE" data-manage-url="@packageUrl"
+                                                            data-manage-confirm="Delete @Model.Package.PackageId @normalized permanently? Projects that use it won't be able to restore it.">Delete</button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+
+                        @if (Model.Visitor.CanDeprecate)
+                        {
+                            <h3>Deprecation of @Model.Version.ToNormalizedString()</h3>
+                            <form id="deprecation-form">
+                                <div class="form-group">
+                                    @foreach (var reason in DeprecationReasons)
+                                    {
+                                        <label class="checkbox-inline">
+                                            <input type="checkbox" name="reasons" value="@reason.Key" checked="@(Model.Deprecation?.Reasons.Contains(reason.Key) == true)" /> @reason.Value
+                                        </label>
+                                    }
+                                </div>
+                                <div class="form-group">
+                                    <label for="deprecation-message">Message</label>
+                                    <input type="text" id="deprecation-message" name="message" class="form-control" maxlength="4000" value="@Model.Deprecation?.Message" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="deprecation-alternate">Alternative package ID</label>
+                                    <input type="text" id="deprecation-alternate" name="alternatePackageId" class="form-control" maxlength="128" value="@Model.Deprecation?.AlternatePackage?.Id" />
+                                </div>
+                                <button type="submit" class="btn btn-default">@(Model.Deprecation == null ? "Deprecate" : "Update the deprecation")</button>
+                                @if (Model.Deprecation != null)
+                                {
+                                    <button type="button" class="btn btn-default" data-manage-method="DELETE" data-manage-url="@DeprecationUrl">Remove the deprecation</button>
+                                }
+                            </form>
+                        }
+
+                        @if (Model.Visitor.CanManageVulnerabilities)
+                        {
+                            <h3>Known vulnerabilities of @Model.Package.PackageId</h3>
+                            <table class="table manage-vulnerabilities">
+                                <thead>
+                                    <tr><th>Versions</th><th>Severity</th><th>Advisory</th><th></th></tr>
+                                </thead>
+                                <tbody id="vulnerabilities"></tbody>
+                            </table>
+                            <form id="vulnerability-form" class="form-inline">
+                                <div class="form-group">
+                                    <label for="vulnerability-versions" class="sr-only">Vulnerable versions</label>
+                                    <input type="text" id="vulnerability-versions" name="versions" class="form-control" placeholder="Versions, like (, 1.2.0)" required />
+                                </div>
+                                <div class="form-group">
+                                    <label for="vulnerability-url" class="sr-only">Advisory URL</label>
+                                    <input type="url" id="vulnerability-url" name="url" class="form-control" placeholder="Advisory URL" required />
+                                </div>
+                                <div class="form-group">
+                                    <label for="vulnerability-severity" class="sr-only">Severity</label>
+                                    <select id="vulnerability-severity" name="severity" class="form-control">
+                                        <option value="0">Low</option>
+                                        <option value="1">Moderate</option>
+                                        <option value="2" selected>High</option>
+                                        <option value="3">Critical</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-default">Record the vulnerability</button>
+                            </form>
+                        }
+                    @EndSection()
+                </div>
+            }
+
             <div class="tabbed-info" x-data="{ tabs: tabs, active: tabs[0] }">
                 <ul class="nav">
                     <template x-for="tab in tabs" :key="tab.name">
@@ -285,6 +403,14 @@ else
     <script type="text/javascript">
         let tabs = @WebsiteJsonContext.ToScriptValue(Model.GetInstallInstructions());
     </script>
+
+    @if (Model.IsManaged)
+    {
+        <script type="text/javascript">
+            window.nudepotManage = @WebsiteJsonContext.ToScriptValue(new ManageScriptSettings(Model.PathBase, Model.Package.PackageId, Model.Version.ToNormalizedString()));
+        </script>
+        <script src="@LayoutModel.Content("js/manage.js")" defer></script>
+    }
 }
 
 @functions {
@@ -296,6 +422,17 @@ else
         Model.PathBase);
 
     private IReadOnlyList<PackageModel.VersionModel> Versions => Model.Versions ?? Array.Empty<PackageModel.VersionModel>();
+
+    // The reasons the feed's deprecation endpoint takes, and how the form shows them.
+    private static readonly IReadOnlyDictionary<string, string> DeprecationReasons = new Dictionary<string, string>
+    {
+        ["Legacy"] = "No longer maintained",
+        ["CriticalBugs"] = "Has critical bugs",
+        ["Other"] = "Other",
+    };
+
+    private string DeprecationUrl
+        => $"{Model.PathBase}/api/package/{Uri.EscapeDataString(Model.Package.PackageId)}/{Uri.EscapeDataString(Model.Version.ToNormalizedString())}/deprecation";
 
     // A section that the user can expand and collapse. Its content goes between BeginSection and EndSection.
     private static HtmlString BeginSection(string title, bool expanded)

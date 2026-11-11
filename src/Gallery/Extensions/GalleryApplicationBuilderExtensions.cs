@@ -47,13 +47,17 @@ public static class GalleryApplicationBuilderExtensions
         endpoints
             .MapGet("/account", WebsiteEndpoints.Account)
             .WithSignedInUser();
+        endpoints
+            .MapGet("/admin", WebsiteEndpoints.Admin)
+            .WithSignedInUser();
         endpoints.MapGet(WebsiteFiles.RequestPath + "/{**path}", WebsiteFiles.GetFile);
 
         return app;
     }
 
     /// <summary>
-    /// Shows who's signed in, when the gallery is hosted with a feed whose users sign in with passkeys.
+    /// Shows who's signed in, and what they may manage, when the gallery is hosted with a feed whose users sign in
+    /// with passkeys.
     /// </summary>
     private static RouteHandlerBuilder WithSignedInUser(this RouteHandlerBuilder builder)
     {
@@ -64,7 +68,12 @@ public static class GalleryApplicationBuilderExtensions
             {
                 AuthenticateResult result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
                 if (result.Succeeded)
+                {
                     httpContext.User = result.Principal;
+                    await httpContext.RequestServices
+                        .GetRequiredService<Visitor>()
+                        .LoadAsync(httpContext.RequestAborted);
+                }
             }
 
             return await next(context);

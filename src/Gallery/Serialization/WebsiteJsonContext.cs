@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Html;
+using NuDepot.Gallery;
 using NuDepot.Gallery.Slices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -12,11 +13,17 @@ namespace NuDepot.Gallery.Serialization;
 [JsonSerializable(typeof(IReadOnlyList<InstallInstructions>))]
 [JsonSerializable(typeof(IReadOnlyList<PushInstructions>))]
 [JsonSerializable(typeof(AccountScriptSettings))]
+[JsonSerializable(typeof(ManageScriptSettings))]
+[JsonSerializable(typeof(FeedAccount))]
 internal partial class WebsiteJsonContext : JsonSerializerContext
 {
     /// <inheritdoc cref="ToScriptValue(IReadOnlyList{InstallInstructions})"/>
     public static HtmlString ToScriptValue(AccountScriptSettings value)
         => new(JsonSerializer.Serialize(value, Default.AccountScriptSettings));
+
+    /// <inheritdoc cref="ToScriptValue(IReadOnlyList{InstallInstructions})"/>
+    public static HtmlString ToScriptValue(ManageScriptSettings value)
+        => new(JsonSerializer.Serialize(value, Default.ManageScriptSettings));
 
     /// <summary>
     /// Serialize data into a script. The default encoder escapes characters like &lt; and &amp;,

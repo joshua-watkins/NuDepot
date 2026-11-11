@@ -16,6 +16,15 @@ namespace NuDepot.Feed.Upstream.Clients;
 /// </summary>
 internal sealed class MirrorChain : IUpstreamClient
 {
+    /// <summary>
+    /// A mirror, for the administration page.
+    /// </summary>
+    /// <param name="Name">The mirror's name.</param>
+    /// <param name="PackageSource">The mirrored feed's service index.</param>
+    /// <param name="WhenUnreachable">What requests do while it can't be reached.</param>
+    /// <param name="UnreachableUntil">Until when it isn't asked because it couldn't be reached, or null if it's asked.</param>
+    public sealed record MirrorStatus(string Name, Uri PackageSource, UnreachableMirrorBehavior WhenUnreachable, DateTimeOffset? UnreachableUntil);
+
     public MirrorChain(IOptions<MirroringOptions> options, HttpClient httpClient, TimeProvider time, ILoggerFactory loggerFactory)
     {
         ILogger<V3UpstreamClient> clientLogger = loggerFactory.CreateLogger<V3UpstreamClient>();
@@ -33,6 +42,7 @@ internal sealed class MirrorChain : IUpstreamClient
                     TimeSpan.FromSeconds(mirror.RequestTimeoutSeconds),
                     TimeSpan.FromSeconds(mirror.DownloadTimeoutSeconds)),
                 mirror.DisplayName,
+                mirror.PackageSource!,
                 mirror.WhenUnreachable))];
     }
 
@@ -45,6 +55,19 @@ internal sealed class MirrorChain : IUpstreamClient
     /// Whether mirroring is on.
     /// </summary>
     public bool HasMirrors => Mirrors.Count > 0;
+
+    /// <summary>
+    /// The mirrors, in the order they're asked, and until when each isn't asked because it couldn't be reached.
+    /// </summary>
+    public IReadOnlyList<MirrorStatus> GetStatus()
+    {
+        DateTimeOffset now = Time.GetUtcNow();
+        return [.. Mirrors.Select(mirror => new MirrorStatus(
+            mirror.Name,
+            mirror.PackageSource,
+            mirror.WhenUnreachable,
+            mirror.IsUnreachable(now) ? mirror.UnreachableUntil : null))];
+    }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(string id, CancellationToken cancellationToken)
@@ -147,13 +170,15 @@ internal sealed class MirrorChain : IUpstreamClient
     /// <summary>
     /// A mirror, and until when it's not asked because it couldn't be reached.
     /// </summary>
-    private sealed class Mirror(V3UpstreamClient client, string name, UnreachableMirrorBehavior whenUnreachable)
+    private sealed class Mirror(V3UpstreamClient client, string name, Uri packageSource, UnreachableMirrorBehavior whenUnreachable)
     {
         private long unreachableUntilTicks;
 
         public V3UpstreamClient Client { get; } = client;
         public string Name { get; } = name;
+        public Uri PackageSource { get; } = packageSource;
         public UnreachableMirrorBehavior WhenUnreachable { get; } = whenUnreachable;
+        public DateTimeOffset UnreachableUntil => new(Interlocked.Read(ref unreachableUntilTicks), TimeSpan.Zero);
 
         public bool IsUnreachable(DateTimeOffset now) => now.UtcTicks < Interlocked.Read(ref unreachableUntilTicks);
 

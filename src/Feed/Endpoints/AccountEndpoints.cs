@@ -21,9 +21,10 @@ internal static class AccountEndpoints
     private const string DefaultPasskeyName = "Passkey";
 
     // GET api/account
-    public static async Task<IResult> GetAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
+    public static async Task<IResult> GetAsync(HttpContext httpContext, UserService users, FeedAccess access, CancellationToken cancellationToken)
     {
-        User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+        AuthenticateResult result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
+        User? user = await GetSignedInUserAsync(result, users, cancellationToken);
         bool isFirstUser = user == null && !await users.AnyAsync(cancellationToken);
 
         return Results.Json(
@@ -34,8 +35,56 @@ internal static class AccountEndpoints
                 Role = user?.Role.ToString(),
                 CanSignUp = user == null && await users.CanSignUpAsync(cancellationToken),
                 IsFirstUser = isFirstUser,
+                Permissions = user == null ? null : PermissionNames(access.GetPermissions(result.Principal!)),
+                PackageDeletion = user == null ? null : access.PackageDeletionPermission == FeedPermissions.HardDelete ? "HardDelete" : "Unlist",
             },
             AccountJsonContext.Default.AccountResponse);
+    }
+
+    // GET api/account/sessions
+    public static async Task<IResult> GetSessionsAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
+    {
+        AuthenticateResult result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
+        User? user = await GetSignedInUserAsync(result, users, cancellationToken);
+        if (user == null)
+            return Results.Unauthorized();
+
+        int? current = result.Properties == null ? null : UserCookieEvents.GetSession(result.Properties)?.Key;
+        List<UserSession> sessions = await users.GetSessionsAsync(user.Key, cancellationToken);
+
+        return Results.Json(
+            [.. sessions.Select(s => new SessionResponse
+            {
+                Id = s.Key,
+                CreatedAt = s.CreatedAt,
+                LastUsedAt = s.RotatedAt,
+                IsCurrent = s.Key == current,
+            })],
+            AccountJsonContext.Default.SessionResponseArray);
+    }
+
+    // DELETE api/account/sessions/{id}
+    // Signs one of the user's browsers out. Signing this browser out is what api/account/signout does.
+    public static async Task<IResult> DeleteSessionAsync(int id, HttpContext httpContext, UserService users, CancellationToken cancellationToken)
+    {
+        User? user = await GetSignedInUserAsync(httpContext, users, cancellationToken);
+        if (user == null)
+            return Results.Unauthorized();
+
+        return await users.DeleteSessionAsync(user.Key, id, cancellationToken)
+            ? Results.NoContent()
+            : Results.NotFound();
+    }
+
+    /// <summary>
+    /// The names of the permissions, like "Push".
+    /// </summary>
+    internal static string[] PermissionNames(FeedPermissions permissions)
+    {
+        return [.. Enum
+            .GetValues<FeedPermissions>()
+            .Where(p => p != FeedPermissions.None && p != FeedPermissions.All && permissions.HasFlag(p))
+            .Select(p => p.ToString())];
     }
 
     // POST api/account/signup
@@ -242,9 +291,11 @@ internal static class AccountEndpoints
     /// <summary>
     /// The user signed in with the sign-in cookie. API keys don't count: they can't manage accounts.
     /// </summary>
-    private static async Task<User?> GetSignedInUserAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
+    internal static async Task<User?> GetSignedInUserAsync(HttpContext httpContext, UserService users, CancellationToken cancellationToken)
+        => await GetSignedInUserAsync(await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User), users, cancellationToken);
+
+    private static async Task<User?> GetSignedInUserAsync(AuthenticateResult result, UserService users, CancellationToken cancellationToken)
     {
-        AuthenticateResult result = await httpContext.AuthenticateAsync(NuDepotAuthenticationSchemes.User);
         int? userKey = result.Succeeded ? FeedClaims.GetUserKey(result.Principal) : null;
 
         return userKey == null ? null : await users.FindAsync(userKey.Value, cancellationToken);

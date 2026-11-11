@@ -270,6 +270,30 @@ On their account page, users can:
 - Create API keys, which can do what their account can. A key is shown once, with a
   `nuget.config` example. It starts with `nd_`, and only its hash is stored.
 - Revoke their API keys.
+- See the browsers they're signed in on, and sign any of them out.
+
+### Managing the feed in the gallery
+
+Signed-in users manage the feed in the gallery, as far as their role allows. Without users, the gallery only
+browses, and the feed is managed with NuGet clients and its API keys.
+
+| Role | In the gallery |
+| --- | --- |
+| `ReadOnly` | Browses. |
+| `ReadWrite` | Also uploads packages and symbol packages from the upload page, and unlists and relists versions in a package's **Manage** section, including versions that are all unlisted. |
+| `Admin` | Also deletes versions permanently, when `PackageDeletionBehavior` is `HardDelete`; deprecates versions; records and removes known vulnerabilities; and uses the **Admin** page. |
+
+The **Admin** page, linked in the navigation bar for admins:
+
+- **Users:** change a user's role, sign them out of every browser, revoke their API keys, or delete them. The feed
+  keeps at least one `Admin`, who can't be deleted or given another role.
+- **Repository signing:** the certificates, including revoked and expired ones, and a button that replaces a
+  generated certificate; see [Replace a generated certificate](#replace-a-generated-certificate).
+- **Settings:** a summary of the settings, the settings folder they're in, and each mirror's state, like a mirror
+  that's not asked for 5 minutes because it couldn't be reached. The settings themselves are changed in
+  `appsettings.json`.
+
+In read-only mode, nobody may change the packages, so only the **Admin** page is left.
 
 A user's API key is the password of the package source's credentials, with the user's name as the user name.
 It doesn't work in the `X-NuGet-ApiKey` header, so push without `-k`, and NuGet sends the credentials when the
@@ -286,8 +310,8 @@ feed asks for them:
 
 People sign in with their user name and a passkey, and stay signed in for a year after they last
 use the gallery or feed. Each signed-in browser has a session in the `UserSessions` table, which is
-checked with each request, so changing a user's role in the database, or deleting their account,
-applies straight away. Deleting a session's row signs that browser out.
+checked with each request, so changing a user's role, or deleting their account, on the **Admin** page applies
+straight away.
 
 Each request also replaces the sign-in cookie. If a cookie is used again after it was replaced,
 it was copied, so the server revokes the session: neither the copy nor the browser is signed in
@@ -508,9 +532,9 @@ encrypted in the database, by [data protection](#data-protection-keys).
 
 #### Replace a generated certificate
 
-If a certificate's key leaks, replace it early with the `rotate signing-certificate` command. Run it on the server,
-while the service runs; the service switches to the new certificate within a minute. On Windows, from an elevated
-PowerShell prompt:
+If a certificate's key leaks, replace it early. With users, an admin does it on the gallery's **Admin** page.
+Otherwise, use the `rotate signing-certificate` command. Run it on the server, while the service runs; the service
+switches to the new certificate within a minute. On Windows, from an elevated PowerShell prompt:
 
 ```powershell
 & "C:\Program Files\NuDepot\NuDepot.exe" rotate signing-certificate

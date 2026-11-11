@@ -34,6 +34,11 @@ public static class FeedPolicies
     public const string ManageVulnerabilities = "NuDepot.ManageVulnerabilities";
 
     /// <summary>
+    /// The policy for <see cref="FeedPermissions.Administer"/>.
+    /// </summary>
+    public const string Administer = "NuDepot.Administer";
+
+    /// <summary>
     /// Deleting a package needs <see cref="FeedPermissions.Unlist"/> or <see cref="FeedPermissions.HardDelete"/>,
     /// depending on what deleting does.
     /// </summary>
@@ -50,6 +55,7 @@ public static class FeedPolicies
         FeedPermissions.Unlist => Unlist,
         FeedPermissions.Deprecate => Deprecate,
         FeedPermissions.ManageVulnerabilities => ManageVulnerabilities,
+        FeedPermissions.Administer => Administer,
         _ => throw new ArgumentOutOfRangeException(nameof(permission), permission, "No policy requires this permission."),
     };
 
@@ -62,6 +68,7 @@ public static class FeedPolicies
             FeedPermissions.Unlist,
             FeedPermissions.Deprecate,
             FeedPermissions.ManageVulnerabilities,
+            FeedPermissions.Administer,
             null,
         })
         {

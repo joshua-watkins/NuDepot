@@ -32,6 +32,11 @@ internal partial class ServerJsonContext : JsonSerializerContext
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
 [JsonSerializable(typeof(DeprecationRequest))]
 [JsonSerializable(typeof(AdvisoryRequest))]
+[JsonSerializable(typeof(AdvisoryRequest[]))]
+[JsonSerializable(typeof(AdminUserResponse[]))]
+[JsonSerializable(typeof(RoleRequest))]
+[JsonSerializable(typeof(SigningResponse))]
+[JsonSerializable(typeof(FeedStatusResponse))]
 internal partial class AdminJsonContext : JsonSerializerContext
 {
 }
@@ -48,6 +53,7 @@ internal partial class AdminJsonContext : JsonSerializerContext
 [JsonSerializable(typeof(ApiKeyCreationRequest))]
 [JsonSerializable(typeof(ApiKeyResponse))]
 [JsonSerializable(typeof(ApiKeyResponse[]))]
+[JsonSerializable(typeof(SessionResponse[]))]
 [JsonSerializable(typeof(Fido2NetLib.AuthenticatorAttestationRawResponse))]
 [JsonSerializable(typeof(Fido2NetLib.AuthenticatorAssertionRawResponse))]
 internal partial class AccountJsonContext : JsonSerializerContext

@@ -29,6 +29,43 @@ public class AccountResponse
     /// Whether nobody has an account yet. The first account is an Admin.
     /// </summary>
     public bool IsFirstUser { get; set; }
+
+    /// <summary>
+    /// What the signed-in user may do, like "Push" or "Administer": the names of their
+    /// <see cref="Authentication.FeedPermissions"/>, which read-only mode limits.
+    /// </summary>
+    public string[]? Permissions { get; set; }
+
+    /// <summary>
+    /// What deleting a package does: "Unlist", or "HardDelete" to remove it permanently. Only for a signed-in user.
+    /// </summary>
+    public string? PackageDeletion { get; set; }
+}
+
+/// <summary>
+/// One of the signed-in user's signed-in browsers.
+/// </summary>
+public class SessionResponse
+{
+    /// <summary>
+    /// The session's ID.
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// When the browser signed in, in UTC.
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// When the browser was last used, in UTC.
+    /// </summary>
+    public DateTime LastUsedAt { get; set; }
+
+    /// <summary>
+    /// Whether it's the browser that asked.
+    /// </summary>
+    public bool IsCurrent { get; set; }
 }
 
 /// <summary>

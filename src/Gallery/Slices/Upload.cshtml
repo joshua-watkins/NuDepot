@@ -5,6 +5,28 @@
     <h1>Upload</h1>
     <hr class="breadcrumb-divider" />
 
+    @if (Model.Visitor?.IsReadOnlyMode == true)
+    {
+        <div class="alert alert-info" role="alert">The feed is read-only: nobody may push packages to it for now.</div>
+    }
+    else if (Model.Visitor?.CanPush == true)
+    {
+        <section class="upload-packages" id="upload-packages">
+            <h2>Upload from this browser</h2>
+            <p>Choose packages (<code>.nupkg</code>) or symbol packages (<code>.snupkg</code>). A symbol package needs its package on the feed.</p>
+            <form id="upload-form" class="form-inline">
+                <div class="form-group">
+                    <label for="upload-files" class="sr-only">Packages</label>
+                    <input type="file" id="upload-files" class="form-control" accept=".nupkg,.snupkg" multiple required />
+                </div>
+                <button type="submit" class="btn btn-default btn-brand">Upload</button>
+            </form>
+            <ul class="list-unstyled upload-results" id="upload-results"></ul>
+        </section>
+
+        <h2>Push from the command line</h2>
+    }
+
     <div>You can push packages using the service index <code>@Model.ServiceIndexUrl</code>.</div>
 
     <div class="tabbed-info" x-data="{ tabs: tabs, active: tabs[0] }">
@@ -75,6 +97,14 @@
 <script type="text/javascript">
     let tabs = @WebsiteJsonContext.ToScriptValue(Model.GetPushInstructions());
 </script>
+
+@if (Model.Visitor?.CanPush == true)
+{
+    <script type="text/javascript">
+        window.nudepotManage = @WebsiteJsonContext.ToScriptValue(new ManageScriptSettings(Model.PathBase));
+    </script>
+    <script src="@LayoutModel.Content("js/manage.js")" defer></script>
+}
 
 @functions {
     public LayoutModel LayoutModel => new("Upload package", Model.PathBase, WebsitePage.Upload);

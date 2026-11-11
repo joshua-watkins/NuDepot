@@ -11,6 +11,9 @@ create their own API keys.
 
 ## Push packages
 
+With [users](configuration.md#users-and-passkeys) on, signed-in users who may push can upload packages and symbol
+packages on the gallery's upload page. From the command line:
+
 ```sh
 dotnet nuget push -s http://localhost:3333/v3/index.json package.1.0.0.nupkg
 ```

@@ -30,7 +30,7 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options, IOptionsMonitor<Us
 
     /// <summary>
     /// What the user may do. An API key or a signed-in user adds their role to what requests without
-    /// one may do. In read-only mode, nobody may change the feed.
+    /// one may do. In read-only mode, nobody may change the feed's packages.
     /// </summary>
     public FeedPermissions GetPermissions(ClaimsPrincipal user)
     {
@@ -45,7 +45,7 @@ public class FeedAccess(IOptionsMonitor<FeedOptions> options, IOptionsMonitor<Us
         }
 
         if (Options.CurrentValue.IsReadOnlyMode)
-            permissions &= FeedPermissions.Read;
+            permissions &= FeedPermissions.Read | FeedPermissions.Administer;
 
         return permissions;
     }

@@ -86,6 +86,21 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     public IReadOnlyList<VersionModel>? Versions { get; private set; }
 
     /// <summary>
+    /// Every version of the package, listed or not, for a visitor who manages it. Empty for everyone else.
+    /// </summary>
+    public IReadOnlyList<VersionModel> AllVersions { get; private set; } = [];
+
+    /// <summary>
+    /// Who's visiting, and what they may manage. Null if nobody is signed in.
+    /// </summary>
+    public Visitor? Visitor { get; set; }
+
+    /// <summary>
+    /// Whether the visitor manages the package: they see its management section.
+    /// </summary>
+    public bool IsManaged => Found && Visitor?.CanManagePackages == true;
+
+    /// <summary>
     /// The README, rendered from Markdown, or null if the package doesn't have one.
     /// </summary>
     public HtmlString? Readme { get; private set; }
@@ -182,7 +197,19 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     /// <param name="version">The version to show, or null for the latest listed version.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>A task that completes when the model's properties are set.</returns>
-    public async Task LoadAsync(string id, string? version, CancellationToken cancellationToken)
+    public Task LoadAsync(string id, string? version, CancellationToken cancellationToken)
+        => LoadAsync(id, version, includeUnlisted: false, cancellationToken);
+
+    /// <summary>
+    /// Reads the package version's details from the feed.
+    /// </summary>
+    /// <param name="id">The package's ID.</param>
+    /// <param name="version">The version to show, or null for the latest listed version.</param>
+    /// <param name="includeUnlisted">Whether the visitor manages the package, so they see its unlisted versions too,
+    /// in <see cref="AllVersions"/>, and a package whose versions are all unlisted.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>A task that completes when the model's properties are set.</returns>
+    public async Task LoadAsync(string id, string? version, bool includeUnlisted, CancellationToken cancellationToken)
     {
         IReadOnlyList<NuDepotPackageMetadata> packages = await Packages.GetPackageMetadataAsync(id, cancellationToken);
         List<NuDepotPackageMetadata> listedPackages = [.. packages.Where(p => p.IsListed())];
@@ -193,8 +220,8 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         if (NuGetVersion.TryParse(version, out NuGetVersion? requestedVersion))
             package = packages.SingleOrDefault(p => p.ParseVersion() == requestedVersion);
 
-        // Otherwise try to display the latest version.
-        package ??= listedPackages
+        // Otherwise try to display the latest version, which for a manager may be unlisted.
+        package ??= (includeUnlisted && listedPackages.Count == 0 ? packages : listedPackages)
             .OrderByDescending(p => p.ParseVersion())
             .FirstOrDefault();
 
@@ -222,6 +249,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         UsedBy = dependents.Data;
         DependencyGroups = ToDependencyGroups(Package);
         Versions = ToVersions(listedPackages, Version);
+        AllVersions = includeUnlisted ? ToVersions(packages, Version) : [];
 
         if (Package.HasReadme)
             Readme = await GetReadmeHtmlStringOrNullAsync(Package.PackageId, Version, cancellationToken);
@@ -289,6 +317,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
                 Version = p.ParseVersion(),
                 Downloads = p.Downloads,
                 Selected = p.ParseVersion() == selectedVersion,
+                Listed = p.IsListed(),
                 LastUpdated = p.Published.UtcDateTime,
             })
             .OrderByDescending(m => m.Version)];
@@ -361,6 +390,11 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         /// Whether this is the version the page shows.
         /// </summary>
         public bool Selected { get; init; }
+
+        /// <summary>
+        /// Whether the version is listed. Only managers see unlisted versions.
+        /// </summary>
+        public bool Listed { get; init; } = true;
 
         /// <summary>
         /// When the version was published.

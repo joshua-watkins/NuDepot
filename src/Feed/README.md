@@ -114,8 +114,8 @@ because that's the path the V3 `PackagePublish/2.0.0` resource uses.
 ## Administration
 
 These endpoints aren't part of the NuGet protocol. They need the `Admin` key, in the `X-NuGet-ApiKey` header
-or as the password of Basic credentials with the user name `Admin`, or a user with the `Admin` role. They are
-disabled in read-only mode.
+or as the password of Basic credentials with the user name `Admin`, or a user with the `Admin` role. Those that
+change packages are disabled in read-only mode.
 
 Deprecate a package version (reasons: `Legacy`, `CriticalBugs`, `Other`), or undeprecate it:
 
@@ -138,6 +138,25 @@ curl -X PUT https://nuget.example.com/api/vulnerabilities \
 curl -X DELETE "https://nuget.example.com/api/vulnerabilities?packageId=Contoso.Utils&url=https%3A%2F%2Fexample.com%2Fadvisories%2F1" \
   -H "X-NuGet-ApiKey: $KEY"
 ```
+
+`GET api/vulnerabilities?packageId=Contoso.Utils` lists a package's advisories, with their URLs and version ranges.
+
+With users, the gallery manages the feed with these endpoints, and with these, which need `FeedPermissions.Administer`
+(the `Admin` role) and are kept in read-only mode:
+
+| Endpoint | Does |
+| --- | --- |
+| `GET api/admin/users` | Lists the users, with their roles and how many passkeys, API keys and signed-in browsers they have. |
+| `PUT api/admin/users/{id}` | Changes a user's role, like `{"role":"ReadWrite"}`. The last `Admin` keeps the role. |
+| `DELETE api/admin/users/{id}` | Deletes a user, with their passkeys, API keys and sessions. The last `Admin` can't be deleted. |
+| `DELETE api/admin/users/{id}/sessions` | Signs a user out of every browser. |
+| `DELETE api/admin/users/{id}/apikeys` | Revokes a user's API keys. |
+| `GET api/admin/signing` | Lists the signing certificates, including revoked and expired generated ones. |
+| `POST api/admin/signing/rotate` | Replaces this year's generated certificate, like `NuDepot rotate signing-certificate`. |
+| `GET api/admin/status` | Summarizes the settings, without the API keys, and each mirror's state. |
+
+Signed-in users also see their own browsers with `GET api/account/sessions`, and sign one out with
+`DELETE api/account/sessions/{id}`. `GET api/account` says what the signed-in user may do.
 
 ## Repository signing
 

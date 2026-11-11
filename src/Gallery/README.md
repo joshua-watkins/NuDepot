@@ -30,6 +30,13 @@ minimal API endpoints in `WebsiteEndpoints`. Each slice's model is next to it, l
 `PackageModel.cs`: the endpoint loads the model from the feed with its `LoadAsync`, then renders the slice with it.
 `_Layout.cshtml` is the slices' shared layout, with `LayoutModel`.
 
+Hosted with a feed whose users sign in, the gallery also manages the feed, as far as the signed-in user's role
+allows: uploads on `Upload`, unlisting, deleting, deprecations and vulnerabilities in `Package`'s Manage section,
+sessions on `Account`, and users, signing and settings on `Admin`. Each request's `Visitor` asks the feed's
+`api/account` what the user may do, and the slices only show that. The scripts in `wwwroot/js` (`manage.js`,
+`admin.js` and `account.js`) call the feed's endpoints with the sign-in cookie. Without users, or showing another
+feed, the gallery only browses.
+
 ## Hosting it
 
 The website is a Razor class library. The Windows and Linux hosts in `pub` add it to the server's

@@ -35,5 +35,49 @@
         }
     };
 
-    window.nudepot = { copyTextToClipboard };
+    // Calls one of the feed's endpoints, with the sign-in cookie. A failure throws its message.
+    const request = async (method, url, body) => {
+        const init = { method, credentials: 'same-origin', headers: {} };
+        if (body instanceof FormData) {
+            init.body = body;
+        } else if (body !== undefined) {
+            init.headers['Content-Type'] = 'application/json';
+            init.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(url, init);
+        if (!response.ok) {
+            const message = await response.text();
+            const error = new Error(message || `Something went wrong (${response.status}).`);
+            error.status = response.status;
+            throw error;
+        }
+
+        const isJson = (response.headers.get('Content-Type') ?? '').includes('json');
+        return isJson ? response.json() : null;
+    };
+
+    // Shows an error in the page's [data-manage-error] alert, or hides it.
+    const showError = (error) => {
+        const element = document.querySelector('[data-manage-error]');
+        if (!element) return;
+
+        element.textContent = error ? error.message || String(error) : '';
+        element.hidden = !error;
+    };
+
+    // Disables the button while the promise runs, and shows its error.
+    const busy = async (button, promise) => {
+        button.disabled = true;
+        showError(null);
+        try {
+            await promise;
+        } catch (error) {
+            showError(error);
+        } finally {
+            button.disabled = false;
+        }
+    };
+
+    window.nudepot = { copyTextToClipboard, request, showError, busy };
 })();

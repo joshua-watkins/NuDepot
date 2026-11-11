@@ -6,7 +6,9 @@ using Microsoft.Extensions.Primitives;
 using NuDepot.Core;
 using NuDepot.Core.Hosting;
 using NuDepot.Core.RepositorySignatures;
+using NuDepot.Gallery.Serialization;
 using System.Net;
+using System.Net.Http.Json;
 
 namespace NuDepot.Gallery;
 
@@ -81,6 +83,24 @@ public class FeedConnection
 
         string url = new Uri(new Uri(ServiceIndexUrl), CoHostedRepositorySignaturesPath).AbsoluteUri;
         return new RawRepositorySignaturesClient(LazyHttpClient.Value, url);
+    }
+
+    /// <summary>
+    /// Asks the feed hosted in the same application who the browser's signed-in user is, and what they may do.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>The account, or null if people can't sign in.</returns>
+    internal async Task<FeedAccount?> GetAccountOrNullAsync(CancellationToken cancellationToken)
+    {
+        if (!SignInAvailable)
+            return null;
+
+        // The account endpoints are at the root of the feed, next to its v3 folder.
+        Uri url = new(new Uri(ServiceIndexUrl), "../api/account");
+        using HttpResponseMessage response = await LazyHttpClient.Value.GetAsync(url, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync(WebsiteJsonContext.Default.FeedAccount, cancellationToken);
     }
 
     /// <summary>
