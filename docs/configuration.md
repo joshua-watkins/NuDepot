@@ -617,6 +617,23 @@ Relative paths are relative to the settings folder. See
 connection string can say. As environment variables, these are `Feed__Database__ConnectionString`,
 `Feed__Storage__Type`, `Feed__Storage__Path` and `Feed__Search__Type`.
 
+## Health
+
+Monitors and load balancers read the feed's health at `/health`, after the `PathBase` if there is one. It needs no
+key, even on a private feed, and only says `Healthy`, `Degraded` or `Unhealthy`. The first two answer 200, so a load
+balancer keeps sending requests; `Unhealthy` answers 503. `/health/live` only says whether the service answers.
+Even a feed that signs packages answers its health over HTTP, so a monitor on the server can check it directly.
+
+| Check | Healthy | Degraded | Unhealthy |
+| --- | --- | --- | --- |
+| `database` | The database answers. | | It can't be read. |
+| `storage` | Packages can be written to the storage folder. | Under 1 GB is free there. | They can't be written. |
+| `signing`, when signing is set up | The certificate loads, with its private key, or signing is off. | Your own certificate expires within 30 days. | It can't be loaded, has no private key, or expired. |
+| `mirrors`, when mirroring is set up | Every mirror is asked, or mirroring is off. | A mirror couldn't be reached, and isn't asked for now. | |
+
+The `mirrors` check doesn't call the mirrors, so frequent monitoring doesn't load them; it reports what the feed
+found when requests needed them. Admins see each check's details on the gallery's **Admin** page.
+
 ## Logging
 
 On Linux, the service logs to systemd's journal at the `Information` level, and `Warning` for ASP.NET Core. On

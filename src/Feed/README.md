@@ -158,6 +158,13 @@ With users, the gallery manages the feed with these endpoints, and with these, w
 Signed-in users also see their own browsers with `GET api/account/sessions`, and sign one out with
 `DELETE api/account/sessions/{id}`. `GET api/account` says what the signed-in user may do.
 
+## Health
+
+`UseFeed()` maps ASP.NET Core health checks at `/health`, without a key: `Healthy` or `Degraded` with 200, and
+`Unhealthy` with 503. `/health/live` runs no checks. The feed checks its database and storage, and `AddSigning()` and
+`AddMirroring()`, or their `Enable` methods, add checks for the signing certificate and the mirrors. An application can
+add its own checks with `services.AddHealthChecks()`, and `GET api/admin/status` lists every check's result.
+
 ## Repository signing
 
 Signing is off by default. With `AddSigning()` (or `EnableSigning()` and `Feed:RepositorySigning:IsEnabled`),

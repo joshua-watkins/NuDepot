@@ -37,6 +37,7 @@ internal partial class ServerJsonContext : JsonSerializerContext
 [JsonSerializable(typeof(RoleRequest))]
 [JsonSerializable(typeof(SigningResponse))]
 [JsonSerializable(typeof(FeedStatusResponse))]
+[JsonSerializable(typeof(HealthResponse))]
 internal partial class AdminJsonContext : JsonSerializerContext
 {
 }

@@ -21,6 +21,7 @@ using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Content;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Extensions;
+using NuDepot.Feed.Health;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Metadata;
 using NuDepot.Feed.Search;
@@ -48,6 +49,11 @@ public static class FeedServiceCollectionExtensions
     private const string UserCookieName = "NuDepot.User";
 
     /// <summary>
+    /// Where <c>UseFeed()</c> maps the feed's health.
+    /// </summary>
+    internal const string HealthPath = "/health";
+
+    /// <summary>
     /// Adds the NuGet feed: the services behind the NuGet V3 API endpoints, and the services that
     /// store packages. Its <see cref="FeedOptions"/> are bound from the <see cref="FeedOptions.Section"/>
     /// configuration section, then changed by <paramref name="configure"/>.
@@ -60,8 +66,23 @@ public static class FeedServiceCollectionExtensions
         AddAccess(services);
         AddDatabase(services);
         AddServices(services);
+        AddHealthChecks(services);
 
         return builder;
+    }
+
+    // The checks of what the feed depends on. The optional features add theirs. UseFeed() maps them at "health".
+    private static void AddHealthChecks(IServiceCollection services)
+    {
+        FeedFeatures features = FeedFeatures.Get(services);
+        if (features.HealthChecks)
+            return;
+
+        features.HealthChecks = true;
+        services
+            .AddHealthChecks()
+            .AddCheck<DatabaseHealthCheck>(DatabaseHealthCheck.Name)
+            .AddCheck<StorageHealthCheck>(StorageHealthCheck.Name);
     }
 
     /// <summary>
@@ -162,6 +183,9 @@ public static class FeedServiceCollectionExtensions
             .AddOptions<RepositorySigningOptions>()
             .Configure(options => options.IsEnabled = features.SigningByDefault)
             .BindConfiguration(RepositorySigningOptions.Section);
+        services
+            .AddHealthChecks()
+            .AddCheck<SigningHealthCheck>(SigningHealthCheck.Name);
 
         return builder;
     }
@@ -202,6 +226,9 @@ public static class FeedServiceCollectionExtensions
             .AddOptions<MirroringOptions>()
             .Configure(options => options.IsEnabled = features.MirroringByDefault)
             .BindConfiguration(MirroringOptions.Section);
+        services
+            .AddHealthChecks()
+            .AddCheck<MirrorsHealthCheck>(MirrorsHealthCheck.Name);
 
         return builder;
     }
@@ -454,12 +481,14 @@ public static class FeedServiceCollectionExtensions
                 }
 
                 // Signatures name the feed's HTTPS address, and packages are signed when they're pushed and
-                // re-signed when they're downloaded over HTTPS, so a feed that signs doesn't answer HTTP.
+                // re-signed when they're downloaded over HTTPS, so a feed that signs doesn't answer HTTP. Except its
+                // health, which monitors often check on the server, over HTTP, and which has no packages.
                 if (signing.Value.IsEnabled)
                 {
+                    PathString health = new PathString(options.Value.PathBase).Add(HealthPath);
                     app.Use(async (context, nextMiddleware) =>
                     {
-                        if (context.Request.IsHttps)
+                        if (context.Request.IsHttps || context.Request.Path.StartsWithSegments(health) || context.Request.Path.StartsWithSegments(HealthPath))
                         {
                             await nextMiddleware(context);
                             return;

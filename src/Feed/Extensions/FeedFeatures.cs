@@ -10,6 +10,11 @@ namespace NuDepot.Feed.Extensions;
 internal sealed class FeedFeatures
 {
     /// <summary>
+    /// Whether the feed's own health checks are added, by <c>AddFeed()</c>.
+    /// </summary>
+    public bool HealthChecks { get; set; }
+
+    /// <summary>
     /// Whether users' options are bound, and their services added.
     /// </summary>
     public bool Users { get; set; }

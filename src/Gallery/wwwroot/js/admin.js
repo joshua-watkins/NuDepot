@@ -120,8 +120,32 @@
         Admin: 'Everything',
     };
 
+    // A health status, as a label colored like Bootstrap's alerts.
+    const healthLabel = (status) => {
+        const label = document.createElement('span');
+        label.className = `label ${{ Healthy: 'label-success', Degraded: 'label-warning' }[status] ?? 'label-danger'}`;
+        label.textContent = status;
+        return label;
+    };
+
+    const showHealth = (health) => {
+        const summary = page.querySelector('#health-status');
+        summary.textContent = '';
+        summary.appendChild(healthLabel(health.status));
+
+        const body = page.querySelector('#health');
+        body.textContent = '';
+        for (const check of health.checks) {
+            const row = body.insertRow();
+            row.insertCell().textContent = check.name;
+            row.insertCell().appendChild(healthLabel(check.status));
+            row.insertCell().textContent = check.description ?? '';
+        }
+    };
+
     const loadStatus = async () => {
         const status = await request('GET', `${api}/status`);
+        showHealth(status.health);
         page.querySelector('#settings-folder').textContent = status.settingsFolder;
 
         const rows = [

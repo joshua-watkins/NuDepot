@@ -85,6 +85,21 @@ public class MirrorChainIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task AMirrorThatCantBeReachedDegradesTheFeedsHealth()
+    {
+        NuDepotTestApplication mirror = CreateMirror(privateHost: "down.test");
+        HttpClient client = mirror.CreateClient();
+        Assert.Equal("Healthy", await client.GetStringAsync("health"));
+
+        await client.GetAsync("v3/package/missing.package/index.json");
+
+        // Degraded still answers 200, so load balancers keep sending requests.
+        using HttpResponseMessage response = await client.GetAsync("health");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Degraded", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task AMirrorThatCantBeReachedIsntAskedForAWhile()
     {
         TestTimeProvider time = new(DateTimeOffset.UtcNow);

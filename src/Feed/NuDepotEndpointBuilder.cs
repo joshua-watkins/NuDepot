@@ -85,7 +85,7 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Administer);
 
         endpoints
-            .MapGet("api/admin/status", AdminEndpoints.GetStatus)
+            .MapGet("api/admin/status", AdminEndpoints.GetStatusAsync)
             .RequireFeedPermission(FeedPermissions.Administer);
     }
 

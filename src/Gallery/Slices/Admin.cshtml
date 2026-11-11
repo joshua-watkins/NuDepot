@@ -8,6 +8,30 @@
     <div class="alert alert-danger" role="alert" data-manage-error hidden></div>
 
     <section>
+        <h2>Health <small id="health-status"></small></h2>
+        <p>
+            Monitors and load balancers read the same checks at <code>@Model.PathBase/health</code>, without a key: it answers
+            <code>Healthy</code> or <code>Degraded</code> with 200, and <code>Unhealthy</code> with 503.
+        </p>
+        <table class="table admin-table">
+            <thead>
+                <tr><th>Check</th><th>Status</th><th>Details</th></tr>
+            </thead>
+            <tbody id="health"></tbody>
+        </table>
+
+        <div id="mirrors-section" hidden>
+            <h3>Mirrors</h3>
+            <table class="table admin-table">
+                <thead>
+                    <tr><th>Mirror</th><th>Package source</th><th>When it can't be reached</th><th>Status</th></tr>
+                </thead>
+                <tbody id="mirrors"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section>
         <h2>Users</h2>
         <p>
             A user's role decides what they, and their API keys, may do. The feed keeps at least one Admin. Deleting a
@@ -50,16 +74,6 @@
         <table class="table admin-table settings-table">
             <tbody id="settings"></tbody>
         </table>
-
-        <div id="mirrors-section" hidden>
-            <h3>Mirrors</h3>
-            <table class="table admin-table">
-                <thead>
-                    <tr><th>Mirror</th><th>Package source</th><th>When it can't be reached</th><th>Status</th></tr>
-                </thead>
-                <tbody id="mirrors"></tbody>
-            </table>
-        </div>
     </section>
 </div>
 

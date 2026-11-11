@@ -177,6 +177,11 @@ public class SigningCertificateResponse
 public class FeedStatusResponse
 {
     /// <summary>
+    /// The feed's health: each of its health checks, which "health" sums up for monitors.
+    /// </summary>
+    public HealthResponse Health { get; set; } = null!;
+
+    /// <summary>
     /// The folder the settings files are in, which is the feed's working directory.
     /// </summary>
     public string SettingsFolder { get; set; } = null!;
@@ -245,6 +250,48 @@ public class FeedStatusResponse
     /// Where packages are stored.
     /// </summary>
     public string? StoragePath { get; set; }
+}
+
+/// <summary>
+/// The feed's health.
+/// </summary>
+public class HealthResponse
+{
+    /// <summary>
+    /// The worst of the checks' statuses: "Healthy", "Degraded" or "Unhealthy".
+    /// </summary>
+    public string Status { get; set; } = null!;
+
+    /// <summary>
+    /// The checks, like the database's and the storage's.
+    /// </summary>
+    public HealthCheckResponse[] Checks { get; set; } = [];
+}
+
+/// <summary>
+/// One of the feed's health checks.
+/// </summary>
+public class HealthCheckResponse
+{
+    /// <summary>
+    /// The check's name, like "database".
+    /// </summary>
+    public string Name { get; set; } = null!;
+
+    /// <summary>
+    /// "Healthy", "Degraded" or "Unhealthy".
+    /// </summary>
+    public string Status { get; set; } = null!;
+
+    /// <summary>
+    /// What the check found.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// How long the check took, in milliseconds.
+    /// </summary>
+    public double DurationMilliseconds { get; set; }
 }
 
 /// <summary>

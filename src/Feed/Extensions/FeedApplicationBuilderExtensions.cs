@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -46,6 +47,11 @@ public static class FeedApplicationBuilderExtensions
     {
         app.Application.UseMiddleware<OperationCancelledMiddleware>();
         new NuDepotEndpointBuilder().MapEndpoints(app.Endpoints);
+
+        // For monitors and load balancers, without a key: whether the feed is Healthy, Degraded (200) or Unhealthy
+        // (503), and at "health/live", only whether it answers. Administrators see each check in the gallery.
+        app.Endpoints.MapHealthChecks(FeedServiceCollectionExtensions.HealthPath);
+        app.Endpoints.MapHealthChecks(FeedServiceCollectionExtensions.HealthPath + "/live", new HealthCheckOptions { Predicate = _ => false });
         GetPipeline(app).UsesFeed = true;
 
         return app;

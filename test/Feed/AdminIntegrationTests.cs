@@ -181,6 +181,9 @@ public class AdminIntegrationTests(ITestOutputHelper output) : IDisposable
 
         JsonElement status = await GetJsonAsync(alice, "api/admin/status");
 
+        JsonElement health = status.GetProperty("health");
+        Assert.Equal("Healthy", health.GetProperty("status").GetString());
+        Assert.Equal(["database", "storage", "signing", "mirrors"], health.GetProperty("checks").EnumerateArray().Select(c => c.GetProperty("name").GetString()));
         Assert.Equal("HardDelete", status.GetProperty("packageDeletionBehavior").GetString());
         Assert.Equal(["Admin"], Strings(status.GetProperty("apiKeyRoles")));
         Assert.Equal("ReadOnly", status.GetProperty("anonymousRole").GetString());

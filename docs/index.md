@@ -23,6 +23,7 @@ settings. The ones you're most likely to want:
 * [Let people sign in with passkeys](configuration.md#users-and-passkeys)
 * [Sign packages](configuration.md#repository-signing)
 * [Mirror nuget.org](configuration.md#mirror-nugetorg)
+* [Monitor its health](configuration.md#health)
 
 ## Libraries
 

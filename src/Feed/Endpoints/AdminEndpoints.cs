@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Authentication;
@@ -87,9 +88,10 @@ internal static class AdminEndpoints
     }
 
     // GET api/admin/status
-    public static IResult GetStatus(HttpContext httpContext, FeedAccess access)
+    public static async Task<IResult> GetStatusAsync(HttpContext httpContext, FeedAccess access, HealthCheckService health, CancellationToken cancellationToken)
     {
         IServiceProvider services = httpContext.RequestServices;
+        HealthReport report = await health.CheckHealthAsync(cancellationToken);
         FeedOptions feed = services.GetRequiredService<IOptionsSnapshot<FeedOptions>>().Value;
         UserOptions users = services.GetRequiredService<IOptionsSnapshot<UserOptions>>().Value;
         MirroringOptions mirroring = services.GetRequiredService<IOptions<MirroringOptions>>().Value;
@@ -97,6 +99,17 @@ internal static class AdminEndpoints
 
         FeedStatusResponse response = new()
         {
+            Health = new HealthResponse
+            {
+                Status = report.Status.ToString(),
+                Checks = [.. report.Entries.Select(entry => new HealthCheckResponse
+                {
+                    Name = entry.Key,
+                    Status = entry.Value.Status.ToString(),
+                    Description = entry.Value.Description,
+                    DurationMilliseconds = Math.Round(entry.Value.Duration.TotalMilliseconds, 1),
+                })],
+            },
             SettingsFolder = services.GetRequiredService<IHostEnvironment>().ContentRootPath,
             IsReadOnlyMode = feed.IsReadOnlyMode,
             PackageDeletionBehavior = feed.PackageDeletionBehavior.ToString(),
