@@ -14,29 +14,47 @@ namespace NuDepot.Feed.Upstream.Clients;
 /// <param name="client">The upstream feed's client.</param>
 /// <param name="logger">The logger.</param>
 /// <param name="name">The mirror's name, for the logs.</param>
-/// <param name="timeout">The time each request may take, or null for no limit.</param>
-public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logger, string name = "upstream", TimeSpan? timeout = null) : IUpstreamClient
+/// <param name="requestTimeout">The time a request may take to answer, or null for no limit. A download's answer is
+/// its headers.</param>
+/// <param name="downloadTimeout">The time a package's content may take to download, after its headers, or null
+/// for no limit.</param>
+public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logger, string name = "upstream", TimeSpan? requestTimeout = null, TimeSpan? downloadTimeout = null) : IUpstreamClient
 {
     private NuGetClient Client { get; } = client;
     private ILogger<V3UpstreamClient> Logger { get; } = logger;
     private string Name { get; } = name;
-    private TimeSpan? Timeout { get; } = timeout;
+    private TimeSpan? RequestTimeout { get; } = requestTimeout;
+    private TimeSpan? DownloadTimeout { get; } = downloadTimeout;
 
     /// <inheritdoc />
     public async Task<Stream?> DownloadPackageOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
+        => (await TryDownloadPackageAsync(id, version, cancellationToken)).Package;
+
+    /// <summary>
+    /// Like <see cref="DownloadPackageOrNullAsync"/>, but says whether the upstream feed couldn't be asked, rather
+    /// than not having the package.
+    /// </summary>
+    internal async Task<(Stream? Package, bool Failed)> TryDownloadPackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         try
         {
-            using CancellationTokenSource? timeout = StartTimeout(cancellationToken);
-            CancellationToken token = timeout?.Token ?? cancellationToken;
-            using (Stream downloadStream = await Client.DownloadPackageAsync(id, version, token))
+            // The client returns once the headers arrive, so the request timeout ends there, and the download
+            // timeout covers the content.
+            Stream downloadStream;
+            using (CancellationTokenSource? requestTimeout = StartTimeout(RequestTimeout, cancellationToken))
             {
-                return await downloadStream.AsTemporaryFileStreamAsync(token);
+                downloadStream = await Client.DownloadPackageAsync(id, version, requestTimeout?.Token ?? cancellationToken);
+            }
+
+            using (downloadStream)
+            using (CancellationTokenSource? downloadTimeout = StartTimeout(DownloadTimeout, cancellationToken))
+            {
+                return (await downloadStream.AsTemporaryFileStreamAsync(downloadTimeout?.Token ?? cancellationToken), false);
             }
         }
         catch (PackageNotFoundException)
         {
-            return null;
+            return (null, false);
         }
         catch (Exception e) when (!cancellationToken.IsCancellationRequested)
         {
@@ -46,7 +64,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
                 id,
                 version,
                 Name);
-            return null;
+            return (null, true);
         }
     }
 
@@ -66,7 +84,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
     {
         try
         {
-            using CancellationTokenSource? timeout = StartTimeout(cancellationToken);
+            using CancellationTokenSource? timeout = StartTimeout(RequestTimeout, cancellationToken);
             IReadOnlyList<PackageMetadata> packages = await Client.GetPackageMetadataAsync(id, timeout?.Token ?? cancellationToken);
 
             return [.. packages.Select(ToPackage)];
@@ -86,7 +104,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
     {
         try
         {
-            using CancellationTokenSource? timeout = StartTimeout(cancellationToken);
+            using CancellationTokenSource? timeout = StartTimeout(RequestTimeout, cancellationToken);
             return await Client.ListPackageVersionsAsync(id, includeUnlisted: true, timeout?.Token ?? cancellationToken);
         }
         catch (Exception e) when (!cancellationToken.IsCancellationRequested)
@@ -97,13 +115,13 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
     }
 
     // Null without a timeout, so requests get the caller's token.
-    private CancellationTokenSource? StartTimeout(CancellationToken cancellationToken)
+    private static CancellationTokenSource? StartTimeout(TimeSpan? limit, CancellationToken cancellationToken)
     {
-        if (Timeout is not TimeSpan limit)
+        if (limit is not TimeSpan time)
             return null;
 
         CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(limit);
+        timeout.CancelAfter(time);
         return timeout;
     }
 

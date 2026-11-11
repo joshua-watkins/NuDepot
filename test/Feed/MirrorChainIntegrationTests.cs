@@ -18,6 +18,9 @@ public class MirrorChainIntegrationTests : IDisposable
     private NuDepotTestApplication Public { get; }
     private List<IDisposable> Disposables { get; } = [];
 
+    // The upstream feeds of the last mirror CreateMirror created.
+    private HostRoutingHandler? Routing { get; set; }
+
     public MirrorChainIntegrationTests(ITestOutputHelper output)
     {
         Output = output;
@@ -60,10 +63,53 @@ public class MirrorChainIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task AMirrorThatCantBeReachedStopsTheChain()
+    public async Task AMirrorThatCantBeReachedIsSkippedByDefault()
     {
         await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
         HttpClient client = CreateMirror(privateHost: "down.test").CreateClient();
+
+        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json"));
+        using HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/1.0.0/shared.package.1.0.0.nupkg");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AMirrorThatDoesntAnswerInTimeIsSkipped()
+    {
+        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
+        HttpClient client = CreateMirror(privateHost: "stall.test", privateRequestTimeoutSeconds: 1).CreateClient();
+
+        System.Diagnostics.Stopwatch elapsed = System.Diagnostics.Stopwatch.StartNew();
+        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json"));
+        Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task AMirrorThatCantBeReachedIsntAskedForAWhile()
+    {
+        TestTimeProvider time = new(DateTimeOffset.UtcNow);
+        HttpClient client = CreateMirror(privateHost: "down.test", time: time).CreateClient();
+
+        await client.GetAsync("v3/package/missing.package/index.json");
+        int attempts = Routing!.UnreachableAttempts;
+        Assert.True(attempts > 0);
+
+        // For 5 minutes, requests don't wait for it.
+        time.Now += TimeSpan.FromMinutes(4);
+        await client.GetAsync("v3/package/missing.package/index.json");
+        Assert.Equal(attempts, Routing.UnreachableAttempts);
+
+        // Then it's tried again.
+        time.Now += TimeSpan.FromMinutes(1);
+        await client.GetAsync("v3/package/missing.package/index.json");
+        Assert.True(Routing.UnreachableAttempts > attempts);
+    }
+
+    [Fact]
+    public async Task AMirrorThatCantBeReachedCanStopTheChain()
+    {
+        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
+        HttpClient client = CreateMirror(privateHost: "down.test", privateWhenUnreachable: UnreachableMirrorBehavior.Stop).CreateClient();
 
         // The private feed may have the package, so it isn't taken from the public feed.
         using (HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/index.json"))
@@ -144,14 +190,14 @@ public class MirrorChainIntegrationTests : IDisposable
         Public.Dispose();
     }
 
-    private NuDepotTestApplication CreateMirror(bool privateFirst = true, string privateHost = "private.test", bool isEnabled = true)
+    private NuDepotTestApplication CreateMirror(bool privateFirst = true, string privateHost = "private.test", bool isEnabled = true, UnreachableMirrorBehavior? privateWhenUnreachable = null, TimeProvider? time = null, int? privateRequestTimeoutSeconds = null)
     {
-        HostRoutingHandler handler = new(new Dictionary<string, HttpMessageHandler>
+        Routing = new(new Dictionary<string, HttpMessageHandler>
         {
             ["private.test"] = Private.Server.CreateHandler(),
             ["public.test"] = Public.Server.CreateHandler(),
         });
-        HttpClient upstream = new(handler);
+        HttpClient upstream = new(Routing);
 
         // The list replaces the test application's own mirror, which is item 0.
         (string Name, string Source)[] mirrors =
@@ -167,9 +213,17 @@ public class MirrorChainIntegrationTests : IDisposable
         {
             settings[$"Mirroring:Mirrors:{i}:Name"] = mirrors[i].Name;
             settings[$"Mirroring:Mirrors:{i}:PackageSource"] = mirrors[i].Source;
+            if (mirrors[i].Name == "Private" && privateWhenUnreachable != null)
+                settings[$"Mirroring:Mirrors:{i}:WhenUnreachable"] = privateWhenUnreachable.Value.ToString();
+            if (mirrors[i].Name == "Private" && privateRequestTimeoutSeconds != null)
+                settings[$"Mirroring:Mirrors:{i}:RequestTimeoutSeconds"] = privateRequestTimeoutSeconds.Value.ToString();
         }
 
-        NuDepotTestApplication mirror = new(Output, upstream, settings);
+        NuDepotTestApplication mirror = new(Output, upstream, settings, configureServices: services =>
+        {
+            if (time != null)
+                services.AddSingleton(time);
+        });
         Disposables.Add(mirror);
         Disposables.Add(upstream);
         return mirror;
@@ -178,14 +232,31 @@ public class MirrorChainIntegrationTests : IDisposable
     // Sends each request to the test server of its host. Other hosts can't be reached.
     private sealed class HostRoutingHandler(IReadOnlyDictionary<string, HttpMessageHandler> hosts) : HttpMessageHandler
     {
+        private int unreachableAttempts;
+
         private Dictionary<string, HttpMessageInvoker> Invokers { get; } = hosts.ToDictionary(host => host.Key, host => new HttpMessageInvoker(host.Value), StringComparer.OrdinalIgnoreCase);
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            if (!Invokers.TryGetValue(request.RequestUri!.Host, out HttpMessageInvoker? invoker))
-                throw new HttpRequestException($"{request.RequestUri.Host} can't be reached.");
+        /// <summary>
+        /// How many requests went to hosts that can't be reached.
+        /// </summary>
+        public int UnreachableAttempts => Volatile.Read(ref unreachableAttempts);
 
-            return invoker.SendAsync(request, cancellationToken);
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            // A server that accepts the request, and never answers.
+            if (string.Equals(request.RequestUri!.Host, "stall.test", StringComparison.OrdinalIgnoreCase))
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                throw new OperationCanceledException(cancellationToken);
+            }
+
+            if (!Invokers.TryGetValue(request.RequestUri!.Host, out HttpMessageInvoker? invoker))
+            {
+                Interlocked.Increment(ref unreachableAttempts);
+                throw new HttpRequestException($"{request.RequestUri.Host} can't be reached.");
+            }
+
+            return await invoker.SendAsync(request, cancellationToken);
         }
 
         protected override void Dispose(bool disposing)

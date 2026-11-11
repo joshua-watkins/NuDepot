@@ -22,8 +22,15 @@ public class MirroringOptions
     /// <summary>
     /// The upstream feeds, asked in this order. The first one that has a package ID provides all of its versions,
     /// so a later mirror can't add versions of a package an earlier mirror has: put private feeds before public
-    /// ones. If a mirror can't be reached, the later ones aren't asked either. Mirroring that's on needs at least
+    /// ones. A mirror that can't be reached is skipped, or stops the chain; see
+    /// <see cref="MirrorOptions.WhenUnreachable"/>. Mirroring that's on needs at least
     /// one, like nuget.org's, <see cref="MirrorOptions.NuGetPackageSource"/>.
     /// </summary>
     public List<MirrorOptions> Mirrors { get; set; } = [];
+
+    /// <summary>
+    /// How long a mirror that couldn't be reached, or timed out, isn't asked, before it's tried again. Its
+    /// <see cref="MirrorOptions.WhenUnreachable"/> decides what happens to requests meanwhile. Must be positive.
+    /// </summary>
+    public int UnreachableMirrorMinutes { get; set; } = 5;
 }

@@ -22,12 +22,14 @@
 			target machine doesn't need the .NET runtime. The publish output is available to the .wxs
 			files as !(bindpath.Windows). The service picks its runtime identifier from its platform:
 			WiX drops a RuntimeIdentifier from AdditionalProperties, and a solution build replaces
-			SetPlatform with the solution's platform for the project.
+			SetPlatform with the solution's platform for the project. The self-contained build has folders of its
+			own: in the service's usual ones, it would mix its files with the framework-dependent build's, and the
+			service wouldn't start ("Could not resolve CoreCLR path").
 		-->
 		<ProjectReference Include="..\Windows\Windows.csproj"
 						  Publish="true"
 						  SetPlatform="Platform=$(Platform)"
-						  AdditionalProperties="SelfContained=true" />
+						  AdditionalProperties="SelfContained=true;OutputPath=bin\$(Platform)\$(Configuration)\self-contained\;IntermediateOutputPath=obj\$(Platform)\$(Configuration)\self-contained\" />
 	</ItemGroup>
 
 	<!-- The installer isn't a NuGet package. This lets "dotnet pack NuDepot.slnx" pack the libraries. -->

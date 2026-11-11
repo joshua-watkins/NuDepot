@@ -22,9 +22,22 @@ public class MirrorOptions
     public Uri? PackageSource { get; set; }
 
     /// <summary>
-    /// The time a request to the package source, like a download, may take. Must be positive.
+    /// The time a request to the package source may take to answer, like for its service index or a package's
+    /// versions. For a download, the answer is its headers; then <see cref="DownloadTimeoutSeconds"/> applies. A
+    /// mirror that doesn't answer in time counts as unreachable. Must be positive.
     /// </summary>
-    public int PackageDownloadTimeoutSeconds { get; set; } = 600;
+    public int RequestTimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// The time a package's content may take to download from the package source, once it started. Must be positive.
+    /// </summary>
+    public int DownloadTimeoutSeconds { get; set; } = 600;
+
+    /// <summary>
+    /// What happens to requests when the mirror can't be reached, or times out: for that request, and for the
+    /// <see cref="MirroringOptions.UnreachableMirrorMinutes"/> the mirror isn't asked afterwards.
+    /// </summary>
+    public UnreachableMirrorBehavior WhenUnreachable { get; set; } = UnreachableMirrorBehavior.Skip;
 
     /// <summary>
     /// The mirror's name, or its package source's host name.

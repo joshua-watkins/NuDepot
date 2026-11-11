@@ -347,7 +347,7 @@ logs:
     "Mirroring": {
         "IsEnabled": true,
         "Mirrors": [
-            { "Name": "Internal", "PackageSource": "https://feed.example.com/v3/index.json" },
+            { "Name": "Internal", "PackageSource": "https://feed.example.com/v3/index.json", "WhenUnreachable": "Stop" },
             { "Name": "nuget.org", "PackageSource": "https://api.nuget.org/v3/index.json" }
         ]
     },
@@ -357,15 +357,27 @@ logs:
 
 - **Order.** The mirrors are asked in the list's order.
 - **The first mirror that has a package provides it.** All of that package's versions come from it. A later
-  mirror can't add versions of it, so put your private feeds before nuget.org: then nobody can publish a package
-  with the same ID on nuget.org to get it into your builds.
-- **A mirror that can't be reached stops the chain.** Mirrors are only contacted when a client asks for a package
-  the feed doesn't have, not when the service starts. If that request to a mirror fails or times out, the later
-  mirrors aren't asked, so a package isn't taken from another feed while the feed that has it is down. The client
-  gets the versions the feed has itself, or a 404, and the failure is logged. Nothing is remembered: the next
-  request asks the mirrors again. Packages the feed already downloaded keep working while a mirror is down.
-- **Timeouts.** Each request to a mirror, like a download, may take its `PackageDownloadTimeoutSeconds`, which is
-  600 by default.
+  mirror can't add versions of it, so put your private feeds before nuget.org, with `"WhenUnreachable": "Stop"`:
+  then nobody can publish a package with the same ID on nuget.org to get it into your builds.
+- **A mirror that can't be reached is skipped for 5 minutes.** Mirrors are only contacted when a client asks for a
+  package the feed doesn't have, not when the service starts. When a request to a mirror fails or times out, the
+  service logs a warning, and doesn't ask that mirror again for `UnreachableMirrorMinutes` (5 by default), so
+  requests don't each wait for it. Then it's tried again. Meanwhile, its `WhenUnreachable` decides what requests do:
+  - `Skip`, the default: the later mirrors are asked instead, so packages they have still work.
+  - `Stop`: the later mirrors aren't asked either. Clients get the versions the feed has itself, or a 404. Use it
+    for private feeds: with `Skip`, while a private feed is down, nuget.org could provide a package with the same
+    ID as one of yours.
+
+  Packages the feed already downloaded keep working while a mirror is down.
+- **Timeouts.** Each mirror has two:
+  - `RequestTimeoutSeconds`, 30 by default: how long the mirror may take to answer, like with its service index, a
+    package's versions or metadata, or a download's headers. A mirror that doesn't answer in time counts as
+    unreachable.
+  - `DownloadTimeoutSeconds`, 600 by default: how long a package's content may take to download, once the mirror
+    answered. Raise it for large packages on slow links.
+
+  A mirror whose connections are refused, or whose name doesn't resolve, fails straight away. One that drops them
+  fails after the operating system's connect timeout, or `RequestTimeoutSeconds` if that's shorter.
 - Packages the feed has itself always come first.
 - Arrays in settings are merged item by item, by position: an environment variable like
   `Feed__Mirroring__Mirrors__0__PackageSource` changes the first mirror's source. Keep the list in one file.
