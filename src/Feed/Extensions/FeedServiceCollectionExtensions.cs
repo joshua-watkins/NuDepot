@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors.Infrastructure;
@@ -127,6 +128,13 @@ public static class FeedServiceCollectionExtensions
         services.TryAddScoped<UserService>();
         services.TryAddScoped<PasskeyService>();
         services.TryAddSingleton<UserCookieEvents>();
+
+        // The sign-in cookie is a JWT, signed with a key the feed keeps in its database.
+        services.TryAddSingleton<SessionSigningKeys>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, SessionSigningKeysLoader>());
+        services
+            .AddOptions<CookieAuthenticationOptions>(NuDepotAuthenticationSchemes.User)
+            .PostConfigure<SessionSigningKeys>((options, keys) => options.TicketDataFormat = new SessionTokenFormat(keys, options));
 
         services
             .AddAuthentication()

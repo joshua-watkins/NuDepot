@@ -318,6 +318,12 @@ it was copied, so the server revokes the session: neither the copy nor the brows
 any more, and the server logs a warning. Requests the browser sent at the same time still share the
 old cookie for a minute.
 
+The cookie is a JWT, signed with ES256: it carries the user's ID, name and role, and their session's ID and current
+token, which the server checks against the `UserSessions` table. Scripts can't read it, and browsers only send it to
+the feed's own site. The feed makes its signing key the first time it needs one, and keeps it in the
+`SessionSigningKeys` table, encrypted by [data protection](#data-protection-keys). If that key can't be decrypted
+any more, the feed makes a new one, and everyone signs in again.
+
 Each user can have one passkey request in progress at a time, and the browser has 5 minutes to
 answer it. Starting another, like signing in from a second tab, replaces it.
 
@@ -580,7 +586,7 @@ expire, so those packages aren't downloaded again.
 
 ### Data protection keys
 
-ASP.NET Core data protection protects users' sign-in cookies and generated certificates' private keys, with
+ASP.NET Core data protection protects the key that signs users' sign-in cookies and generated certificates' private keys, with
 AES-256-CBC encryption and HMAC-SHA512 authentication. The feed keeps its keys in the database, encrypted for the
 machine on Windows, unless the application keeps them somewhere else, like with
 `services.AddDataProtection().PersistKeysToFileSystem(...)`. Then the application's data protection settings,

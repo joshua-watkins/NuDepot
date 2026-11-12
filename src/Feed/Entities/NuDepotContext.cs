@@ -23,6 +23,11 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
     public const int MaxCertificateFingerprintLength = 64;
 
     /// <summary>
+    /// The length of a session signing key's ID: 16 random bytes, as lowercase hex.
+    /// </summary>
+    public const int MaxSessionKeyIdLength = 32;
+
+    /// <summary>
     /// The longest package ID.
     /// </summary>
     public const int MaxPackageIdLength = 128;
@@ -198,6 +203,11 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
     public DbSet<SigningCertificate> SigningCertificates { get; set; }
 
     /// <summary>
+    /// The keys that sign the users' sign-in cookies.
+    /// </summary>
+    public DbSet<SessionSigningKey> SessionSigningKeys { get; set; }
+
+    /// <summary>
     /// ASP.NET Core data protection's keys, which protect sign-in cookies and generated signing certificates.
     /// </summary>
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
@@ -249,6 +259,7 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
         builder.Entity<UserApiKey>(BuildUserApiKeyEntity);
         builder.Entity<UserSession>(BuildUserSessionEntity);
         builder.Entity<SigningCertificate>(BuildSigningCertificateEntity);
+        builder.Entity<SessionSigningKey>(BuildSessionSigningKeyEntity);
 
         if (Database.IsSqlite())
             BuildSqliteColumns(builder);
@@ -606,6 +617,22 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
             .IsRequired();
         certificate
             .Property(c => c.ProtectedPrivateKey)
+            .IsRequired();
+    }
+
+    private void BuildSessionSigningKeyEntity(EntityTypeBuilder<SessionSigningKey> key)
+    {
+        key.HasKey(k => k.Key);
+        key
+            .HasIndex(k => k.KeyId)
+            .IsUnique();
+
+        key
+            .Property(k => k.KeyId)
+            .HasMaxLength(MaxSessionKeyIdLength)
+            .IsRequired();
+        key
+            .Property(k => k.ProtectedPrivateKey)
             .IsRequired();
     }
 

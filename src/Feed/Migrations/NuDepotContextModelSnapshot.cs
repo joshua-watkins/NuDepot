@@ -287,6 +287,32 @@ namespace NuDepot.Feed.Migrations
                     b.ToTable("PackageTypes");
                 });
 
+            modelBuilder.Entity("NuDepot.Feed.Entities.SessionSigningKey", b =>
+                {
+                    b.Property<int>("Key")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("KeyId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("ProtectedPrivateKey")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("KeyId")
+                        .IsUnique();
+
+                    b.ToTable("SessionSigningKeys");
+                });
+
             modelBuilder.Entity("NuDepot.Feed.Entities.SigningCertificate", b =>
                 {
                     b.Property<int>("Key")

@@ -324,7 +324,7 @@ public class AdminIntegrationTests(ITestOutputHelper output) : IDisposable
         return JsonDocument.Parse(content).RootElement.Clone();
     }
 
-    private static string?[] Strings(JsonElement array) => [.. array.EnumerateArray().Select(e => e.GetString())];
+    private static string[] Strings(JsonElement array) => [.. array.EnumerateArray().Select(e => e.GetString()!)];
 
     private static StringContent Json(string json) => new(json, Encoding.UTF8, "application/json");
 }
