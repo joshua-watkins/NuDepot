@@ -56,6 +56,11 @@ public class Routes
     public const string RegistrationIndexRouteName = "registration-index";
 
     /// <summary>
+    /// A page of a package's registration, for packages with too many versions to list in the index.
+    /// </summary>
+    public const string RegistrationPageRouteName = "registration-page";
+
+    /// <summary>
     /// A package version's registration leaf.
     /// </summary>
     public const string RegistrationLeafRouteName = "registration-leaf";
@@ -64,6 +69,11 @@ public class Routes
     /// A package's registration index, in the hive that includes SemVer 2.0.0 packages.
     /// </summary>
     public const string RegistrationSemVer2IndexRouteName = "registration-semver2-index";
+
+    /// <summary>
+    /// A page of a package's registration, in the hive that includes SemVer 2.0.0 packages.
+    /// </summary>
+    public const string RegistrationSemVer2PageRouteName = "registration-semver2-page";
 
     /// <summary>
     /// A package version's registration leaf, in the hive that includes SemVer 2.0.0 packages.

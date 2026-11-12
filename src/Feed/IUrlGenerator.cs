@@ -58,6 +58,16 @@ public interface IUrlGenerator
     string GetRegistrationIndexUrl(string id, bool semVer2 = false);
 
     /// <summary>
+    /// Get the URL of a page of a package's registration, for a package with too many versions to list in its index.
+    /// See: https://learn.microsoft.com/en-us/nuget/api/registration-base-url-resource#registration-page
+    /// </summary>
+    /// <param name="id">The package's ID.</param>
+    /// <param name="lower">The page's lowest version, normalized and lowercased.</param>
+    /// <param name="upper">The page's highest version, normalized and lowercased.</param>
+    /// <param name="semVer2">Whether the metadata includes SemVer 2.0.0 versions.</param>
+    string GetRegistrationPageUrl(string id, string lower, string upper, bool semVer2 = false);
+
+    /// <summary>
     /// Get the URL for the metadata of a specific package ID and version.
     /// See: https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource#registration-leaf
     /// </summary>

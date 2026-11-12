@@ -16,6 +16,7 @@ namespace NuDepot.Core.Serialization;
 [JsonSerializable(typeof(DependentsResponse))]
 [JsonSerializable(typeof(NuDepotRegistrationIndexPage))]
 [JsonSerializable(typeof(NuDepotRegistrationIndexResponse))]
+[JsonSerializable(typeof(NuDepotRegistrationPageResponse))]
 [JsonSerializable(typeof(PackageVersionsResponse))]
 [JsonSerializable(typeof(RegistrationIndexResponse))]
 [JsonSerializable(typeof(RegistrationLeafResponse))]

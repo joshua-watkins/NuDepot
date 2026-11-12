@@ -73,6 +73,19 @@ public class NuDepotUrlGenerator(IHttpContextAccessor httpContextAccessor, LinkG
     }
 
     /// <inheritdoc />
+    public string GetRegistrationPageUrl(string id, string lower, string upper, bool semVer2 = false)
+    {
+        return GetUrl(
+            semVer2 ? Routes.RegistrationSemVer2PageRouteName : Routes.RegistrationPageRouteName,
+            new RouteValueDictionary
+            {
+                { "id", id.ToLowerInvariant() },
+                { "lower", lower },
+                { "upper", upper },
+            });
+    }
+
+    /// <inheritdoc />
     public string GetRegistrationLeafUrl(string id, NuGetVersion version, bool semVer2 = false)
     {
         return GetUrl(

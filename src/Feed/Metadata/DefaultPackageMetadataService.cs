@@ -17,6 +17,21 @@ public class DefaultPackageMetadataService(IPackageService packages, ICatalogSer
     /// <inheritdoc />
     public async Task<NuDepotRegistrationIndexResponse?> GetRegistrationIndexOrNullAsync(string packageId, bool semVer2 = false, CancellationToken cancellationToken = default)
     {
+        PackageRegistration? registration = await FindRegistrationOrNullAsync(packageId, semVer2, cancellationToken);
+
+        return registration == null ? null : Builder.BuildIndex(registration);
+    }
+
+    /// <inheritdoc />
+    public async Task<NuDepotRegistrationPageResponse?> GetRegistrationPageOrNullAsync(string packageId, NuGetVersion lower, NuGetVersion upper, bool semVer2 = false, CancellationToken cancellationToken = default)
+    {
+        PackageRegistration? registration = await FindRegistrationOrNullAsync(packageId, semVer2, cancellationToken);
+
+        return registration == null ? null : Builder.BuildPageOrNull(registration, lower, upper);
+    }
+
+    private async Task<PackageRegistration?> FindRegistrationOrNullAsync(string packageId, bool semVer2, CancellationToken cancellationToken)
+    {
         IReadOnlyList<Package> packages = await Packages.FindPackagesAsync(packageId, cancellationToken);
 
         // Only RegistrationsBaseUrl/3.6.0 may show SemVer 2.0.0 packages to clients.
@@ -29,13 +44,7 @@ public class DefaultPackageMetadataService(IPackageService packages, ICatalogSer
         IReadOnlyDictionary<string, string> catalogLeafUrls = await Catalog.FindLatestLeafUrlsAsync(packageId, cancellationToken);
         IReadOnlyList<VulnerabilityAdvisory> vulnerabilities = await Vulnerabilities.FindAsync([packageId], cancellationToken);
 
-        return Builder.BuildIndex(
-            new PackageRegistration(
-                packageId,
-                packages,
-                semVer2,
-                catalogLeafUrls,
-                vulnerabilities));
+        return new PackageRegistration(packageId, packages, semVer2, catalogLeafUrls, vulnerabilities);
     }
 
     /// <inheritdoc />

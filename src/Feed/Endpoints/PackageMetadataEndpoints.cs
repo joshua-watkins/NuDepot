@@ -20,6 +20,14 @@ internal static class PackageMetadataEndpoints
     public static Task<IResult> SemVer2RegistrationIndexAsync(string id, IPackageMetadataService metadata, CancellationToken cancellationToken)
         => GetRegistrationIndexAsync(id, semVer2: true, metadata, cancellationToken);
 
+    // GET v3/registration/{id}/page/{lower}/{upper}.json
+    public static Task<IResult> RegistrationPageAsync(string id, string lower, string upper, IPackageMetadataService metadata, CancellationToken cancellationToken)
+        => GetRegistrationPageAsync(id, lower, upper, semVer2: false, metadata, cancellationToken);
+
+    // GET v3/registration-semver2/{id}/page/{lower}/{upper}.json
+    public static Task<IResult> SemVer2RegistrationPageAsync(string id, string lower, string upper, IPackageMetadataService metadata, CancellationToken cancellationToken)
+        => GetRegistrationPageAsync(id, lower, upper, semVer2: true, metadata, cancellationToken);
+
     // GET v3/registration/{id}/{version}.json
     public static Task<IResult> RegistrationLeafAsync(string id, string version, IPackageMetadataService metadata, CancellationToken cancellationToken)
         => GetRegistrationLeafAsync(id, version, semVer2: false, metadata, cancellationToken);
@@ -35,6 +43,18 @@ internal static class PackageMetadataEndpoints
             return Results.NotFound();
 
         return Results.Json(index, NuGetJsonContext.Default.NuDepotRegistrationIndexResponse);
+    }
+
+    private static async Task<IResult> GetRegistrationPageAsync(string id, string lower, string upper, bool semVer2, IPackageMetadataService metadata, CancellationToken cancellationToken)
+    {
+        if (!NuGetVersion.TryParse(lower, out NuGetVersion? lowerVersion) || !NuGetVersion.TryParse(upper, out NuGetVersion? upperVersion))
+            return Results.NotFound();
+
+        NuDepotRegistrationPageResponse? page = await metadata.GetRegistrationPageOrNullAsync(id, lowerVersion, upperVersion, semVer2, cancellationToken);
+        if (page == null)
+            return Results.NotFound();
+
+        return Results.Json(page, NuGetJsonContext.Default.NuDepotRegistrationPageResponse);
     }
 
     private static async Task<IResult> GetRegistrationLeafAsync(string id, string version, bool semVer2, IPackageMetadataService metadata, CancellationToken cancellationToken)

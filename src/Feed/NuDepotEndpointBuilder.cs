@@ -273,6 +273,11 @@ public class NuDepotEndpointBuilder
             .RequireFeedPermission(FeedPermissions.Read);
 
         endpoints
+            .MapGet("v3/registration/{id}/page/{lower}/{upper}.json", PackageMetadataEndpoints.RegistrationPageAsync)
+            .WithName(Routes.RegistrationPageRouteName)
+            .RequireFeedPermission(FeedPermissions.Read);
+
+        endpoints
             .MapGet("v3/registration/{id}/{version}.json", PackageMetadataEndpoints.RegistrationLeafAsync)
             .WithName(Routes.RegistrationLeafRouteName)
             .RequireFeedPermission(FeedPermissions.Read);
@@ -281,6 +286,11 @@ public class NuDepotEndpointBuilder
         endpoints
             .MapGet("v3/registration-semver2/{id}/index.json", PackageMetadataEndpoints.SemVer2RegistrationIndexAsync)
             .WithName(Routes.RegistrationSemVer2IndexRouteName)
+            .RequireFeedPermission(FeedPermissions.Read);
+
+        endpoints
+            .MapGet("v3/registration-semver2/{id}/page/{lower}/{upper}.json", PackageMetadataEndpoints.SemVer2RegistrationPageAsync)
+            .WithName(Routes.RegistrationSemVer2PageRouteName)
             .RequireFeedPermission(FeedPermissions.Read);
 
         endpoints

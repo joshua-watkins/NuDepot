@@ -254,7 +254,7 @@ public class ApiIntegrationTests : IDisposable
   ""count"": 1,
   ""items"": [
     {
-      ""@id"": ""http://localhost/v3/registration/testdata/index.json"",
+      ""@id"": ""http://localhost/v3/registration/testdata/index.json#page/1.2.3/1.2.3"",
       ""count"": 1,
       ""lower"": ""1.2.3"",
       ""upper"": ""1.2.3"",

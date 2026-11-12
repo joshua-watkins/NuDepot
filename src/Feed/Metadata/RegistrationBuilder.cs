@@ -10,40 +10,95 @@ namespace NuDepot.Feed.Metadata;
 /// <param name="url">Generates the feed's URLs.</param>
 public class RegistrationBuilder(IUrlGenerator url)
 {
+    /// <summary>
+    /// The most versions a registration index lists itself. A package with more is split into pages of
+    /// <see cref="PageSize"/> versions, each its own document, as on nuget.org.
+    /// </summary>
+    public const int MaxInlinedVersions = 128;
+
+    /// <summary>
+    /// How many versions each page of a package with more than <see cref="MaxInlinedVersions"/> lists.
+    /// </summary>
+    public const int PageSize = 64;
+
     private IUrlGenerator Url { get; } = url;
 
     /// <summary>
-    /// Builds a package's registration index, with every version inlined in one page.
+    /// Builds a package's registration index. Up to <see cref="MaxInlinedVersions"/> versions are listed in one
+    /// page in the index. More are split into pages of <see cref="PageSize"/>, which the index links to.
     /// </summary>
     /// <param name="registration">The package's versions.</param>
     /// <returns>The registration index.</returns>
     public virtual NuDepotRegistrationIndexResponse BuildIndex(PackageRegistration registration)
     {
-        List<Package> sortedPackages = [.. registration.Packages.OrderBy(p => p.Version)];
         string indexUrl = Url.GetRegistrationIndexUrl(registration.PackageId, registration.SemVer2);
+        bool inline = registration.Packages.Count <= MaxInlinedVersions;
+        List<Package[]> pages = Paginate(registration);
 
-        // TODO: Paging of registration items.
-        // "Un-paged" example: https://api.nuget.org/v3/registration3/newtonsoft.json/index.json
-        // Paged example: https://api.nuget.org/v3/registration3/fake/index.json
         return new NuDepotRegistrationIndexResponse
         {
             RegistrationIndexUrl = indexUrl,
             Type = RegistrationIndexResponse.DefaultType,
-            Count = 1,
+            Count = pages.Count,
             TotalDownloads = registration.Packages.Sum(p => p.Downloads),
-            Pages =
-            [
-                new NuDepotRegistrationIndexPage
+            Pages = [.. pages.Select(page =>
+            {
+                (string lower, string upper) = Bounds(page);
+                return new NuDepotRegistrationIndexPage
                 {
-                    RegistrationPageUrl = indexUrl,
-                    Count = registration.Packages.Count,
-                    Lower = sortedPackages.First().Version.ToNormalizedString().ToLowerInvariant(),
-                    Upper = sortedPackages.Last().Version.ToNormalizedString().ToLowerInvariant(),
-                    ItemsOrNull = [.. sortedPackages.Select(p => ToRegistrationIndexPageItem(p, registration))],
-                }
-            ]
+                    // A page listed in the index is identified within it.
+                    RegistrationPageUrl = inline
+                        ? $"{indexUrl}#page/{lower}/{upper}"
+                        : Url.GetRegistrationPageUrl(registration.PackageId, lower, upper, registration.SemVer2),
+                    Count = page.Length,
+                    Lower = lower,
+                    Upper = upper,
+                    ItemsOrNull = inline ? [.. page.Select(p => ToRegistrationIndexPageItem(p, registration))] : null,
+                };
+            })],
         };
     }
+
+    /// <summary>
+    /// Builds a page of a package's registration, which the index links to because the package has more than
+    /// <see cref="MaxInlinedVersions"/> versions.
+    /// </summary>
+    /// <param name="registration">The package's versions.</param>
+    /// <param name="lower">The page's lowest version, as the index's link says it.</param>
+    /// <param name="upper">The page's highest version, as the index's link says it.</param>
+    /// <returns>The page, or null if the index doesn't link to a page with those versions.</returns>
+    public virtual NuDepotRegistrationPageResponse? BuildPageOrNull(PackageRegistration registration, NuGetVersion lower, NuGetVersion upper)
+    {
+        if (registration.Packages.Count <= MaxInlinedVersions)
+            return null;
+
+        Package[]? page = Paginate(registration).FirstOrDefault(p => p[0].Version == lower && p[^1].Version == upper);
+        if (page == null)
+            return null;
+
+        (string lowerString, string upperString) = Bounds(page);
+        return new NuDepotRegistrationPageResponse
+        {
+            RegistrationPageUrl = Url.GetRegistrationPageUrl(registration.PackageId, lowerString, upperString, registration.SemVer2),
+            RegistrationIndexUrl = Url.GetRegistrationIndexUrl(registration.PackageId, registration.SemVer2),
+            Count = page.Length,
+            Lower = lowerString,
+            Upper = upperString,
+            ItemsOrNull = [.. page.Select(p => ToRegistrationIndexPageItem(p, registration))],
+        };
+    }
+
+    // The package's versions in order, in one page if there are few enough, or else in pages of PageSize.
+    private static List<Package[]> Paginate(PackageRegistration registration)
+    {
+        Package[] sorted = [.. registration.Packages.OrderBy(p => p.Version)];
+
+        return sorted.Length <= MaxInlinedVersions ? [sorted] : [.. sorted.Chunk(PageSize)];
+    }
+
+    // A page's lowest and highest versions, normalized and lowercased, without build metadata.
+    private static (string Lower, string Upper) Bounds(Package[] page)
+        => (page[0].Version.ToNormalizedString().ToLowerInvariant(), page[^1].Version.ToNormalizedString().ToLowerInvariant());
 
     /// <summary>
     /// Builds a package version's registration leaf.
