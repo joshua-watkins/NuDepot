@@ -158,7 +158,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
         };
     }
 
-    private Uri? ParseUri(string? uriString)
+    private static Uri? ParseUri(string? uriString)
     {
         if (uriString == null)
             return null;
@@ -169,7 +169,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
         return uri;
     }
 
-    private string[] ParseAuthors(string? authors)
+    private static string[] ParseAuthors(string? authors)
     {
         if (string.IsNullOrEmpty(authors))
             return [];

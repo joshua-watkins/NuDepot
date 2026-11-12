@@ -10,12 +10,12 @@ namespace NuDepot.Feed.Tests;
 /// </summary>
 public class OperationCancelledMiddlewareTests
 {
-    public static TheoryData<Exception> Cancellations => new()
-    {
+    public static TheoryData<Exception> Cancellations =>
+    [
         new OperationCanceledException(),
         new TaskCanceledException(),
         new InvalidOperationException("Wrapped.", new OperationCanceledException()),
-    };
+    ];
 
     [Theory]
     [MemberData(nameof(Cancellations))]

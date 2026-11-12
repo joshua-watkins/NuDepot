@@ -4,6 +4,7 @@ using NuDepot.Core;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
 using NuGet.Versioning;
+using System.Collections.Concurrent;
 
 namespace NuDepot.Feed.Upstream.Clients;
 
@@ -46,10 +47,19 @@ internal sealed class MirrorChain : IUpstreamClient
                 mirror.WhenUnreachable))];
     }
 
+    /// <summary>
+    /// How long a package's versions from the mirrors are reused.
+    /// </summary>
+    internal static readonly TimeSpan ListedPackagesTime = TimeSpan.FromMinutes(1);
+
+    // The most packages whose versions are kept at once.
+    private const int MaxListedPackages = 1000;
+
     private TimeProvider Time { get; }
     private ILogger<MirrorChain> Logger { get; }
     private TimeSpan UnreachableTime { get; }
     private IReadOnlyList<Mirror> Mirrors { get; }
+    private ConcurrentDictionary<string, (DateTimeOffset ExpiresAt, IReadOnlyList<Package> Packages)> ListedPackages { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Whether mirroring is on.
@@ -75,7 +85,36 @@ internal sealed class MirrorChain : IUpstreamClient
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<Package>> ListPackagesAsync(string id, CancellationToken cancellationToken)
-        => await FindAsync(mirror => mirror.Client.TryListPackagesAsync(id, cancellationToken), packages => packages.Count > 0) ?? [];
+    {
+        // A registration and its pages are read one after another, so each request doesn't ask the mirrors again,
+        // and the pages split the same versions as the index.
+        DateTimeOffset now = Time.GetUtcNow();
+        if (ListedPackages.TryGetValue(id, out (DateTimeOffset ExpiresAt, IReadOnlyList<Package> Packages) listed) && listed.ExpiresAt > now)
+            return listed.Packages;
+
+        IReadOnlyList<Package> packages = await FindAsync(mirror => mirror.Client.TryListPackagesAsync(id, cancellationToken), packages => packages.Count > 0) ?? [];
+        Remember(id, packages, now);
+
+        return packages;
+    }
+
+    // Keeps a package's versions for ListedPackagesTime, and forgets expired ones so the cache doesn't grow.
+    private void Remember(string id, IReadOnlyList<Package> packages, DateTimeOffset now)
+    {
+        if (ListedPackages.Count >= MaxListedPackages)
+        {
+            foreach (KeyValuePair<string, (DateTimeOffset ExpiresAt, IReadOnlyList<Package> Packages)> entry in ListedPackages)
+            {
+                if (entry.Value.ExpiresAt <= now)
+                    ListedPackages.TryRemove(entry);
+            }
+
+            if (ListedPackages.Count >= MaxListedPackages)
+                return;
+        }
+
+        ListedPackages[id] = (now + ListedPackagesTime, packages);
+    }
 
     /// <inheritdoc />
     public async Task<Stream?> DownloadPackageOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken)

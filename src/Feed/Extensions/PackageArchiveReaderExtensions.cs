@@ -70,9 +70,8 @@ public static class PackageArchiveReaderExtensions
     /// <returns>The README, which the caller disposes.</returns>
     public async static Task<Stream> GetReadmeAsync(this PackageArchiveReader package, CancellationToken cancellationToken)
     {
-        string? readmePath = package.NuspecReader.GetReadme();
-        if (readmePath == null)
-            throw new InvalidOperationException("Package does not have a readme!");
+        string readmePath = package.NuspecReader.GetReadme()
+            ?? throw new InvalidOperationException("Package does not have a readme!");
 
         return await package.GetStreamAsync(readmePath, cancellationToken);
     }

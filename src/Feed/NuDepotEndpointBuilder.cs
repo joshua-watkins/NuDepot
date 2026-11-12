@@ -9,13 +9,13 @@ namespace NuDepot.Feed;
 /// Maps the feed's endpoints. Each one requires the <see cref="FeedPermissions"/> for what it does.
 /// The account endpoints are mapped separately, by <see cref="MapAccountRoutes"/>.
 /// </summary>
-public class NuDepotEndpointBuilder
+public static class NuDepotEndpointBuilder
 {
     /// <summary>
     /// Maps every NuGet V3 endpoint. <c>UseFeed()</c> calls it.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapEndpoints(IEndpointRouteBuilder endpoints)
+    public static void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         MapServiceIndexRoutes(endpoints);
         MapPackagePublishRoutes(endpoints);
@@ -93,7 +93,7 @@ public class NuDepotEndpointBuilder
     /// Maps the catalog resource.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapCatalogRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapCatalogRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
             .MapGet("v3/catalog/index.json", CatalogEndpoints.IndexAsync)
@@ -115,7 +115,7 @@ public class NuDepotEndpointBuilder
     /// Maps the endpoints that deprecate and undeprecate packages.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapDeprecationRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapDeprecationRoutes(IEndpointRouteBuilder endpoints)
     {
         // Not part of the NuGet protocol: lets administrators deprecate packages.
         endpoints
@@ -132,7 +132,7 @@ public class NuDepotEndpointBuilder
     /// Maps the vulnerability resource, and the endpoints that manage known vulnerabilities.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapVulnerabilityRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapVulnerabilityRoutes(IEndpointRouteBuilder endpoints)
     {
         // Not part of the NuGet protocol: lets administrators manage known vulnerabilities.
         endpoints
@@ -163,7 +163,7 @@ public class NuDepotEndpointBuilder
     /// Maps the repository signatures resource.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapRepositorySignatureRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapRepositorySignatureRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
             .MapGet("v3/repository-signatures/{resourceVersion}/index.json", ServiceIndexEndpoints.RepositorySignaturesAsync)
@@ -180,7 +180,7 @@ public class NuDepotEndpointBuilder
     /// Maps the service index.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapServiceIndexRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapServiceIndexRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
             .MapGet("v3/index.json", ServiceIndexEndpoints.ServiceIndexAsync)
@@ -192,7 +192,7 @@ public class NuDepotEndpointBuilder
     /// Maps the package publish resource, and tells NuGet V2 clients the V2 feed isn't supported.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapPackagePublishRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapPackagePublishRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
             .MapPut("api/v2/package", PackagePublishEndpoints.UploadPackageAsync)
@@ -220,7 +220,7 @@ public class NuDepotEndpointBuilder
     /// Maps the symbol package publish resource, and the symbol server.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapSymbolRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapSymbolRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
             .MapPut("api/v2/symbol", PackagePublishEndpoints.UploadSymbolPackageAsync)
@@ -242,7 +242,7 @@ public class NuDepotEndpointBuilder
     /// Maps the search, autocomplete and package dependents resources.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapSearchRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapSearchRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
             .MapGet("v3/search", SearchEndpoints.SearchAsync)
@@ -265,7 +265,7 @@ public class NuDepotEndpointBuilder
     /// Maps the package metadata (registration) resource.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapPackageMetadataRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapPackageMetadataRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
             .MapGet("v3/registration/{id}/index.json", PackageMetadataEndpoints.RegistrationIndexAsync)
@@ -303,7 +303,7 @@ public class NuDepotEndpointBuilder
     /// Maps the package content resource.
     /// </summary>
     /// <param name="endpoints">The application's endpoints.</param>
-    public void MapPackageContentRoutes(IEndpointRouteBuilder endpoints)
+    public static void MapPackageContentRoutes(IEndpointRouteBuilder endpoints)
     {
         endpoints
             .MapGet("v3/package/{id}/index.json", PackageContentEndpoints.GetPackageVersionsAsync)

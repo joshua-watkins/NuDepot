@@ -3,7 +3,6 @@ using Moq;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Storage;
-using NuDepot.Feed.Tests.Support;
 using NuGet.Versioning;
 using System.IO.Compression;
 using Xunit;

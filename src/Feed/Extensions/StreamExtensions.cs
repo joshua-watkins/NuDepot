@@ -70,12 +70,10 @@ public static class StreamExtensions
     /// <returns>True if the content is the same.</returns>
     public static bool Matches(this Stream content, Stream target)
     {
-        using (SHA256 sha256 = SHA256.Create())
-        {
-            byte[] contentHash = sha256.ComputeHash(content);
-            byte[] targetHash = sha256.ComputeHash(target);
+        using SHA256 sha256 = SHA256.Create();
+        byte[] contentHash = sha256.ComputeHash(content);
+        byte[] targetHash = sha256.ComputeHash(target);
 
-            return contentHash.SequenceEqual(targetHash);
-        }
+        return contentHash.SequenceEqual(targetHash);
     }
 }

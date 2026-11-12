@@ -217,7 +217,7 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
     /// </summary>
     /// <param name="exception">The exception to inspect.</param>
     /// <returns>Whether the exception was caused to SQL unique constraint violation.</returns>
-    public bool IsUniqueConstraintViolationException(DbUpdateException exception)
+    public static bool IsUniqueConstraintViolationException(DbUpdateException exception)
     {
         return exception.InnerException is SqliteException sqliteException &&
             sqliteException.SqliteErrorCode == SqliteUniqueConstraintViolationErrorCode;

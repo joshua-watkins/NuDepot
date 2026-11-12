@@ -51,8 +51,7 @@ public class FileStorageService : IStorageService
     /// <inheritdoc />
     public async Task<StoragePutResult> PutAsync(string path, Stream content, string contentType, CancellationToken cancellationToken = default)
     {
-        if (content == null)
-            throw new ArgumentNullException(nameof(content));
+        ArgumentNullException.ThrowIfNull(content);
         if (string.IsNullOrEmpty(contentType))
             throw new ArgumentException("Content type is required", nameof(contentType));
 
@@ -78,13 +77,11 @@ public class FileStorageService : IStorageService
         }
         catch (IOException) when (File.Exists(path))
         {
-            using (FileStream targetStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
-            {
-                content.Position = 0;
-                return content.Matches(targetStream)
-                    ? StoragePutResult.AlreadyExists
-                    : StoragePutResult.Conflict;
-            }
+            using FileStream targetStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            content.Position = 0;
+            return content.Matches(targetStream)
+                ? StoragePutResult.AlreadyExists
+                : StoragePutResult.Conflict;
         }
         finally
         {

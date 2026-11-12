@@ -43,7 +43,7 @@ internal sealed class SessionTokenFormat(SessionSigningKeys keys, CookieAuthenti
     public string Protect(AuthenticationTicket data, string? purpose)
     {
         ClaimsPrincipal principal = data.Principal;
-        (int Key, string Token) session = UserCookieEvents.GetSession(data.Properties)
+        (int sessionKey, string sessionToken) = UserCookieEvents.GetSession(data.Properties)
             ?? throw new InvalidOperationException("A sign-in cookie needs a session.");
         DateTimeOffset issuedAt = data.Properties.IssuedUtc ?? Time.GetUtcNow();
 
@@ -58,8 +58,8 @@ internal sealed class SessionTokenFormat(SessionSigningKeys keys, CookieAuthenti
                 [JwtRegisteredClaimNames.Sub] = principal.FindFirstValue(ClaimTypes.NameIdentifier)!,
                 [JwtRegisteredClaimNames.Name] = principal.FindFirstValue(ClaimTypes.Name)!,
                 ["role"] = principal.FindFirstValue(ClaimTypes.Role)!,
-                [SessionIdClaim] = session.Key.ToString(CultureInfo.InvariantCulture),
-                [SessionTokenClaim] = session.Token,
+                [SessionIdClaim] = sessionKey.ToString(CultureInfo.InvariantCulture),
+                [SessionTokenClaim] = sessionToken,
             },
             SigningCredentials = new SigningCredentials(Keys.SigningKey, SecurityAlgorithms.EcdsaSha256),
         });

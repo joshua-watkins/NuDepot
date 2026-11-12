@@ -128,6 +128,40 @@ public class SessionTokenTests(ITestOutputHelper output) : IDisposable
         Assert.Equal("alice", ticket.Principal.Identity!.Name);
     }
 
+    [Fact]
+    public async Task KeysThatCantBeDecryptedAreReplacedAndSignEveryoneOut()
+    {
+        NuDepotTestApplication app = CreateApp();
+        CookieContainer cookies = new();
+        await SignUpAsync(app, "alice", cookies);
+
+        // Like when data protection's keys are lost.
+        using (IServiceScope scope = app.Services.CreateScope())
+        {
+            await scope.ServiceProvider
+                .GetRequiredService<NuDepotContext>()
+                .SessionSigningKeys
+                .ExecuteUpdateAsync(setters => setters.SetProperty(k => k.ProtectedPrivateKey, [1, 2, 3]));
+        }
+
+        // The feed starts again.
+        using SessionSigningKeys keys = new(
+            app.Services.GetRequiredService<IServiceScopeFactory>(),
+            app.Services.GetRequiredService<IDataProtectionProvider>(),
+            TimeProvider.System,
+            NullLogger<SessionSigningKeys>.Instance);
+        await keys.LoadAsync(CancellationToken.None);
+        CookieAuthenticationOptions options = app.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(NuDepotAuthenticationSchemes.User);
+
+        // It signs with a new key, and the cookies signed with the old one don't work.
+        Assert.Null(new SessionTokenFormat(keys, options).Unprotect(GetCookie(cookies)));
+        Assert.Single(keys.ValidationKeys);
+        using (IServiceScope scope = app.Services.CreateScope())
+        {
+            Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<NuDepotContext>().SessionSigningKeys.CountAsync());
+        }
+    }
+
     private NuDepotTestApplication CreateApp()
     {
         NuDepotTestApplication app = new(Output, users: true);

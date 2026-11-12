@@ -75,13 +75,13 @@ public static class NuDepotCommands
         using CancellationTokenSource cancellation = new();
 
         // Stop the import with Ctrl+C.
-        ConsoleCancelEventHandler cancel = (_, e) =>
+        void Cancel(object? sender, ConsoleCancelEventArgs e)
         {
             e.Cancel = true;
             cancellation.Cancel();
-        };
+        }
 
-        Console.CancelKeyPress += cancel;
+        Console.CancelKeyPress += Cancel;
         try
         {
             using IServiceScope scope = host.Services.CreateScope();
@@ -91,7 +91,7 @@ public static class NuDepotCommands
         }
         finally
         {
-            Console.CancelKeyPress -= cancel;
+            Console.CancelKeyPress -= Cancel;
         }
     }
 

@@ -225,9 +225,10 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
 
             Package package = packageReader.GetPackageMetadata();
             package.PublishedAt = Time.UtcNow;
-            contents = new PackageContents(package);
-
-            contents.Nuspec = await CopyAsync(await packageReader.GetNuspecAsync(cancellationToken));
+            contents = new PackageContents(package)
+            {
+                Nuspec = await CopyAsync(await packageReader.GetNuspecAsync(cancellationToken)),
+            };
 
             if (package.HasReadme)
                 contents.Readme = await CopyAsync(await packageReader.GetReadmeAsync(cancellationToken));

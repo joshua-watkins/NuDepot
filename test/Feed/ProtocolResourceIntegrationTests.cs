@@ -457,6 +457,27 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
             file.GetProperty("vulnerable.package").EnumerateArray().Select(a => a.GetProperty("url").GetString()));
     }
 
+    [Theory]
+    [InlineData("""{ "versions": "(, 2.0.0)", "url": "https://example.com/1", "severity": 1 }""", "package ID")]
+    [InlineData("""{ "packageId": " ", "versions": "(, 2.0.0)", "url": "https://example.com/1", "severity": 1 }""", "package ID")]
+    [InlineData("""{ "packageId": "Contoso", "versions": "(, 2.0.0)", "url": "javascript:alert(1)", "severity": 1 }""", "HTTP or HTTPS")]
+    [InlineData("""{ "packageId": "Contoso", "versions": "(, 2.0.0)", "url": "/advisories/1", "severity": 1 }""", "HTTP or HTTPS")]
+    [InlineData("""{ "packageId": "Contoso", "versions": "not a range", "url": "https://example.com/1", "severity": 1 }""", "version range")]
+    [InlineData("""{ "packageId": "Contoso", "url": "https://example.com/1", "severity": 1 }""", "version range")]
+    [InlineData("""{ "packageId": "Contoso", "versions": "(, 2.0.0)", "url": "https://example.com/1", "severity": 4 }""", "severity")]
+    [InlineData("""{ "packageId": "Contoso", "versions": "(, 2.0.0)", "url": "https://example.com/1", "severity": -1 }""", "severity")]
+    [InlineData("not json", "package ID")]
+    public async Task AdvisoriesAreValidated(string body, string message)
+    {
+        HttpClient client = CreateClient(out _);
+
+        using HttpResponseMessage response = await client.PutAsync("api/vulnerabilities", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(message, await response.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/vulnerabilities/index.json")).StatusCode);
+    }
+
     [Fact]
     public async Task DeletingAMissingAdvisoryIsNotFound()
     {

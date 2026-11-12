@@ -184,7 +184,7 @@ public class FeedConnection
         };
 
         if (IsCoHosted && HttpContextAccessor != null)
-            handler = new CoHostedFeedHandler(HttpContextAccessor, Features, SignInAvailable) { InnerHandler = handler };
+            handler = new CoHostedFeedHandler(HttpContextAccessor, Features, SignInAvailable, () => new Uri(ServiceIndexUrl)) { InnerHandler = handler };
 
         HttpClient client = new(handler);
 
@@ -200,10 +200,22 @@ public class FeedConnection
     /// application's secret so the feed trusts it. With sign-in, it sends the browser's cookies, including its
     /// sign-in cookie, so the feed answers as it would answer the signed-in user.
     /// </summary>
-    private sealed class CoHostedFeedHandler(IHttpContextAccessor httpContextAccessor, NuDepotFeatures features, bool forwardCookies) : DelegatingHandler
+    /// <param name="httpContextAccessor">The browser's request.</param>
+    /// <param name="features">What the application's NuDepot parts offer, with the application's secret.</param>
+    /// <param name="forwardCookies">Whether to send the browser's cookies.</param>
+    /// <param name="serviceIndexUrl">The local address the website reads the feed at.</param>
+    private sealed class CoHostedFeedHandler(IHttpContextAccessor httpContextAccessor, NuDepotFeatures features, bool forwardCookies, Func<Uri> serviceIndexUrl) : DelegatingHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            // The feed links to its resources with the browser's scheme, but the website reaches it over HTTP.
+            Uri local = serviceIndexUrl();
+            if (request.RequestUri is { Scheme: "https" } requested &&
+                local.Scheme == Uri.UriSchemeHttp &&
+                string.Equals(requested.Host, local.Host, StringComparison.OrdinalIgnoreCase) &&
+                requested.Port == local.Port)
+                request.RequestUri = new UriBuilder(requested) { Scheme = Uri.UriSchemeHttp, Port = local.Port }.Uri;
+
             HttpRequest? browserRequest = httpContextAccessor.HttpContext?.Request;
             if (browserRequest?.IsHttps == true && request.RequestUri?.Scheme == Uri.UriSchemeHttp)
             {

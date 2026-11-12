@@ -307,7 +307,7 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
             "icon");
     }
 
-    private string LicensePath(string lowercasedId, string lowercasedNormalizedVersion, bool licenseIsMarkDown)
+    private static string LicensePath(string lowercasedId, string lowercasedNormalizedVersion, bool licenseIsMarkDown)
     {
         string path = Path.Combine(PackagesPathPrefix, lowercasedId, lowercasedNormalizedVersion, "license");
         path += licenseIsMarkDown ? ".md" : ".txt";

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using NuDepot.Core;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;
+using NuDepot.Feed.Signing;
 using NuDepot.Feed.Tests.Support;
 using System.Net;
 using System.Net.Http.Json;
@@ -189,6 +190,31 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("admin")).StatusCode);
     }
 
+    [Fact]
+    public async Task TheGalleryReadsAFeedThatSignsOverHttps()
+    {
+        (_, Uri address) = await StartAsync(new() { ["Feed:Authorization:ApiKeys:Admin"] = "admin-key" }, signing: true);
+
+        // Through a reverse proxy that serves HTTPS, as a feed that signs requires.
+        HttpClient admin = CreateBrowser(address);
+        admin.DefaultRequestHeaders.Add("X-Forwarded-Proto", "https");
+        admin.DefaultRequestHeaders.Add("X-NuGet-ApiKey", "admin-key");
+        using MultipartFormDataContent content = new() { { new StreamContent(TestPackages.Create("Contoso.Utils", "1.0.0")), "package", "package.nupkg" } };
+        Assert.Equal(HttpStatusCode.Created, (await admin.PutAsync("api/v2/package", content)).StatusCode);
+
+        // The gallery tells the feed the browser used HTTPS.
+        HttpClient visitor = CreateBrowser(address);
+        visitor.DefaultRequestHeaders.Add("X-Forwarded-Proto", "https");
+        string page = await GetPageAsync(visitor, "packages/Contoso.Utils");
+
+        Assert.Contains("Contoso.Utils", page);
+        Assert.Contains($"href=\"https://localhost:{address.Port}/v3/package/contoso.utils/1.0.0/contoso.utils.1.0.0.nupkg\"", page);
+
+        // Over HTTP, the feed refuses it.
+        using HttpResponseMessage http = await CreateBrowser(address).GetAsync("packages/Contoso.Utils");
+        Assert.Equal(HttpStatusCode.Forbidden, http.StatusCode);
+    }
+
     [Theory]
     [InlineData("/packages/Contoso.Utils", "/packages/Contoso.Utils")]
     [InlineData("/", "/")]
@@ -340,7 +366,7 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
         public override DateTime UtcNow => clock.GetUtcNow().UtcDateTime;
     }
 
-    private async Task<(WebApplication App, Uri Address)> StartAsync(Dictionary<string, string?>? settings = null, bool users = true, TestClock? clock = null)
+    private async Task<(WebApplication App, Uri Address)> StartAsync(Dictionary<string, string?>? settings = null, bool users = true, TestClock? clock = null, bool signing = false)
     {
         string testId = Guid.NewGuid().ToString("N");
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -365,6 +391,13 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
             .AddFeed();
         if (users)
             nuDepot.AddUsers();
+        if (signing)
+        {
+            // Smaller generated keys than the feed's, so they're made quickly.
+            nuDepot.AddSigning();
+            builder.Services.AddSingleton(new GeneratedCertificateKeySize(2048));
+        }
+
         nuDepot.AddGallery();
 
         // A clock the test moves forward, for the sessions and their cookies.

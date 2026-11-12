@@ -131,7 +131,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         {
             await Context.Users.ExecuteInsertAsync(user, cancellationToken);
         }
-        catch (DbUpdateException e) when (Context.IsUniqueConstraintViolationException(e))
+        catch (DbUpdateException e) when (NuDepotContext.IsUniqueConstraintViolationException(e))
         {
             return null;
         }

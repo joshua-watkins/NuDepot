@@ -25,7 +25,7 @@ public class PackageDatabase(NuDepotContext context) : IPackageDatabase
             return PackageAddResult.Success;
         }
         catch (DbUpdateException e)
-            when (Context.IsUniqueConstraintViolationException(e))
+            when (NuDepotContext.IsUniqueConstraintViolationException(e))
         {
             return PackageAddResult.PackageAlreadyExists;
         }

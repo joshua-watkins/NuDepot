@@ -26,18 +26,16 @@ public static class FeedHostExtensions
 
         if (options.Value.RunMigrationsAtStartup)
         {
-            using (IServiceScope scope = host.Services.CreateScope())
+            using IServiceScope scope = host.Services.CreateScope();
+            NuDepotContext? context = scope.ServiceProvider.GetService<NuDepotContext>();
+            if (context != null)
             {
-                NuDepotContext? context = scope.ServiceProvider.GetService<NuDepotContext>();
-                if (context != null)
-                {
-                    await context.RunMigrationsAsync(cancellationToken);
+                await context.RunMigrationsAsync(cancellationToken);
 
-                    // Packages indexed before the catalog existed are added to it once.
-                    ICatalogService? catalog = scope.ServiceProvider.GetService<ICatalogService>();
-                    if (catalog != null)
-                        await catalog.InitializeAsync(cancellationToken);
-                }
+                // Packages indexed before the catalog existed are added to it once.
+                ICatalogService? catalog = scope.ServiceProvider.GetService<ICatalogService>();
+                if (catalog != null)
+                    await catalog.InitializeAsync(cancellationToken);
             }
         }
     }

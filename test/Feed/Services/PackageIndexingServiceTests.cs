@@ -9,7 +9,6 @@ using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Search;
 using NuDepot.Feed.Signing;
 using NuDepot.Feed.Storage;
-using NuDepot.Feed.Tests.Support;
 using NuGet.Versioning;
 using System.IO.Compression;
 using System.Text;

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Tests.Support;
+using System.Collections.Concurrent;
 using System.Net;
 using Xunit;
 using Xunit.Abstractions;
@@ -82,6 +83,31 @@ public class MirrorChainIntegrationTests : IDisposable
         await Public.AddPackageAsync(TestPackages.Create("Public.Package", "2.0.0"));
         Assert.Equal(@"{""versions"":[""1.0.0"",""2.0.0""]}", await client.GetStringAsync("v3/package/public.package/index.json"));
     }
+
+    [Fact]
+    public async Task APackagesMetadataFromTheMirrorsIsReusedForAMinute()
+    {
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"));
+        TestTimeProvider time = new(DateTimeOffset.UtcNow);
+        HttpClient client = CreateMirror(time: time).CreateClient();
+
+        // Like a client reading a registration, then its pages.
+        await client.GetStringAsync("v3/registration/public.package/index.json");
+        await client.GetStringAsync("v3/registration-semver2/public.package/index.json");
+        Assert.Equal(1, MetadataRequests("public.test"));
+
+        // Versions published meanwhile show up once it expires.
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "2.0.0"));
+        time.Now += TimeSpan.FromMinutes(1);
+        string registration = await client.GetStringAsync("v3/registration/public.package/index.json");
+
+        Assert.Equal(2, MetadataRequests("public.test"));
+        Assert.Contains("\"2.0.0\"", registration);
+    }
+
+    // How many times a mirror was asked for a registration index.
+    private int MetadataRequests(string host)
+        => Routing!.Requests.Count(r => r.Host == host && r.AbsolutePath.EndsWith("/index.json", StringComparison.Ordinal) && r.AbsolutePath.Contains("/registration", StringComparison.Ordinal));
 
     [Fact]
     public async Task MirrorsAreAskedInTheirListsOrder()
@@ -288,8 +314,15 @@ public class MirrorChainIntegrationTests : IDisposable
         /// </summary>
         public int UnreachableAttempts => Volatile.Read(ref unreachableAttempts);
 
+        /// <summary>
+        /// The requests sent to the mirrors.
+        /// </summary>
+        public ConcurrentQueue<Uri> Requests { get; } = new();
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            Requests.Enqueue(request.RequestUri!);
+
             // A server that accepts the request, and never answers.
             if (string.Equals(request.RequestUri!.Host, "stall.test", StringComparison.OrdinalIgnoreCase))
             {

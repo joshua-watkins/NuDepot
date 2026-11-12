@@ -22,7 +22,7 @@ public class DefaultPackageContentService(IPackageService packages, IPackageStor
     public async Task<PackageVersionsResponse?> GetPackageVersionsOrNullAsync(string id, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<NuGetVersion> versions = await Packages.FindPackageVersionsAsync(id, cancellationToken);
-        if (!versions.Any())
+        if (versions.Count == 0)
             return null;
 
         return new PackageVersionsResponse

@@ -95,7 +95,7 @@ Besides package push, delete, content, metadata, search and autocomplete, the se
 
 | Resource | Notes |
 | --- | --- |
-| `RegistrationsBaseUrl/3.6.0` | Includes SemVer 2.0.0 packages. The older registration resources leave them out. A package's index lists up to 128 versions itself; one with more links to pages of 64, like nuget.org's. |
+| `RegistrationsBaseUrl/3.6.0` | Includes SemVer 2.0.0 packages. The older registration resources leave them out. A package's index lists up to 128 versions itself; one with more links to pages of 64, like nuget.org's. Registrations are gzipped, as the protocol requires. |
 | `SearchQueryService/3.5.0` | Search supports the `packageType` filter. |
 | `Catalog/3.0.0` | Records every push, unlist, relist, deprecation, vulnerability change and deletion. |
 | `ReadmeUriTemplate/6.13.0` | Package readmes. |

@@ -51,7 +51,7 @@ public class RawCatalogClient(HttpClient httpClient, string catalogUrl) : ICatal
     {
         TCatalogLeaf leaf = await HttpClient.GetFromJsonAsync(leafUrl, jsonTypeInfo, cancellationToken);
 
-        if (leaf.Type?.FirstOrDefault() != leafType)
+        if (leaf.Type is not [string type, ..] || type != leafType)
         {
             throw new ArgumentException(
                 $"The leaf type found in the document does not match the expected '{leafType}' type.",

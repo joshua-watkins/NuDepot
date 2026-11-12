@@ -98,7 +98,7 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
     private static bool AreSymbolFilesValid(IReadOnlyList<string> entries)
     {
         // TODO: Validate that all PDBs are portable. See: https://github.com/NuGet/NuGetGallery/blob/master/src/NuGetGallery/Services/SymbolPackageService.cs#L174
-        bool IsValidSymbolFileInfo(FileInfo file)
+        static bool IsValidSymbolFileInfo(FileInfo file)
         {
             if (string.IsNullOrEmpty(file.Name))
                 return false;
@@ -125,33 +125,31 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
 
         try
         {
-            using (Stream rawPdbStream = await symbolPackage.GetStreamAsync(pdbPath, cancellationToken))
+            using Stream rawPdbStream = await symbolPackage.GetStreamAsync(pdbPath, cancellationToken);
+            pdbStream = await rawPdbStream.AsTemporaryFileStreamAsync(cancellationToken);
+
+            string signature;
+            using (MetadataReaderProvider pdbReaderProvider = MetadataReaderProvider.FromPortablePdbStream(pdbStream, MetadataStreamOptions.LeaveOpen))
             {
-                pdbStream = await rawPdbStream.AsTemporaryFileStreamAsync(cancellationToken);
+                MetadataReader reader = pdbReaderProvider.GetMetadataReader();
+                DebugMetadataHeader header = reader.DebugMetadataHeader
+                    ?? throw new InvalidDataException("The symbol file isn't a portable PDB.");
+                BlobContentId id = new(header.Id);
 
-                string signature;
-                using (MetadataReaderProvider pdbReaderProvider = MetadataReaderProvider.FromPortablePdbStream(pdbStream, MetadataStreamOptions.LeaveOpen))
-                {
-                    MetadataReader reader = pdbReaderProvider.GetMetadataReader();
-                    DebugMetadataHeader header = reader.DebugMetadataHeader
-                        ?? throw new InvalidDataException("The symbol file isn't a portable PDB.");
-                    BlobContentId id = new(header.Id);
-
-                    signature = id.Guid
-                        .ToString("N")
-                        .ToUpperInvariant();
-                }
-
-                string fileName = Path
-                    .GetFileName(pdbPath)
-                    .ToLowerInvariant();
-                string key = $"{signature}ffffffff";
-                if (SymbolStorageService.GetPathForKeyOrNull(fileName, key) == null)
-                    throw new InvalidDataException($"The symbol file name '{fileName}' isn't valid.");
-
-                pdbStream.Position = 0;
-                result = new PortablePdb(fileName, key, pdbStream);
+                signature = id.Guid
+                    .ToString("N")
+                    .ToUpperInvariant();
             }
+
+            string fileName = Path
+                .GetFileName(pdbPath)
+                .ToLowerInvariant();
+            string key = $"{signature}ffffffff";
+            if (SymbolStorageService.GetPathForKeyOrNull(fileName, key) == null)
+                throw new InvalidDataException($"The symbol file name '{fileName}' isn't valid.");
+
+            pdbStream.Position = 0;
+            result = new PortablePdb(fileName, key, pdbStream);
         }
         finally
         {

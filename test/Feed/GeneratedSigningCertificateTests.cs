@@ -311,6 +311,28 @@ public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDispo
     }
 
     [Fact]
+    public async Task PackagesSignedByAnotherRepositoryKeepTheirSignature()
+    {
+        // A package another feed signed, like one downloaded from nuget.org.
+        NuDepotTestApplication other = CreateApp();
+        await PushAsync(other.CreateHttpsClient(), TestPackages.Create("Generated.Signed", "1.0.0"));
+        byte[] signed = await other.CreateHttpsClient().GetByteArrayAsync(PackageUrl);
+        using X509Certificate2 otherSigner = await GetRepositorySignerAsync(signed);
+
+        NuDepotTestApplication app = CreateApp();
+        HttpClient client = app.CreateHttpsClient();
+        await PushAsync(client, new MemoryStream(signed));
+
+        // A package can only have one repository signature, so it's stored and served as it was.
+        Assert.Equal(signed, await client.GetByteArrayAsync(PackageUrl));
+        using IServiceScope scope = app.Services.CreateScope();
+        Package package = await scope.ServiceProvider.GetRequiredService<NuDepotContext>().Packages.SingleAsync(p => p.Id == "Generated.Signed");
+        Assert.False(package.IsRepositorySigned);
+        Assert.Equal(CertificateFingerprint.Of(otherSigner), package.RepositorySignatureFingerprint);
+        Assert.NotEqual(await app.Services.GetRequiredService<IRepositorySigningService>().GetSigningFingerprintAsync(default), package.RepositorySignatureFingerprint);
+    }
+
+    [Fact]
     public async Task AnUpstreamCopyWithOtherContentIsntUsed()
     {
         (NuDepotTestApplication upstream, HttpClient mirror, TestTimeProvider mirrorTime) = await CreateMirrorAsync();

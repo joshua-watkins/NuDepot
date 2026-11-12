@@ -17,7 +17,7 @@ public class NuDepotServiceIndex(IUrlGenerator url, IVulnerabilityService vulner
     private IVulnerabilityService Vulnerabilities { get; } = vulnerabilities;
     private IRepositorySigningService Signing { get; } = signing;
 
-    private IEnumerable<ServiceIndexItem> BuildResource(string name, string url, params string[] versions)
+    private static IEnumerable<ServiceIndexItem> BuildResource(string name, string url, params string[] versions)
     {
         foreach (string version in versions)
         {

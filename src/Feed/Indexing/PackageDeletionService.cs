@@ -29,17 +29,12 @@ public class PackageDeletionService(IPackageDatabase packages, IPackageStorageSe
     /// <inheritdoc />
     public async Task<bool> TryDeletePackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        switch (Options.PackageDeletionBehavior)
+        return Options.PackageDeletionBehavior switch
         {
-            case PackageDeletionBehavior.Unlist:
-                return await TryUnlistPackageAsync(id, version, cancellationToken);
-
-            case PackageDeletionBehavior.HardDelete:
-                return await TryHardDeletePackageAsync(id, version, cancellationToken);
-
-            default:
-                throw new InvalidOperationException($"Unknown deletion behavior '{Options.PackageDeletionBehavior}'");
-        }
+            PackageDeletionBehavior.Unlist => await TryUnlistPackageAsync(id, version, cancellationToken),
+            PackageDeletionBehavior.HardDelete => await TryHardDeletePackageAsync(id, version, cancellationToken),
+            _ => throw new InvalidOperationException($"Unknown deletion behavior '{Options.PackageDeletionBehavior}'"),
+        };
     }
 
     private async Task<bool> TryUnlistPackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)

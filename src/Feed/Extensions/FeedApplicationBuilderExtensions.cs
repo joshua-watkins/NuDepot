@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -46,7 +48,20 @@ public static class FeedApplicationBuilderExtensions
     public static NuDepotApplicationBuilder UseFeed(this NuDepotApplicationBuilder app)
     {
         app.Application.UseMiddleware<OperationCancelledMiddleware>();
-        new NuDepotEndpointBuilder().MapEndpoints(app.Endpoints);
+
+        // The protocol's registrations are gzipped. They're public metadata, so compressing them over HTTPS gives
+        // nothing away. The application's own compression settings are left alone.
+        ResponseCompressionProvider registrationCompression = new(app.Services, Options.Create(new ResponseCompressionOptions
+        {
+            EnableForHttps = true,
+            MimeTypes = ["application/json"],
+            Providers = { new GzipCompressionProvider(Options.Create(new GzipCompressionProviderOptions())) },
+        }));
+        app.Application.UseWhen(
+            context => IsRegistrationRequest(context.Request.Path),
+            registrations => registrations.UseMiddleware<ResponseCompressionMiddleware>(registrationCompression));
+
+        NuDepotEndpointBuilder.MapEndpoints(app.Endpoints);
 
         // For monitors and load balancers, without a key: whether the feed is Healthy, Degraded (200) or Unhealthy
         // (503), and at "health/live", only whether it answers. Administrators see each check in the gallery.
@@ -76,6 +91,9 @@ public static class FeedApplicationBuilderExtensions
 
         return app;
     }
+
+    private static bool IsRegistrationRequest(PathString path)
+        => path.StartsWithSegments("/v3/registration") || path.StartsWithSegments("/v3/registration-semver2");
 
     private static FeedPipeline GetPipeline(NuDepotApplicationBuilder app)
         => app.Services.GetRequiredService<FeedPipeline>();

@@ -58,17 +58,16 @@ public class SearchQuery
         List<string> terms = [];
         List<SearchFilter> filters = [];
 
-        foreach ((string? Field, string Value) token in Tokenize(query ?? string.Empty))
+        foreach ((string? separator, string value) in Tokenize(query ?? string.Empty))
         {
-            string? separator = token.Field;
             if (separator != null && Fields.TryGetValue(separator, out string? field))
             {
-                if (token.Value.Length > 0)
-                    filters.Add(new SearchFilter(field, token.Value));
+                if (value.Length > 0)
+                    filters.Add(new SearchFilter(field, value));
             }
             else
             {
-                string term = separator == null ? token.Value : $"{separator}:{token.Value}";
+                string term = separator == null ? value : $"{separator}:{value}";
                 if (term.Length > 0)
                     terms.Add(term);
             }
@@ -98,7 +97,7 @@ public class SearchQuery
 
             if (position < query.Length && query[position] == ':' && position > start)
             {
-                field = query.Substring(start, position - start);
+                field = query[start..position];
                 position++;
             }
             else

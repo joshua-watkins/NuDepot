@@ -61,11 +61,11 @@ public class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<
         if (user == null || user.Passkeys.Count > 0)
             return PasskeyResult.Failed(ExpiredError);
 
-        (UserPasskey? Passkey, string? Error) passkey = await CompleteRegistrationAsync(httpContext, user, PasskeyCeremony.SignUp, response, cancellationToken);
-        if (passkey.Error != null)
-            return PasskeyResult.Failed(passkey.Error);
+        (UserPasskey? passkey, string? error) = await CompleteRegistrationAsync(httpContext, user, PasskeyCeremony.SignUp, response, cancellationToken);
+        if (error != null)
+            return PasskeyResult.Failed(error);
 
-        await Users.CompleteSignUpAsync(user, passkey.Passkey!, cancellationToken);
+        await Users.CompleteSignUpAsync(user, passkey!, cancellationToken);
         return PasskeyResult.Succeeded(user);
     }
 
@@ -74,11 +74,11 @@ public class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<
     /// </summary>
     public async Task<PasskeyResult> CompleteAddPasskeyAsync(HttpContext httpContext, User user, AuthenticatorAttestationRawResponse response, CancellationToken cancellationToken)
     {
-        (UserPasskey? Passkey, string? Error) passkey = await CompleteRegistrationAsync(httpContext, user, PasskeyCeremony.AddPasskey, response, cancellationToken);
-        if (passkey.Error != null)
-            return PasskeyResult.Failed(passkey.Error);
+        (UserPasskey? passkey, string? error) = await CompleteRegistrationAsync(httpContext, user, PasskeyCeremony.AddPasskey, response, cancellationToken);
+        if (error != null)
+            return PasskeyResult.Failed(error);
 
-        await Users.AddPasskeyAsync(user.Key, passkey.Passkey!, cancellationToken);
+        await Users.AddPasskeyAsync(user.Key, passkey!, cancellationToken);
         return PasskeyResult.Succeeded(user);
     }
 

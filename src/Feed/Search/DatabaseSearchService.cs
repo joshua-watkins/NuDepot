@@ -123,7 +123,7 @@ public class DatabaseSearchService(NuDepotContext context, IFrameworkCompatibili
         string prefix = request.Query ?? string.Empty;
         List<string> packageIds = [.. packages
             .GroupBy(p => p.Id, StringComparer.OrdinalIgnoreCase)
-            .Select(g => new { Id = g.First().Id, Downloads = g.Sum(p => p.Downloads) })
+            .Select(g => new { g.First().Id, Downloads = g.Sum(p => p.Downloads) })
             .OrderByDescending(p => p.Id.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             .ThenByDescending(p => p.Downloads)
             .ThenBy(p => p.Id, StringComparer.OrdinalIgnoreCase)
@@ -268,7 +268,7 @@ public class DatabaseSearchService(NuDepotContext context, IFrameworkCompatibili
     private static bool Contains(string? value, string term)
         => value != null && value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
-    private IQueryable<Package> ApplySearchFilters(IQueryable<Package> query, bool includePrerelease, bool includeSemVer2, string? packageType, IReadOnlyList<string>? frameworks)
+    private static IQueryable<Package> ApplySearchFilters(IQueryable<Package> query, bool includePrerelease, bool includeSemVer2, string? packageType, IReadOnlyList<string>? frameworks)
     {
         if (!includePrerelease)
             query = query.Where(p => !p.IsPrerelease);

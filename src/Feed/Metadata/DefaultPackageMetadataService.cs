@@ -38,7 +38,7 @@ public class DefaultPackageMetadataService(IPackageService packages, ICatalogSer
         if (!semVer2)
             packages = [.. packages.Where(p => !p.IsSemVer2())];
 
-        if (!packages.Any())
+        if (packages.Count == 0)
             return null;
 
         IReadOnlyDictionary<string, string> catalogLeafUrls = await Catalog.FindLatestLeafUrlsAsync(packageId, cancellationToken);

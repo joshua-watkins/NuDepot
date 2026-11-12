@@ -131,7 +131,10 @@ public class RegistrationBuilder(IUrlGenerator url)
             PackageContentUrl = Url.GetPackageDownloadUrl(package.Id, package.Version),
             PackageMetadata = new NuDepotPackageMetadata
             {
-                CatalogLeafUrl = registration.GetCatalogLeafUrlOrNull(package),
+                // The catalog doesn't have versions a mirror lists that the feed hasn't downloaded yet, so their
+                // entries come from their registration leaves.
+                CatalogLeafUrl = registration.GetCatalogLeafUrlOrNull(package)
+                    ?? Url.GetRegistrationLeafUrl(package.Id, package.Version, registration.SemVer2),
                 PackageId = package.Id,
                 Version = package.Version.ToFullString(),
                 Authors = string.Join(", ", package.Authors ?? []),

@@ -1,8 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NuDepot.Feed.Catalog;
-using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Storage;
@@ -72,7 +70,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
             if (current == null || string.Equals(state.Fingerprint, current, StringComparison.OrdinalIgnoreCase))
                 return content;
 
-            return await WithLockAsync(id, version, content, async () =>
+            return await WithLockAsync(id, version, async () =>
             {
                 // Another download may have re-signed it while this one waited.
                 SignatureState? latest = await GetStateAsync(id, version, content, cancellationToken);
@@ -90,7 +88,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         if (Locks.WasRefreshedRecently(id, version, now, UpstreamRetryInterval))
             return content;
 
-        return await WithLockAsync(id, version, content, async () =>
+        return await WithLockAsync(id, version, async () =>
         {
             if (Locks.WasRefreshedRecently(id, version, now, UpstreamRetryInterval))
                 return await ReopenAsync(id, version, content, cancellationToken);
@@ -130,7 +128,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         return new(row.IsRepositorySigned, row.IsMirrored, signature.Fingerprint, expiresAt);
     }
 
-    private async Task<Stream> WithLockAsync(string id, NuGetVersion version, Stream content, Func<Task<Stream>> action)
+    private async Task<Stream> WithLockAsync(string id, NuGetVersion version, Func<Task<Stream>> action)
     {
         SemaphoreSlim packageLock = Locks.For(id, version);
         await packageLock.WaitAsync();

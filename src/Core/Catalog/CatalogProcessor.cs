@@ -159,8 +159,7 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
     {
         DateTimeOffset? minCommitTimestamp = await Cursor.GetAsync(cancellationToken);
 
-        minCommitTimestamp = minCommitTimestamp
-            ?? Options.DefaultMinCommitTimestamp
+        minCommitTimestamp ??= Options.DefaultMinCommitTimestamp
             ?? Options.MinCommitTimestamp;
 
         if (minCommitTimestamp.Value < Options.MinCommitTimestamp)

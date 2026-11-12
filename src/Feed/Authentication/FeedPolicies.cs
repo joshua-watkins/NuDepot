@@ -84,12 +84,10 @@ public static class FeedPolicies
 /// <summary>
 /// Requires a feed permission.
 /// </summary>
-internal sealed class FeedPermissionRequirement : IAuthorizationRequirement
+/// <param name="permission">The permission, or null for the permission to delete a package.</param>
+internal sealed class FeedPermissionRequirement(FeedPermissions? permission) : IAuthorizationRequirement
 {
-    /// <param name="permission">The permission, or null for the permission to delete a package.</param>
-    public FeedPermissionRequirement(FeedPermissions? permission) => Permission = permission;
-
-    public FeedPermissions? Permission { get; }
+    public FeedPermissions? Permission { get; } = permission;
 }
 
 internal sealed class FeedPermissionHandler(FeedAccess access) : AuthorizationHandler<FeedPermissionRequirement>

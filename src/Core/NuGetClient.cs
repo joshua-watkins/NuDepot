@@ -75,7 +75,7 @@ public class NuGetClient
     {
         PackageVersionsResponse? versions = await ContentClient.GetPackageVersionsOrNullAsync(packageId, cancellationToken);
 
-        return versions != null && versions.Versions.Any();
+        return versions != null && versions.Versions.Count > 0;
     }
 
     /// <summary>
@@ -109,12 +109,8 @@ public class NuGetClient
     /// </exception>
     public virtual async Task<Stream> DownloadPackageAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default)
     {
-        Stream? stream = await ContentClient.DownloadPackageOrNullAsync(packageId, packageVersion, cancellationToken);
-
-        if (stream == null)
-            throw new PackageNotFoundException(packageId, packageVersion);
-
-        return stream;
+        return await ContentClient.DownloadPackageOrNullAsync(packageId, packageVersion, cancellationToken)
+            ?? throw new PackageNotFoundException(packageId, packageVersion);
     }
 
     /// <summary>
@@ -129,12 +125,8 @@ public class NuGetClient
     /// </exception>
     public virtual async Task<Stream> DownloadPackageManifestAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default)
     {
-        Stream? stream = await ContentClient.DownloadPackageManifestOrNullAsync(packageId, packageVersion, cancellationToken);
-
-        if (stream == null)
-            throw new PackageNotFoundException(packageId, packageVersion);
-
-        return stream;
+        return await ContentClient.DownloadPackageManifestOrNullAsync(packageId, packageVersion, cancellationToken)
+            ?? throw new PackageNotFoundException(packageId, packageVersion);
     }
 
     /// <summary>
@@ -225,10 +217,8 @@ public class NuGetClient
     /// </exception>
     public virtual async Task<Models.PackageMetadata> GetPackageMetadataAsync(string packageId, NuGetVersion packageVersion, CancellationToken cancellationToken = default)
     {
-        RegistrationIndexResponse? registrationIndex = await MetadataClient.GetRegistrationIndexOrNullAsync(packageId, cancellationToken);
-
-        if (registrationIndex == null)
-            throw new PackageNotFoundException(packageId, packageVersion);
+        RegistrationIndexResponse registrationIndex = await MetadataClient.GetRegistrationIndexOrNullAsync(packageId, cancellationToken)
+            ?? throw new PackageNotFoundException(packageId, packageVersion);
 
         foreach (RegistrationIndexPage registrationIndexPage in registrationIndex.Pages)
         {

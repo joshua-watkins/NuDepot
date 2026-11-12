@@ -2,8 +2,8 @@ using NuDepot.Core.Models;
 using NuDepot.Core.PackageDetails;
 using NuDepot.Feed.Tests.Support;
 using NuGet.Configuration;
-using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -79,6 +79,31 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
         using HttpResponseMessage response = await client.GetAsync(url);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("v3/registration/many.versions/index.json", true)]
+    [InlineData("v3/registration-semver2/many.versions/index.json", true)]
+    [InlineData("v3/registration-semver2/many.versions/page/1.0.1/1.0.64.json", true)]
+    [InlineData("v3/registration/many.versions/1.0.1.json", true)]
+    // Only the registrations are compressed.
+    [InlineData("v3/search?q=many", false)]
+    [InlineData("v3/package/many.versions/index.json", false)]
+    public async Task RegistrationsAreGzipped(string url, bool gzipped)
+    {
+        using HttpClient client = App.CreateClient();
+        using HttpRequestMessage request = new(HttpMethod.Get, url);
+        request.Headers.AcceptEncoding.ParseAdd("gzip");
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(gzipped, response.Content.Headers.ContentEncoding.Contains("gzip"));
+        if (gzipped)
+        {
+            using GZipStream json = new(await response.Content.ReadAsStreamAsync(), CompressionMode.Decompress);
+            Assert.Equal(JsonValueKind.Object, (await JsonDocument.ParseAsync(json)).RootElement.ValueKind);
+        }
     }
 
     [Fact]

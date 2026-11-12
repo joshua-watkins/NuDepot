@@ -20,15 +20,13 @@ public class FileCursor(string path, ILogger<FileCursor> logger) : ICursor
     {
         try
         {
-            using (FileStream file = File.OpenRead(Path))
-            using (JsonDocument document = await JsonDocument.ParseAsync(file, cancellationToken: cancellationToken))
-            {
-                DateTimeOffset value = document.RootElement
-                    .GetProperty(ValueProperty)
-                    .GetDateTimeOffset();
-                Logger.LogDebug("Read cursor value {cursor:O} from {path}.", value, Path);
-                return value;
-            }
+            using FileStream file = File.OpenRead(Path);
+            using JsonDocument document = await JsonDocument.ParseAsync(file, cancellationToken: cancellationToken);
+            DateTimeOffset value = document.RootElement
+                .GetProperty(ValueProperty)
+                .GetDateTimeOffset();
+            Logger.LogDebug("Read cursor value {cursor:O} from {path}.", value, Path);
+            return value;
         }
         catch (Exception e) when (e is FileNotFoundException || e is JsonException || e is KeyNotFoundException || e is FormatException || e is InvalidOperationException)
         {

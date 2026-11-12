@@ -108,6 +108,7 @@ public class MirrorIntegrationTests : IDisposable
             ""hasReadme"": false,
             ""packageTypes"": [],
             ""repositoryUrl"": """",
+            ""@id"": ""http://localhost/v3/registration/testdata/1.2.3.json"",
             ""id"": ""TestData"",
             ""version"": ""1.2.3"",
             ""authors"": ""Test author"",

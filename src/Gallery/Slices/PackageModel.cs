@@ -272,7 +272,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         PackageDownloadUrl = Feed.ToPublicUrl(Package.PackageContentUrl);
     }
 
-    private IReadOnlyList<DependencyGroupModel> ToDependencyGroups(NuDepotPackageMetadata package)
+    private static IReadOnlyList<DependencyGroupModel> ToDependencyGroups(NuDepotPackageMetadata package)
     {
         return [.. (package.DependencyGroups ?? [])
             .Select(group => new DependencyGroupModel
@@ -290,7 +290,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
             })];
     }
 
-    private string PrettifyTargetFramework(string? targetFramework)
+    private static string PrettifyTargetFramework(string? targetFramework)
     {
         if (targetFramework == null)
             return "All Frameworks";
@@ -322,7 +322,7 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         return $"{frameworkName} {frameworkVersion}";
     }
 
-    private IReadOnlyList<VersionModel> ToVersions(IReadOnlyList<NuDepotPackageMetadata> packages, NuGetVersion selectedVersion)
+    private static IReadOnlyList<VersionModel> ToVersions(IReadOnlyList<NuDepotPackageMetadata> packages, NuGetVersion selectedVersion)
     {
         return [.. packages
             .Select(p => new VersionModel

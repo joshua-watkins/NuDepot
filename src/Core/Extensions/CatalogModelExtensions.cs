@@ -132,7 +132,7 @@ public static class CatalogModelExtensions
     /// <returns>True if the catalog leaf represents a package delete.</returns>
     public static bool IsPackageDelete(this CatalogLeaf leaf)
     {
-        return leaf.Type.FirstOrDefault() == "PackageDelete";
+        return leaf.Type is ["PackageDelete", ..];
     }
 
     /// <summary>
@@ -152,7 +152,7 @@ public static class CatalogModelExtensions
     /// <returns>True if the catalog leaf contains package details.</returns>
     public static bool IsPackageDetails(this CatalogLeaf leaf)
     {
-        return leaf.Type.FirstOrDefault() == "PackageDetails";
+        return leaf.Type is ["PackageDetails", ..];
     }
 
     /// <summary>

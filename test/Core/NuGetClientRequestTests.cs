@@ -1,4 +1,3 @@
-using NuDepot.Core.Tests.Support;
 using NuGet.Versioning;
 using System.Net;
 using System.Text;

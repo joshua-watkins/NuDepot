@@ -104,6 +104,35 @@ public class AdminIntegrationTests(ITestOutputHelper output) : IDisposable
         Assert.Equal("ReadWrite", (await GetJsonAsync(bob, "api/account")).GetProperty("role").GetString());
     }
 
+    [Theory]
+    [InlineData("""{ "role": "None" }""", HttpStatusCode.BadRequest)]
+    [InlineData("""{ "role": "Owner" }""", HttpStatusCode.BadRequest)]
+    [InlineData("""{ }""", HttpStatusCode.BadRequest)]
+    [InlineData("not json", HttpStatusCode.BadRequest)]
+    [InlineData("""{ "role": "readwrite" }""", HttpStatusCode.NoContent)]
+    public async Task UsersOnlyGetTheFeedsRoles(string body, HttpStatusCode expected)
+    {
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient alice, _) = await SignUpAsync(app, "alice");
+        await SignUpAsync(app, "bob");
+        int bobId = (await GetJsonAsync(alice, "api/admin/users"))[1].GetProperty("id").GetInt32();
+
+        using HttpResponseMessage response = await alice.PutAsync($"api/admin/users/{bobId}", Json(body));
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangingAMissingUserIsNotFound()
+    {
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient alice, _) = await SignUpAsync(app, "alice");
+
+        using HttpResponseMessage response = await alice.PutAsync("api/admin/users/999", Json("""{ "role": "ReadWrite" }"""));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     [Fact]
     public async Task OnlyAdminsAdministerTheFeed()
     {

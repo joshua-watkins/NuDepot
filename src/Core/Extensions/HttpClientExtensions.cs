@@ -18,17 +18,16 @@ internal static class HttpClientExtensions
     /// <exception cref="JsonException">The response's content is the JSON <c>null</c>.</exception>
     public static async Task<TResult> GetFromJsonAsync<TResult>(this HttpClient httpClient, string requestUri, JsonTypeInfo<TResult> jsonTypeInfo, CancellationToken cancellationToken = default)
     {
-        using (HttpResponseMessage response = await httpClient.GetAsync(
+        using HttpResponseMessage response = await httpClient.GetAsync(
             requestUri,
             HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken))
-        {
-            // This is similar to System.Net.Http.Json's implementation, however,
-            // this does not validate that the response's content type indicates JSON content.
-            response.EnsureSuccessStatusCode();
+            cancellationToken);
 
-            return await ReadContentAsync(response, requestUri, jsonTypeInfo, cancellationToken);
-        }
+        // This is similar to System.Net.Http.Json's implementation, however,
+        // this does not validate that the response's content type indicates JSON content.
+        response.EnsureSuccessStatusCode();
+
+        return await ReadContentAsync(response, requestUri, jsonTypeInfo, cancellationToken);
     }
 
     /// <summary>
@@ -44,26 +43,24 @@ internal static class HttpClientExtensions
     public static async Task<TResult?> GetFromJsonOrDefaultAsync<TResult>(this HttpClient httpClient, string requestUri, JsonTypeInfo<TResult> jsonTypeInfo, CancellationToken cancellationToken = default)
         where TResult : class
     {
-        using (HttpResponseMessage response = await httpClient.GetAsync(
+        using HttpResponseMessage response = await httpClient.GetAsync(
             requestUri,
             HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken))
-        {
-            if (response.StatusCode == HttpStatusCode.NotFound)
-                return default;
+            cancellationToken);
 
-            response.EnsureSuccessStatusCode();
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return default;
 
-            return await ReadContentAsync(response, requestUri, jsonTypeInfo, cancellationToken);
-        }
+        response.EnsureSuccessStatusCode();
+
+        return await ReadContentAsync(response, requestUri, jsonTypeInfo, cancellationToken);
     }
 
     private static async Task<TResult> ReadContentAsync<TResult>(HttpResponseMessage response, string requestUri, JsonTypeInfo<TResult> jsonTypeInfo, CancellationToken cancellationToken)
     {
-        using (Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken))
-        {
-            return await JsonSerializer.DeserializeAsync(stream, jsonTypeInfo, cancellationToken)
-                ?? throw new JsonException($"The response from '{requestUri}' is empty.");
-        }
+        using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+
+        return await JsonSerializer.DeserializeAsync(stream, jsonTypeInfo, cancellationToken)
+            ?? throw new JsonException($"The response from '{requestUri}' is empty.");
     }
 }

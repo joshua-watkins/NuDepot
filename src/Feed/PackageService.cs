@@ -32,9 +32,9 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
         // Merge the local package versions into the upstream package versions.
         IReadOnlyList<NuGetVersion> upstreamVersions = await Upstream.ListPackageVersionsAsync(id, cancellationToken);
 
-        if (!upstreamVersions.Any())
+        if (upstreamVersions.Count == 0)
             return [.. localVersions];
-        if (!localPackages.Any())
+        if (localPackages.Count == 0)
             return upstreamVersions;
 
         return [.. upstreamVersions.Concat(localVersions).Distinct()];
@@ -49,9 +49,9 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
 
         IReadOnlyList<Package> upstreamPackages = await Upstream.ListPackagesAsync(id, cancellationToken);
 
-        if (!upstreamPackages.Any())
+        if (upstreamPackages.Count == 0)
             return localPackages;
-        if (!localPackages.Any())
+        if (localPackages.Count == 0)
             return upstreamPackages;
 
         // Merge the local packages into the upstream packages.
@@ -110,33 +110,31 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
 
         try
         {
-            using (Stream? packageStream = await Upstream.DownloadPackageOrNullAsync(id, version, cancellationToken))
+            using Stream? packageStream = await Upstream.DownloadPackageOrNullAsync(id, version, cancellationToken);
+            if (packageStream == null)
             {
-                if (packageStream == null)
-                {
-                    Logger.LogWarning(
-                        "Upstream feed does not have package {PackageId} {PackageVersion}",
-                        id,
-                        version);
-                    return false;
-                }
-
-                Logger.LogInformation(
-                    "Downloaded package {PackageId} {PackageVersion}, indexing...",
+                Logger.LogWarning(
+                    "Upstream feed does not have package {PackageId} {PackageVersion}",
                     id,
                     version);
-
-                PackageIndexingResult result = await Indexer.MirrorAsync(packageStream, id, version, cancellationToken);
-
-                Logger.LogInformation(
-                    "Finished indexing package {PackageId} {PackageVersion} from upstream feed with result {Result}",
-                    id,
-                    version,
-                    result);
-
-                // Another download may have mirrored it while this one waited.
-                return result is PackageIndexingResult.Success or PackageIndexingResult.PackageAlreadyExists;
+                return false;
             }
+
+            Logger.LogInformation(
+                "Downloaded package {PackageId} {PackageVersion}, indexing...",
+                id,
+                version);
+
+            PackageIndexingResult result = await Indexer.MirrorAsync(packageStream, id, version, cancellationToken);
+
+            Logger.LogInformation(
+                "Finished indexing package {PackageId} {PackageVersion} from upstream feed with result {Result}",
+                id,
+                version,
+                result);
+
+            // Another download may have mirrored it while this one waited.
+            return result is PackageIndexingResult.Success or PackageIndexingResult.PackageAlreadyExists;
         }
         catch (Exception e) when (!(e is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {

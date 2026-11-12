@@ -1,6 +1,6 @@
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Tests.Support;
@@ -9,6 +9,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -89,6 +90,82 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         Assert.Contains("expired", await replaced.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.NoContent, (await second.PostAsync("api/account/signin", Json(authenticator.GetAssertion(secondOptions)))).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("signature")]
+    [InlineData("origin")]
+    public async Task SignInsThatFailVerificationDontSignIn(string forgery)
+    {
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient _, TestAuthenticator? authenticator) = await SignUpAsync(app, "alice");
+        using HttpClient browser = app.CreateBrowserClient();
+        string options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
+
+        // An altered signature, or a response a phishing site got for its own address.
+        JsonNode assertion = JsonNode.Parse(authenticator.GetAssertion(options))!;
+        if (forgery == "signature")
+        {
+            byte[] signature = WebEncoders.Base64UrlDecode(assertion["response"]!["signature"]!.GetValue<string>());
+            signature[^1] ^= 0xFF;
+            assertion["response"]!["signature"] = WebEncoders.Base64UrlEncode(signature);
+        }
+        else
+        {
+            JsonNode clientData = JsonNode.Parse(WebEncoders.Base64UrlDecode(assertion["response"]!["clientDataJSON"]!.GetValue<string>()))!;
+            clientData["origin"] = "http://phishing.example";
+            assertion["response"]!["clientDataJSON"] = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(clientData.ToJsonString()));
+        }
+
+        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(assertion.ToJsonString()));
+
+        Assert.Equal(HttpStatusCode.BadRequest, signIn.StatusCode);
+        Assert.Contains("couldn't be verified", await signIn.Content.ReadAsStringAsync());
+        Assert.False((await GetAccountAsync(browser)).GetProperty("signedIn").GetBoolean());
+
+        // The challenge is used up, but the next one works.
+        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)))).StatusCode);
+        string retry = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
+        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(retry)))).StatusCode);
+    }
+
+    [Fact]
+    public async Task PasskeysMadeForAnotherSiteDontCreateAccounts()
+    {
+        NuDepotTestApplication app = CreateApp();
+        using HttpClient browser = app.CreateBrowserClient();
+        using TestAuthenticator phishing = new("http://phishing.example");
+
+        string options = await PostAsync(browser, "api/account/signup", new { userName = "mallory" });
+        HttpResponseMessage created = await browser.PostAsync("api/account/passkeys?userName=mallory", Json(phishing.CreateCredential(options)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, created.StatusCode);
+        Assert.Contains("couldn't be verified", await created.Content.ReadAsStringAsync());
+        Assert.False((await GetAccountAsync(browser)).GetProperty("signedIn").GetBoolean());
+        Assert.True((await GetAccountAsync(browser)).GetProperty("isFirstUser").GetBoolean());
+    }
+
+    // Every account endpoint needs the sign-in cookie, except signing up and signing in.
+    [Theory]
+    [InlineData("GET", "api/account/sessions")]
+    [InlineData("DELETE", "api/account/sessions/1")]
+    [InlineData("GET", "api/account/passkeys")]
+    [InlineData("POST", "api/account/passkeys/options")]
+    [InlineData("POST", "api/account/passkeys")]
+    [InlineData("DELETE", "api/account/passkeys/1")]
+    [InlineData("GET", "api/account/apikeys")]
+    [InlineData("POST", "api/account/apikeys")]
+    [InlineData("DELETE", "api/account/apikeys/1")]
+    public async Task AccountsNeedASignedInUser(string method, string url)
+    {
+        NuDepotTestApplication app = CreateApp();
+        await SignUpAsync(app, "alice");
+        using HttpClient anonymous = app.CreateBrowserClient();
+
+        using HttpRequestMessage request = new(new HttpMethod(method), url) { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
+        using HttpResponseMessage response = await anonymous.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
