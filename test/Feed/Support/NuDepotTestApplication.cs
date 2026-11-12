@@ -127,7 +127,6 @@ internal sealed class NuDepotTestApplication : IDisposable
             { "Feed:PackageDeletionBehavior", "HardDelete" },
             { "Feed:AllowPackageOverwrites", "true" },
             { "Feed:Database:ConnectionString", $"Data Source=NuDepotTests-{testId};Mode=Memory;Cache=Shared" },
-            { "Feed:Storage:Type", "FileSystem" },
             { "Feed:Storage:Path", storagePath },
             { "Feed:Search:Type", "Database" },
         };

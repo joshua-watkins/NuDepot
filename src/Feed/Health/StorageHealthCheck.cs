@@ -24,11 +24,7 @@ internal sealed class StorageHealthCheck(IOptions<FeedOptions> options) : IHealt
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        StorageOptions storage = Options.Storage;
-        if (storage.Type != StorageType.FileSystem)
-            return HealthCheckResult.Healthy("Packages aren't stored.");
-
-        string path = storage.Path!;
+        string path = Options.Storage.Path!;
         Dictionary<string, object> data = new() { ["path"] = path };
 
         try

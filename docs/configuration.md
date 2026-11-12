@@ -623,8 +623,6 @@ the database. The defaults are:
         "ConnectionString": "Data Source=nudepot.db"
     },
     "Storage": {
-        // FileSystem (the default) or Null, which doesn't store files.
-        "Type": "FileSystem",
         // The folder files are stored in, in a "packages" folder. Defaults to the working directory, or
         // /var/lib/nudepot on Linux.
         "Path": ""
@@ -640,7 +638,7 @@ the database. The defaults are:
 Relative paths are relative to the settings folder. See
 [SQLite connection strings](https://learn.microsoft.com/dotnet/standard/data/sqlite/connection-strings) for what the
 connection string can say. As environment variables, these are `Feed__Database__ConnectionString`,
-`Feed__Storage__Type`, `Feed__Storage__Path` and `Feed__Search__Type`.
+`Feed__Storage__Path` and `Feed__Search__Type`.
 
 The database uses SQLite's [write-ahead log](https://sqlite.org/wal.html), so reads don't wait for pushes. It keeps
 recent changes in `nudepot.db-wal` and `nudepot.db-shm` beside the database, so keep the database on a local disk,

@@ -398,11 +398,10 @@ public static class FeedServiceCollectionExtensions
         services.TryAddTransient<DatabaseSearchService>();
         services.TryAddTransient<FileStorageService>();
         services.TryAddTransient<PackageService>();
-        services.TryAddSingleton<NullStorageService>();
         services.TryAddSingleton<IUpstreamClient, MirrorChain>();
 
         // The options choose the implementations.
-        services.TryAddTransient(StorageServiceFactory);
+        services.TryAddTransient<IStorageService>(provider => provider.GetRequiredService<FileStorageService>());
         services.TryAddTransient(SearchServiceFactory);
         services.TryAddSingleton(SigningCertificateSourceFactory);
         services.TryAddTransient<ISearchIndexer>(provider => provider.GetRequiredService<NullSearchIndexer>());
@@ -413,15 +412,6 @@ public static class FeedServiceCollectionExtensions
         return provider.GetRequiredService<IOptions<RepositorySigningOptions>>().Value.GeneratesCertificates
             ? provider.GetRequiredService<GeneratedSigningCertificates>()
             : provider.GetRequiredService<ConfiguredSigningCertificate>();
-    }
-
-    private static IStorageService StorageServiceFactory(IServiceProvider provider)
-    {
-        return GetOptions(provider).Storage.Type switch
-        {
-            StorageType.Null => provider.GetRequiredService<NullStorageService>(),
-            _ => provider.GetRequiredService<FileStorageService>(),
-        };
     }
 
     private static ISearchService SearchServiceFactory(IServiceProvider provider)

@@ -6,14 +6,8 @@ namespace NuDepot.Feed.Configuration;
 public class StorageOptions
 {
     /// <summary>
-    /// Where files are stored. Defaults to <see cref="StorageType.FileSystem"/>.
-    /// </summary>
-    public StorageType Type { get; set; } = StorageType.FileSystem;
-
-    /// <summary>
-    /// The folder <see cref="StorageType.FileSystem"/> storage keeps files in. Defaults to the
-    /// working directory. The folder is created if it doesn't exist. Packages are stored in a
-    /// subfolder named "packages".
+    /// The folder files are stored in. Defaults to the working directory. The folder is created if it doesn't exist.
+    /// Packages are stored in a subfolder named "packages".
     /// </summary>
     public string? Path { get; set; }
 
@@ -22,20 +16,4 @@ public class StorageOptions
     /// and delete it when the application stops. For development, with an in-memory database.
     /// </summary>
     public bool Temporary { get; set; }
-}
-
-/// <summary>
-/// Where the feed stores package and symbol files.
-/// </summary>
-public enum StorageType
-{
-    /// <summary>
-    /// Files are stored in a folder, <see cref="StorageOptions.Path"/>.
-    /// </summary>
-    FileSystem,
-
-    /// <summary>
-    /// Files aren't stored.
-    /// </summary>
-    Null,
 }

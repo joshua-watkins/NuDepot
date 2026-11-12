@@ -129,7 +129,7 @@ internal static class AdminEndpoints
                 WhenUnreachable = m.WhenUnreachable.ToString(),
                 UnreachableUntil = m.UnreachableUntil,
             })],
-            StoragePath = feed.Storage.Type == StorageType.FileSystem ? feed.Storage.Path : null,
+            StoragePath = feed.Storage.Path,
         };
 
         return Results.Json(response, AdminJsonContext.Default.FeedStatusResponse);

@@ -14,32 +14,14 @@ namespace NuDepot.Feed.Tests;
 
 public class HostIntegrationTests
 {
-    private string StorageTypeKey { get; } = "Feed:Storage:Type";
     private string ConnectionStringKey { get; } = "Feed:Database:ConnectionString";
 
     [Fact]
-    public void ThrowsIfStorageTypeInvalid()
+    public void PackagesAreStoredInFiles()
     {
-        IServiceProvider provider = BuildServiceProvider(new Dictionary<string, string?>
-        {
-            { StorageTypeKey, "InvalidType" }
-        });
+        IServiceProvider provider = BuildServiceProvider();
 
-        Assert.Throws<InvalidOperationException>(
-            () => provider.GetRequiredService<IStorageService>());
-    }
-
-    [Theory]
-    [InlineData("FileSystem", typeof(FileStorageService))]
-    [InlineData("Null", typeof(NullStorageService))]
-    public void StorageTypeChoosesTheStorage(string type, Type expected)
-    {
-        IServiceProvider provider = BuildServiceProvider(new Dictionary<string, string?>
-        {
-            { StorageTypeKey, type }
-        });
-
-        Assert.IsType(expected, provider.GetRequiredService<IStorageService>());
+        Assert.IsType<FileStorageService>(provider.GetRequiredService<IStorageService>());
     }
 
     [Theory]
@@ -59,9 +41,10 @@ public class HostIntegrationTests
     [Fact]
     public void ConfigureChangesTheBoundOptions()
     {
-        IServiceProvider provider = BuildServiceProvider(configure: options => options.Storage.Type = StorageType.Null);
+        IServiceProvider provider = BuildServiceProvider(configure: options => options.Search.Type = SearchType.Null);
 
-        Assert.IsType<NullStorageService>(provider.GetRequiredService<IStorageService>());
+        using IServiceScope scope = provider.CreateScope();
+        Assert.IsType<NullSearchService>(scope.ServiceProvider.GetRequiredService<ISearchService>());
     }
 
     [Fact]
@@ -235,7 +218,6 @@ public class HostIntegrationTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 { ConnectionStringKey, "Data Source=nuget.db" },
-                { StorageTypeKey, "FileSystem" },
                 { "Feed:Search:Type", "Database" },
             })
             .AddInMemoryCollection(configs ?? [])
