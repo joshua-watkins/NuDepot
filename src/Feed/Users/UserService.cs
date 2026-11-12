@@ -39,6 +39,9 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     /// </summary>
     public static readonly TimeSpan SessionLifetime = TimeSpan.FromDays(365);
 
+    // How long a session's token is used before it's replaced, by the next request after that.
+    private static readonly TimeSpan TokenLifetime = TimeSpan.FromMinutes(15);
+
     // How long a session's previous token is still accepted after it's replaced.
     private static readonly TimeSpan PreviousTokenLifetime = TimeSpan.FromMinutes(1);
 
@@ -425,8 +428,8 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     }
 
     /// <summary>
-    /// Check a session's cookie, and replace its token. A token that was already replaced means
-    /// the cookie was copied, so the session is revoked.
+    /// Check a session's cookie, and replace its token every few minutes. A token that was already replaced, after
+    /// the browser used the new one, means the cookie was copied, so the session is revoked.
     /// </summary>
     public async Task<SessionValidation> ValidateSessionAsync(int sessionKey, string token, CancellationToken cancellationToken)
     {
@@ -441,29 +444,31 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         byte[] hash = Hash(token);
         if (hash.AsSpan().SequenceEqual(session.TokenHash))
         {
-            string newToken = CreateSessionToken();
-            byte[] newHash = Hash(newToken);
+            if (now - session.RotatedAt >= TokenLifetime)
+                return new SessionValidation(session.User, await RotateAsync(sessionKey, hash, hash, onlyIfUnused: false, now, cancellationToken));
 
-            // Only one request replaces the token, even if the browser sent several at once.
-            int rotated = await Context.UserSessions
-                .Where(s => s.Key == sessionKey && s.TokenHash == hash)
-                .ExecuteUpdateAsync(
-                    setters => setters
-                        .SetProperty(s => s.TokenHash, newHash)
-                        .SetProperty(s => s.PreviousTokenHash, hash)
-                        .SetProperty(s => s.RotatedAt, now)
-                        .SetProperty(s => s.ExpiresAt, now + SessionLifetime),
-                    cancellationToken);
+            // The browser has the cookie with this token, so an older cookie is a copy.
+            if (!session.IsTokenUsed)
+            {
+                await Context.UserSessions
+                    .Where(s => s.Key == sessionKey && s.TokenHash == hash)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.IsTokenUsed, true), cancellationToken);
+            }
 
-            return new SessionValidation(session.User, rotated == 1 ? newToken : null);
+            return new SessionValidation(session.User, NewToken: null);
         }
+
+        bool isPrevious = session.PreviousTokenHash != null && hash.AsSpan().SequenceEqual(session.PreviousTokenHash);
 
         // Requests the browser sent at the same time as the one that replaced the token, and the
         // website's requests to the feed for the browser, have the previous token.
-        if (session.PreviousTokenHash != null &&
-            hash.AsSpan().SequenceEqual(session.PreviousTokenHash) &&
-            now - session.RotatedAt < PreviousTokenLifetime)
+        if (isPrevious && now - session.RotatedAt < PreviousTokenLifetime)
             return new SessionValidation(session.User, NewToken: null);
+
+        // The browser never sent the current token: the response with its cookie didn't arrive, like when the user
+        // left the page while it loaded. The browser gets another.
+        if (isPrevious && !session.IsTokenUsed)
+            return new SessionValidation(session.User, await RotateAsync(sessionKey, session.TokenHash, hash, onlyIfUnused: true, now, cancellationToken));
 
         await Context.UserSessions
             .Where(s => s.Key == sessionKey)
@@ -510,6 +515,28 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .ExecuteDeleteAsync(cancellationToken);
 
         return deleted > 0;
+    }
+
+    // Replaces the session's current token, whose hash is currentHash. The previous token becomes the one the browser
+    // sent: the current one, or the previous one if the browser never got the current one.
+    private async Task<string?> RotateAsync(int sessionKey, byte[] currentHash, byte[] sentHash, bool onlyIfUnused, DateTime now, CancellationToken cancellationToken)
+    {
+        string newToken = CreateSessionToken();
+        byte[] newHash = Hash(newToken);
+
+        // Only one request replaces the token, even if the browser sent several at once.
+        int rotated = await Context.UserSessions
+            .Where(s => s.Key == sessionKey && s.TokenHash == currentHash && (!onlyIfUnused || !s.IsTokenUsed))
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(s => s.TokenHash, newHash)
+                    .SetProperty(s => s.PreviousTokenHash, sentHash)
+                    .SetProperty(s => s.IsTokenUsed, false)
+                    .SetProperty(s => s.RotatedAt, now)
+                    .SetProperty(s => s.ExpiresAt, now + SessionLifetime),
+                cancellationToken);
+
+        return rotated == 1 ? newToken : null;
     }
 
     private static string CreateSessionToken() => WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));

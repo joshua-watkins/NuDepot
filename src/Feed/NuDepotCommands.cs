@@ -56,21 +56,7 @@ public static class NuDepotCommands
                 return false;
 
             case ["import", "downloads"]:
-                using (CancellationTokenSource cancellation = new())
-                using (IServiceScope scope = host.Services.CreateScope())
-                {
-                    // Stop the import with Ctrl+C.
-                    Console.CancelKeyPress += (_, e) =>
-                    {
-                        e.Cancel = true;
-                        cancellation.Cancel();
-                    };
-
-                    DownloadsImporter importer = scope.ServiceProvider.GetRequiredService<DownloadsImporter>();
-
-                    await importer.ImportAsync(cancellation.Token);
-                }
-
+                await ImportDownloadsAsync(host);
                 return true;
 
             case ["rotate", "signing-certificate"]:
@@ -81,6 +67,31 @@ public static class NuDepotCommands
                 Console.Error.WriteLine($"Unknown command '{string.Join(' ', unknown)}'. Use --help to see the commands.");
                 Environment.ExitCode = 1;
                 return true;
+        }
+    }
+
+    private static async Task ImportDownloadsAsync(IHost host)
+    {
+        using CancellationTokenSource cancellation = new();
+
+        // Stop the import with Ctrl+C.
+        ConsoleCancelEventHandler cancel = (_, e) =>
+        {
+            e.Cancel = true;
+            cancellation.Cancel();
+        };
+
+        Console.CancelKeyPress += cancel;
+        try
+        {
+            using IServiceScope scope = host.Services.CreateScope();
+            DownloadsImporter importer = scope.ServiceProvider.GetRequiredService<DownloadsImporter>();
+
+            await importer.ImportAsync(cancellation.Token);
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancel;
         }
     }
 

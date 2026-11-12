@@ -73,13 +73,6 @@ public class NuDepotUrlGenerator(IHttpContextAccessor httpContextAccessor, LinkG
     }
 
     /// <inheritdoc />
-    public string GetRegistrationPageUrl(string id, NuGetVersion lower, NuGetVersion upper)
-    {
-        // NuDepot does not support paging the registration resource.
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc />
     public string GetRegistrationLeafUrl(string id, NuGetVersion version, bool semVer2 = false)
     {
         return GetUrl(
@@ -88,17 +81,6 @@ public class NuDepotUrlGenerator(IHttpContextAccessor httpContextAccessor, LinkG
             {
                 { "id", id.ToLowerInvariant() },
                 { "version", version.ToNormalizedString().ToLowerInvariant() },
-            });
-    }
-
-    /// <inheritdoc />
-    public string GetPackageVersionsUrl(string id)
-    {
-        return GetUrl(
-            Routes.PackageVersionsRouteName,
-            new RouteValueDictionary
-            {
-                { "id", id.ToLowerInvariant() },
             });
     }
 
@@ -117,24 +99,6 @@ public class NuDepotUrlGenerator(IHttpContextAccessor httpContextAccessor, LinkG
                 { "id", id },
                 { "version", versionString },
                 { "idVersion", $"{id}.{versionString}" },
-            });
-    }
-
-    /// <inheritdoc />
-    public string GetPackageManifestDownloadUrl(string id, NuGetVersion version)
-    {
-        id = id.ToLowerInvariant();
-        string versionString = version
-            .ToNormalizedString()
-            .ToLowerInvariant();
-
-        return GetUrl(
-            Routes.PackageDownloadManifestRouteName,
-            new RouteValueDictionary
-            {
-                { "id", id },
-                { "version", versionString },
-                { "id2", id },
             });
     }
 

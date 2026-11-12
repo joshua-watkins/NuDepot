@@ -9,6 +9,7 @@ using NuDepot.Core.PackageDetails;
 using NuDepot.Core.RepositorySignatures;
 using NuDepot.Core.Search;
 using System.Net;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace NuDepot.Gallery.Tests;
@@ -146,9 +147,9 @@ public class WebsitePageTests : IDisposable
         Assert.Contains("href=\"https://feed.test/v3/package/contoso.json/1.2.0/contoso.json.1.2.0.nupkg\"", html);
         Assert.Contains("<span>Versions</span>", html);
 
-        // The install commands are passed to the page's script as JSON, which can't end the script early.
-        Assert.Contains("\"dotnet add package Contoso.Json --version 1.2.0\"", html);
-        Assert.Contains("\\u003CPackageReference Include=\\u0022Contoso.Json\\u0022", html);
+        // The install commands are in the page, so it shows them without scripts, encoded as HTML.
+        Assert.Contains(">dotnet add package Contoso.Json --version 1.2.0<", html);
+        Assert.Contains("&lt;PackageReference Include=&quot;Contoso.Json&quot; Version=&quot;1.2.0&quot; /&gt;", html);
     }
 
     [Fact]
@@ -169,9 +170,9 @@ public class WebsitePageTests : IDisposable
         string html = await GetPageAsync("/upload");
 
         Assert.Contains($"<code>{ServiceIndexUrl}</code>", html);
-        Assert.Contains($"\"dotnet nuget push -s {ServiceIndexUrl} package.nupkg\"", html);
-        Assert.Contains($"\"Register-PSResourceRepository -Name NuDepot -Uri {ServiceIndexUrl} -Trusted\"", html);
-        Assert.Contains("\"Publish-PSResource -Path ./MyModule -Repository NuDepot\"", html);
+        Assert.Contains($">dotnet nuget push -s {ServiceIndexUrl} package.nupkg<", html);
+        Assert.Contains($">Register-PSResourceRepository -Name NuDepot -Uri {ServiceIndexUrl} -Trusted<", html);
+        Assert.Contains(">Publish-PSResource -Path ./MyModule -Repository NuDepot<", html);
         Assert.Contains("class=\"active\"><span>Upload</span>", html);
 
         // The feed doesn't sign packages.
@@ -229,8 +230,10 @@ public class WebsitePageTests : IDisposable
 
     [Theory]
     [InlineData("/_content/NuDepot.Gallery/css/site.css", "text/css")]
-    [InlineData("/_content/NuDepot.Gallery/lib/bootstrap/dist/js/bootstrap.min.js", "text/javascript")]
-    [InlineData("/_content/NuDepot.Gallery/images/github-32x32.png", "image/png")]
+    [InlineData("/_content/NuDepot.Gallery/lib/bootstrap/dist/css/bootstrap.min.css", "text/css")]
+    [InlineData("/_content/NuDepot.Gallery/lib/bootstrap-icons/icons/search.svg", "image/svg+xml")]
+    [InlineData("/_content/NuDepot.Gallery/js/site.js", "text/javascript")]
+    [InlineData("/_content/NuDepot.Gallery/images/default-package-icon-256x256.png", "image/png")]
     public async Task ServesEmbeddedFiles(string url, string contentType)
     {
         using HttpClient client = App.GetTestClient();
@@ -286,6 +289,52 @@ public class WebsitePageTests : IDisposable
 
         Assert.DoesNotContain("account/signin", html);
         Assert.DoesNotContain("account-nav", html);
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/upload")]
+    public async Task PagesCantBeFramed(string url)
+    {
+        using HttpClient client = App.GetTestClient();
+
+        HttpResponseMessage response = await client.GetAsync(url);
+
+        Assert.Equal("DENY", Assert.Single(response.Headers.GetValues("X-Frame-Options")));
+        Assert.Equal(GalleryApplicationBuilderExtensions.PagePolicy, Assert.Single(response.Headers.GetValues("Content-Security-Policy")));
+        Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
+        Assert.Equal("strict-origin-when-cross-origin", Assert.Single(response.Headers.GetValues("Referrer-Policy")));
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/upload")]
+    [InlineData("/packages/Contoso.Json/1.2.0")]
+    public async Task PagesHaveNoInlineScripts(string url)
+    {
+        Packages
+            .Setup(p => p.GetPackageMetadataAsync("Contoso.Json", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new() { PackageId = "Contoso.Json", Version = "1.2.0", Listed = true, Published = DateTimeOffset.UtcNow }]);
+        Packages
+            .Setup(p => p.GetPackageDependentsAsync("Contoso.Json", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DependentsResponse { Data = [] });
+
+        string html = await GetPageAsync(url);
+
+        // The Content-Security-Policy would block them: scripts are files, and settings are JSON, which doesn't run.
+        Assert.DoesNotMatch(new Regex("<script(?![^>]*\\bsrc=)(?![^>]*type=\"application/json\")", RegexOptions.IgnoreCase), html);
+        Assert.DoesNotMatch(new Regex("\\son[a-z]+\\s*=", RegexOptions.IgnoreCase), html);
+        Assert.Contains("js/site.js\"></script>", html);
+    }
+
+    [Fact]
+    public async Task EmbeddedFilesAreNotSniffed()
+    {
+        using HttpClient client = App.GetTestClient();
+
+        HttpResponseMessage response = await client.GetAsync("/_content/NuDepot.Gallery/css/site.css");
+
+        Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
     }
 
     private async Task<string> GetPageAsync(string url)

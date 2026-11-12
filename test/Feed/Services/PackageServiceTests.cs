@@ -61,13 +61,38 @@ public class PackageServiceTests
         }
 
         [Fact]
-        public async Task MergesLocalAndUpstreamVersions()
+        public async Task MirrorsCantAddVersionsOfPushedPackages()
         {
             Setup(
                 localPackages:
                 [
                     new() { Version = new NuGetVersion("1.0.0") },
-                    new() { Version = new NuGetVersion("2.0.0") },
+                    new() { Version = new NuGetVersion("2.0.0"), IsMirrored = true },
+                ],
+                upstreamPackages:
+                [
+                    new("2.0.0"),
+                    new("99.0.0"),
+                ]);
+
+            IReadOnlyList<NuGetVersion> results = await _target.FindPackageVersionsAsync(
+                "MyPackage",
+                _cancellationToken);
+
+            Assert.Equal(["1.0.0", "2.0.0"], results.Select(v => v.OriginalVersion));
+            _upstream.Verify(
+                u => u.ListPackageVersionsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task MergesLocalAndUpstreamVersions()
+        {
+            Setup(
+                localPackages:
+                [
+                    new() { Version = new NuGetVersion("1.0.0"), IsMirrored = true },
+                    new() { Version = new NuGetVersion("2.0.0"), IsMirrored = true },
                 ],
                 upstreamPackages:
                 [
@@ -152,13 +177,34 @@ public class PackageServiceTests
         }
 
         [Fact]
-        public async Task MergesLocalAndUpstreamPackages()
+        public async Task MirrorsCantAddPackagesWithPushedIds()
         {
             Setup(
                 localPackages:
                 [
                     new() { Version = new NuGetVersion("1.0.0") },
-                    new() { Version = new NuGetVersion("2.0.0") },
+                ],
+                upstreamPackages:
+                [
+                    new() { Version = new NuGetVersion("99.0.0") },
+                ]);
+
+            IReadOnlyList<Package> results = await _target.FindPackagesAsync("MyPackage", _cancellationToken);
+
+            Assert.Equal("1.0.0", Assert.Single(results).Version.OriginalVersion);
+            _upstream.Verify(
+                u => u.ListPackagesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task MergesLocalAndUpstreamPackages()
+        {
+            Setup(
+                localPackages:
+                [
+                    new() { Version = new NuGetVersion("1.0.0"), IsMirrored = true },
+                    new() { Version = new NuGetVersion("2.0.0"), IsMirrored = true },
                 ],
                 upstreamPackages:
                 [
@@ -276,7 +322,7 @@ public class PackageServiceTests
             await TargetAsync();
 
             _indexer.Verify(
-                i => i.IndexAsync(It.IsAny<Stream>(), _cancellationToken),
+                i => i.MirrorAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<NuGetVersion>(), _cancellationToken),
                 Times.Never);
         }
 
@@ -294,7 +340,7 @@ public class PackageServiceTests
             await TargetAsync();
 
             _indexer.Verify(
-                i => i.IndexAsync(It.IsAny<Stream>(), _cancellationToken),
+                i => i.MirrorAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<NuGetVersion>(), _cancellationToken),
                 Times.Never);
         }
 
@@ -312,7 +358,7 @@ public class PackageServiceTests
             await TargetAsync();
 
             _indexer.Verify(
-                i => i.IndexAsync(It.IsAny<Stream>(), _cancellationToken),
+                i => i.MirrorAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<NuGetVersion>(), _cancellationToken),
                 Times.Never);
         }
 
@@ -331,10 +377,40 @@ public class PackageServiceTests
 
                 await TargetAsync();
 
+                // Only the package that was asked for, which never replaces one the feed has.
                 _indexer.Verify(
-                    i => i.IndexAsync(It.IsAny<Stream>(), _cancellationToken),
+                    i => i.MirrorAsync(downloadStream, _id, _version, _cancellationToken),
                     Times.Once);
             }
+        }
+
+        [Fact]
+        public async Task SkipsIfAnotherVersionWasPushed()
+        {
+            _db
+                .Setup(p => p.ExistsAsync(_id, _version, _cancellationToken))
+                .ReturnsAsync(false);
+            _db
+                .Setup(p => p.HasPushedVersionsAsync(_id, _cancellationToken))
+                .ReturnsAsync(true);
+
+            await TargetAsync();
+
+            _upstream.Verify(
+                u => u.DownloadPackageOrNullAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task CancellationIsNotAFailure()
+        {
+            using CancellationTokenSource cancellation = new();
+            cancellation.Cancel();
+            _upstream
+                .Setup(u => u.DownloadPackageOrNullAsync(_id, _version, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new OperationCanceledException());
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() => _target.ExistsAsync(_id, _version, cancellation.Token));
         }
     }
 

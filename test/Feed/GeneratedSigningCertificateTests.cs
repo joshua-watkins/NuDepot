@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -190,6 +191,41 @@ public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDispo
         Assert.Equal(HttpStatusCode.Forbidden, (await SendForwardedAsync(app, new string('0', token.Length))).StatusCode);
     }
 
+    [Theory]
+    [InlineData(null, "10.1.2.3", HttpStatusCode.OK)]
+    [InlineData(null, "::ffff:192.168.1.5", HttpStatusCode.OK)]
+    [InlineData(null, "203.0.113.7", HttpStatusCode.Forbidden)]
+    [InlineData("203.0.113.0/24", "203.0.113.7", HttpStatusCode.OK)]
+    [InlineData("203.0.113.7", "203.0.113.7", HttpStatusCode.OK)]
+    [InlineData("203.0.113.7", "10.1.2.3", HttpStatusCode.Forbidden)]
+    public async Task ForwardedHeadersAreOnlyTrustedFromTrustedProxies(string? trustedProxy, string client, HttpStatusCode expected)
+    {
+        Dictionary<string, string> configuration = [];
+        if (trustedProxy != null)
+            configuration["TrustedProxies:0"] = trustedProxy;
+        NuDepotTestApplication app = CreateApp(configuration: configuration);
+
+        // A client that says it reached the feed through a proxy that serves HTTPS.
+        HttpContext context = await app.Server.SendAsync(c =>
+        {
+            c.Request.Method = HttpMethods.Get;
+            c.Request.Path = "/v3/index.json";
+            c.Request.Headers["X-Forwarded-Proto"] = "https";
+            c.Connection.RemoteIpAddress = IPAddress.Parse(client);
+        });
+
+        Assert.Equal((int)expected, context.Response.StatusCode);
+    }
+
+    [Fact]
+    public void TrustedProxiesMustBeAddressesOrNetworks()
+    {
+        NuDepotTestApplication app = CreateApp(configuration: new Dictionary<string, string> { ["TrustedProxies:0"] = "proxy.example.com" });
+
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
+        Assert.Contains("'Feed:TrustedProxies:0' isn't an IP address", exception.Message);
+    }
+
     private static async Task<HttpResponseMessage> SendForwardedAsync(NuDepotTestApplication app, string token)
     {
         using HttpRequestMessage request = new(HttpMethod.Get, "v3/index.json");
@@ -272,6 +308,86 @@ public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDispo
 
         // Its new signature has also expired by the mirror's clock, but the mirror only checks upstream once an hour.
         Assert.Equal(refreshed, await mirrorClient.GetByteArrayAsync(url));
+    }
+
+    [Fact]
+    public async Task AnUpstreamCopyWithOtherContentIsntUsed()
+    {
+        (NuDepotTestApplication upstream, HttpClient mirror, TestTimeProvider mirrorTime) = await CreateMirrorAsync();
+        byte[] original = await mirror.GetByteArrayAsync(MirroredUrl);
+        using X509Certificate2 originalSigner = await GetRepositorySignerAsync(original);
+
+        // The upstream feed replaces the version with other content, and signs it with its next certificate.
+        await upstream.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(default);
+        HttpClient admin = upstream.CreateHttpsClient();
+        admin.DefaultRequestHeaders.Add("X-NuGet-ApiKey", "admin-key");
+        await PushAsync(admin, TestPackages.Create("Mirrored.Signed", "1.0.0", description: "Something else"));
+        Assert.NotEqual(original, await upstream.CreateHttpsClient().GetByteArrayAsync(MirroredUrl));
+        mirrorTime.Now = originalSigner.NotAfter.ToUniversalTime().AddSeconds(1);
+
+        Assert.Equal(original, await mirror.GetByteArrayAsync(MirroredUrl));
+    }
+
+    [Fact]
+    public async Task AnUpstreamCopyThatWasntResignedIsntUsed()
+    {
+        (_, HttpClient mirror, TestTimeProvider mirrorTime) = await CreateMirrorAsync();
+        byte[] original = await mirror.GetByteArrayAsync(MirroredUrl);
+        using X509Certificate2 originalSigner = await GetRepositorySignerAsync(original);
+
+        mirrorTime.Now = originalSigner.NotAfter.ToUniversalTime().AddSeconds(1);
+
+        Assert.Equal(original, await mirror.GetByteArrayAsync(MirroredUrl));
+    }
+
+    [Fact]
+    public async Task AnUpstreamFeedThatCantBeReachedLeavesTheMirroredCopy()
+    {
+        (NuDepotTestApplication upstream, HttpClient mirror, TestTimeProvider mirrorTime) = await CreateMirrorAsync();
+        byte[] original = await mirror.GetByteArrayAsync(MirroredUrl);
+        using X509Certificate2 originalSigner = await GetRepositorySignerAsync(original);
+
+        upstream.Dispose();
+        mirrorTime.Now = originalSigner.NotAfter.ToUniversalTime().AddSeconds(1);
+
+        Assert.Equal(original, await mirror.GetByteArrayAsync(MirroredUrl));
+    }
+
+    [Fact]
+    public async Task PushedPackagesSignedByAnotherRepositoryArentRefreshed()
+    {
+        (NuDepotTestApplication upstream, HttpClient mirror, TestTimeProvider mirrorTime) = await CreateMirrorAsync();
+        byte[] signed = await upstream.CreateHttpsClient().GetByteArrayAsync(MirroredUrl);
+        using X509Certificate2 signer = await GetRepositorySignerAsync(signed);
+
+        // The package was pushed to this feed with the upstream feed's signature, so it's this feed's own.
+        await PushAsync(mirror, new MemoryStream(signed));
+        await upstream.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(default);
+        mirrorTime.Now = signer.NotAfter.ToUniversalTime().AddSeconds(1);
+
+        Assert.Equal(signed, await mirror.GetByteArrayAsync(MirroredUrl));
+    }
+
+    private const string MirroredUrl = "v3/package/mirrored.signed/1.0.0/mirrored.signed.1.0.0.nupkg";
+
+    // An upstream feed that signs with generated certificates and has Mirrored.Signed 1.0.0, and a feed that
+    // mirrors it over HTTPS, with a clock the test moves. The mirror doesn't sign.
+    private async Task<(NuDepotTestApplication Upstream, HttpClient Mirror, TestTimeProvider MirrorTime)> CreateMirrorAsync()
+    {
+        // Its Admin key may replace packages.
+        NuDepotTestApplication upstream = CreateApp(configuration: new Dictionary<string, string> { ["Authorization:ApiKeys:Admin"] = "admin-key" });
+        HttpClient upstreamClient = upstream.CreateHttpsClient();
+        await PushAsync(upstreamClient, TestPackages.Create("Mirrored.Signed", "1.0.0"));
+
+        TestTimeProvider mirrorTime = new(DateTimeOffset.UtcNow);
+        NuDepotTestApplication app = new(
+            Output,
+            upstreamClient,
+            new Dictionary<string, string> { { "Mirroring:Mirrors:0:PackageSource", "https://localhost/v3/index.json" } },
+            configureServices: services => services.AddSingleton<TimeProvider>(mirrorTime));
+        Disposables.Add(app);
+
+        return (upstream, app.CreateHttpsClient(), mirrorTime);
     }
 
     [Fact]
@@ -393,6 +509,20 @@ public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDispo
 
         OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
         Assert.Contains("'Feed:RepositorySigning:CertificatePath' can't be used with 'Feed:RepositorySigning:CertificateThumbprint'", exception.Message);
+    }
+
+    [Fact]
+    public void ACertificateMissingFromItsStoreStopsTheFeed()
+    {
+        NuDepotTestApplication app = CreateApp(configuration: new Dictionary<string, string>
+        {
+            { "RepositorySigning:CertificateThumbprint", new string('0', 40) },
+            { "RepositorySigning:CertificateStoreLocation", "CurrentUser" },
+            { "RepositorySigning:CertificateStoreName", "My" },
+        });
+
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => app.Services);
+        Assert.Contains("The repository signing certificate couldn't be loaded", exception.Message);
     }
 
     private NuDepotTestApplication CreateApp(TimeProvider? time = null, IReadOnlyDictionary<string, string>? configuration = null)

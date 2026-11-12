@@ -391,6 +391,49 @@ public class ApiIntegrationTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("api/download/symbols/testdata.pdb/16F71ED8/testdata.pdb")]
+    [InlineData("api/download/symbols/testdata.pdb/16F71ED8DD574AA2AD4A22D29E9C981B-fffffff/testdata.pdb")]
+    [InlineData("api/download/symbols/%2E%2E/16F71ED8DD574AA2AD4A22D29E9C981Bffffffff/testdata.pdb")]
+    [InlineData("api/download/symbols/..%5Ctestdata.pdb/16F71ED8DD574AA2AD4A22D29E9C981Bffffffff/testdata.pdb")]
+    public async Task InvalidSymbolDownloadReturnsNotFound(string uri)
+    {
+        await App.AddPackageAsync(PackageStream);
+        await App.AddSymbolPackageAsync(SymbolPackageStream);
+
+        using HttpResponseMessage response = await Client.GetAsync(uri);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("v3/package/TestData/1.2.3/TestData.1.2.3.nupkg")]
+    [InlineData("v3/package/TestData/1.2.3/TestData.1.2.3.nuspec")]
+    public async Task PackageContentIsSandboxed(string uri)
+    {
+        await App.AddPackageAsync(PackageStream);
+
+        using HttpResponseMessage response = await Client.GetAsync(uri);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
+        string policy = Assert.Single(response.Headers.GetValues("Content-Security-Policy"));
+        Assert.Contains("sandbox", policy);
+        Assert.Contains("default-src 'none'", policy);
+    }
+
+    [Fact]
+    public async Task SymbolDownloadIsNotSniffed()
+    {
+        await App.AddPackageAsync(PackageStream);
+        await App.AddSymbolPackageAsync(SymbolPackageStream);
+
+        using HttpResponseMessage response = await Client.GetAsync(
+            "api/download/symbols/testdata.pdb/16F71ED8DD574AA2AD4A22D29E9C981Bffffffff/testdata.pdb");
+
+        Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
+    }
+
     [Fact]
     public async Task SymbolDownloadReturnsNotFound()
     {

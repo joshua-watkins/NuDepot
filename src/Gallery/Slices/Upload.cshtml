@@ -1,7 +1,7 @@
 @inherits RazorSlice<UploadModel>
 @implements IUsesLayout<_Layout, LayoutModel>
 
-<div class="col-sm-12">
+<div>
     <h1>Upload</h1>
     <hr class="breadcrumb-divider" />
 
@@ -14,12 +14,13 @@
         <section class="upload-packages" id="upload-packages">
             <h2>Upload from this browser</h2>
             <p>Choose packages (<code>.nupkg</code>) or symbol packages (<code>.snupkg</code>). A symbol package needs its package on the feed.</p>
-            <form id="upload-form" class="form-inline">
-                <div class="form-group">
-                    <label for="upload-files" class="sr-only">Packages</label>
+            <div class="alert alert-danger" role="alert" data-manage-error hidden></div>
+            <form id="upload-form" class="inline-form">
+                <div>
+                    <label for="upload-files" class="visually-hidden">Packages</label>
                     <input type="file" id="upload-files" class="form-control" accept=".nupkg,.snupkg" multiple required />
                 </div>
-                <button type="submit" class="btn btn-default btn-brand">Upload</button>
+                <button type="submit" class="btn btn-brand">Upload</button>
             </form>
             <ul class="list-unstyled upload-results" id="upload-results"></ul>
         </section>
@@ -29,39 +30,36 @@
 
     <div>You can push packages using the service index <code>@Model.ServiceIndexUrl</code>.</div>
 
-    <div class="tabbed-info" x-data="{ tabs: tabs, active: tabs[0] }">
-        <ul class="nav">
-            <template x-for="tab in tabs" :key="tab.name">
-                <li x-bind:class="{ 'active': active.name === tab.name }">
-                    <a href="#" x-text="tab.name" @@click="active = tab"></a>
-                </li>
-            </template>
-        </ul>
-
-        <div class="content">
-            <div class="script">
-                <template x-for="line in active.content">
-                    <div class="script-line" x-text="line"></div>
-                </template>
-            </div>
-
-            <div class="copy-button">
-                <button class="btn btn-default btn-warning"
-                        type="button"
-                        @@click="window.nudepot.copyTextToClipboard(active.content.join('\n'), $el)">
-                    <i class="ms-Icon ms-Icon--Copy"></i>
-                </button>
-            </div>
+    <div class="tabbed-info" data-tabs>
+        <div class="tab-list" role="tablist" aria-label="Push with">
+            @for (var i = 0; i < Instructions.Count; i++)
+            {
+                <button type="button" role="tab" id="push-tab-@i" aria-controls="push-panel-@i" aria-selected="@(i == 0 ? "true" : "false")" tabindex="@(i == 0 ? 0 : -1)">@Instructions[i].Name</button>
+            }
         </div>
 
-        <div class="icon-text alert alert-warning">
-            For more information, please refer to
-            <a target="_blank"
-               rel="noopener noreferrer"
-               x-bind:href="active.documentation"
-               x-text="`${active.name}'s documentation`">
-            </a>.
-        </div>
+        @for (var i = 0; i < Instructions.Count; i++)
+        {
+            <div role="tabpanel" id="push-panel-@i" aria-labelledby="push-tab-@i" hidden="@(i != 0)">
+                <div class="command-box">
+                    <div class="script">
+                        @foreach (var line in Instructions[i].Content)
+                        {
+                            <div class="script-line" data-prefix="&gt;">@line</div>
+                        }
+                    </div>
+                    <button class="btn btn-copy" type="button" title="Copy" data-copy>
+                        <i class="icon icon-clipboard" aria-hidden="true"></i>
+                        <span class="visually-hidden">Copy</span>
+                    </button>
+                </div>
+
+                <div class="alert alert-warning">
+                    For more information, please refer to
+                    <a target="_blank" rel="noopener noreferrer" href="@Instructions[i].Documentation">@Instructions[i].Name's documentation</a>.
+                </div>
+            </div>
+        }
     </div>
 
     @if (Model.SigningCertificates.Count > 0)
@@ -94,18 +92,15 @@
     }
 </div>
 
-<script type="text/javascript">
-    let tabs = @WebsiteJsonContext.ToScriptValue(Model.GetPushInstructions());
-</script>
-
 @if (Model.Visitor?.CanPush == true)
 {
-    <script type="text/javascript">
-        window.nudepotManage = @WebsiteJsonContext.ToScriptValue(new ManageScriptSettings(Model.PathBase));
-    </script>
+    @WebsiteJsonContext.ToSettingsScript("manage-settings", new ManageScriptSettings(Model.PathBase))
     <script src="@LayoutModel.Content("js/manage.js")" defer></script>
 }
 
 @functions {
     public LayoutModel LayoutModel => new("Upload package", Model.PathBase, WebsitePage.Upload);
+
+    private IReadOnlyList<PushInstructions>? _instructions;
+    private IReadOnlyList<PushInstructions> Instructions => _instructions ??= Model.GetPushInstructions();
 }

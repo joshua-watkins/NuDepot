@@ -63,23 +63,32 @@ public class FileStorageService : IStorageService
         // Ensure that the path exists.
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
+        // The content is written next to its path and then moved there, so a write that fails part way, like a
+        // canceled push, doesn't leave part of a file that later pushes would conflict with.
+        string temporaryPath = $"{path}.{Guid.NewGuid():N}.tmp";
         try
         {
-            using (FileStream fileStream = File.Open(path, FileMode.CreateNew))
+            using (FileStream fileStream = File.Open(temporaryPath, FileMode.CreateNew))
             {
                 await content.CopyToAsync(fileStream, DefaultCopyBufferSize, cancellationToken);
-                return StoragePutResult.Success;
             }
+
+            File.Move(temporaryPath, path, overwrite: false);
+            return StoragePutResult.Success;
         }
         catch (IOException) when (File.Exists(path))
         {
-            using (FileStream targetStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (FileStream targetStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
             {
                 content.Position = 0;
                 return content.Matches(targetStream)
                     ? StoragePutResult.AlreadyExists
                     : StoragePutResult.Conflict;
             }
+        }
+        finally
+        {
+            File.Delete(temporaryPath);
         }
     }
 

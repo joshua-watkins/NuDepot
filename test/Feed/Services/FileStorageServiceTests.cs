@@ -99,6 +99,24 @@ public class FileStorageServiceTests
         }
 
         [Fact]
+        public async Task FailedWriteLeavesNothingBehind()
+        {
+            using (FailingStream content = new())
+            {
+                await Assert.ThrowsAsync<IOException>(() =>
+                    _target.PutAsync("test.txt", content, "text/plain"));
+            }
+
+            Assert.Empty(Directory.GetFiles(_storePath));
+
+            // So the content can be stored again.
+            using (Stream content = StringStream("Hello world"))
+            {
+                Assert.Equal(StoragePutResult.Success, await _target.PutAsync("test.txt", content, "text/plain"));
+            }
+        }
+
+        [Fact]
         public async Task ReturnsAlreadyExistsIfContentAlreadyExists()
         {
             // Arrange
@@ -248,5 +266,24 @@ public class FileStorageServiceTests
                 yield return Path.Combine(Path.GetPathRoot(_storePath)!, "file");
             }
         }
+    }
+
+    // Content whose upload stops part way, after its first bytes.
+    private sealed class FailingStream : MemoryStream
+    {
+        private bool _read;
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (_read)
+                throw new IOException("The connection was reset.");
+
+            _read = true;
+            "Hello"u8.CopyTo(buffer.Span);
+            return ValueTask.FromResult(5);
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+            => throw new IOException("The connection was reset.");
     }
 }

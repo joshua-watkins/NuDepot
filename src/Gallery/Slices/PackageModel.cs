@@ -1,4 +1,7 @@
 using Markdig;
+using Markdig.Renderers;
+using Markdig.Syntax;
+using Markdig.Syntax.Inlines;
 using Microsoft.AspNetCore.Html;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
@@ -13,17 +16,15 @@ namespace NuDepot.Gallery.Slices;
 /// </summary>
 public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 {
-    private static readonly MarkdownPipeline MarkdownPipeline;
+    // A readme is written by the package's author, so its raw HTML isn't rendered: it could run script in the
+    // gallery, as whoever reads it.
+    private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder()
+        .UseAdvancedExtensions()
+        .DisableHtml()
+        .Build();
 
     private IPackageDetailsClient Packages { get; } = packages;
     private FeedConnection Feed { get; } = feed;
-
-    static PackageModel()
-    {
-        MarkdownPipeline = new MarkdownPipelineBuilder()
-            .UseAdvancedExtensions()
-            .Build();
-    }
 
     /// <summary>
     /// The application's path base, which links start with.
@@ -111,9 +112,19 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     public string? IconUrl { get; private set; }
 
     /// <summary>
-    /// The URL of the package's license, if it has one.
+    /// The URL of the package's license, if it has one, and it's an HTTP or HTTPS URL.
     /// </summary>
     public string? LicenseUrl { get; private set; }
+
+    /// <summary>
+    /// The URL of the package's project, if it has one, and it's an HTTP or HTTPS URL.
+    /// </summary>
+    public string? ProjectUrl { get; private set; }
+
+    /// <summary>
+    /// The URL of the package's source code, if it has one, and it's an HTTP or HTTPS URL.
+    /// </summary>
+    public string? RepositoryUrl { get; private set; }
 
     /// <summary>
     /// The URL to download the package.
@@ -255,7 +266,9 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
             Readme = await GetReadmeHtmlStringOrNullAsync(Package.PackageId, Version, cancellationToken);
 
         IconUrl = Feed.ToPublicUrl(Package.IconUrl);
-        LicenseUrl = Feed.ToPublicUrl(Package.LicenseUrl);
+        LicenseUrl = SafeUrls.AbsoluteOrNull(Feed.ToPublicUrl(Package.LicenseUrl));
+        ProjectUrl = SafeUrls.AbsoluteOrNull(Package.ProjectUrl);
+        RepositoryUrl = SafeUrls.AbsoluteOrNull(Package.RepositoryUrl);
         PackageDownloadUrl = Feed.ToPublicUrl(Package.PackageContentUrl);
     }
 
@@ -335,8 +348,40 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
             readme = await reader.ReadToEndAsync(cancellationToken);
         }
 
-        string readmeHtml = Markdown.ToHtml(readme, MarkdownPipeline);
+        string readmeHtml = RenderReadme(readme);
         return new HtmlString(readmeHtml);
+    }
+
+    /// <summary>
+    /// Renders a readme's Markdown as HTML, without its raw HTML, and without links or images whose URLs could run
+    /// script, like "javascript:" ones.
+    /// </summary>
+    internal static string RenderReadme(string markdown)
+    {
+        MarkdownDocument document = Markdown.Parse(markdown, MarkdownPipeline);
+
+        foreach (LinkInline link in document.Descendants<LinkInline>())
+        {
+            if (!SafeUrls.IsSafe(link.GetDynamicUrl?.Invoke() ?? link.Url))
+            {
+                link.GetDynamicUrl = null;
+                link.Url = "#";
+            }
+        }
+
+        foreach (AutolinkInline link in document.Descendants<AutolinkInline>())
+        {
+            if (!link.IsEmail && !SafeUrls.IsSafe(link.Url))
+                link.Url = "#";
+        }
+
+        using StringWriter writer = new();
+        HtmlRenderer renderer = new(writer);
+        MarkdownPipeline.Setup(renderer);
+        renderer.Render(document);
+        writer.Flush();
+
+        return writer.ToString();
     }
 
     /// <summary>

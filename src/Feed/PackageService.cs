@@ -23,11 +23,14 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
     /// <inheritdoc />
     public async Task<IReadOnlyList<NuGetVersion>> FindPackageVersionsAsync(string id, CancellationToken cancellationToken)
     {
-        IReadOnlyList<NuGetVersion> upstreamVersions = await Upstream.ListPackageVersionsAsync(id, cancellationToken);
-
-        // Merge the local package versions into the upstream package versions.
+        // A package with a pushed version belongs to the feed, so nobody can add versions of it on a mirror.
         IReadOnlyList<Package> localPackages = await Db.FindAsync(id, includeUnlisted: true, cancellationToken);
         IEnumerable<NuGetVersion> localVersions = localPackages.Select(p => p.Version);
+        if (localPackages.Any(p => !p.IsMirrored))
+            return [.. localVersions];
+
+        // Merge the local package versions into the upstream package versions.
+        IReadOnlyList<NuGetVersion> upstreamVersions = await Upstream.ListPackageVersionsAsync(id, cancellationToken);
 
         if (!upstreamVersions.Any())
             return [.. localVersions];
@@ -40,8 +43,11 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
     /// <inheritdoc />
     public async Task<IReadOnlyList<Package>> FindPackagesAsync(string id, CancellationToken cancellationToken)
     {
-        IReadOnlyList<Package> upstreamPackages = await Upstream.ListPackagesAsync(id, cancellationToken);
         IReadOnlyList<Package> localPackages = await Db.FindAsync(id, includeUnlisted: true, cancellationToken);
+        if (localPackages.Any(p => !p.IsMirrored))
+            return localPackages;
+
+        IReadOnlyList<Package> upstreamPackages = await Upstream.ListPackagesAsync(id, cancellationToken);
 
         if (!upstreamPackages.Any())
             return localPackages;
@@ -93,6 +99,10 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
         if (await Db.ExistsAsync(id, version, cancellationToken))
             return true;
 
+        // Another version was pushed, so the package belongs to the feed: a mirror's version of it isn't used.
+        if (await Db.HasPushedVersionsAsync(id, cancellationToken))
+            return false;
+
         Logger.LogInformation(
             "Package {PackageId} {PackageVersion} does not exist locally. Checking upstream feed...",
             id,
@@ -116,7 +126,7 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
                     id,
                     version);
 
-                PackageIndexingResult result = await Indexer.IndexAsync(packageStream, cancellationToken);
+                PackageIndexingResult result = await Indexer.MirrorAsync(packageStream, id, version, cancellationToken);
 
                 Logger.LogInformation(
                     "Finished indexing package {PackageId} {PackageVersion} from upstream feed with result {Result}",
@@ -124,10 +134,11 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
                     version,
                     result);
 
-                return result == PackageIndexingResult.Success;
+                // Another download may have mirrored it while this one waited.
+                return result is PackageIndexingResult.Success or PackageIndexingResult.PackageAlreadyExists;
             }
         }
-        catch (Exception e)
+        catch (Exception e) when (!(e is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
             Logger.LogError(
                 e,

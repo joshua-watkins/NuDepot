@@ -1,7 +1,7 @@
 @inherits RazorSlice<AdminModel>
 @implements IUsesLayout<_Layout, LayoutModel>
 
-<div class="col-sm-12 admin-page" id="admin-page">
+<div class="admin-page" id="admin-page">
     <h1>Administration</h1>
     <hr class="breadcrumb-divider" />
 
@@ -77,9 +77,7 @@
     </section>
 </div>
 
-<script type="text/javascript">
-    window.nudepotManage = @WebsiteJsonContext.ToScriptValue(new ManageScriptSettings(Model.PathBase));
-</script>
+@WebsiteJsonContext.ToSettingsScript("manage-settings", new ManageScriptSettings(Model.PathBase))
 <script src="@LayoutModel.Content("js/admin.js")" defer></script>
 
 @functions {

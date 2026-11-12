@@ -37,6 +37,14 @@ sessions on `Account`, and users, signing and settings on `Admin`. Each request'
 `admin.js` and `account.js`) call the feed's endpoints with the sign-in cookie. Without users, or showing another
 feed, the gallery only browses.
 
+The pages are styled with Bootstrap 5's CSS, without its scripts, and use Bootstrap Icons, all in `wwwroot/lib`
+(`libman.json` lists them). They load nothing from other sites. Their own scripts are plain JavaScript: `site.js`
+runs the tabs, copy buttons, dropdowns and "Show more" lists, `theme.js` follows the system's light or dark setting,
+and expanding sections are `<details>` elements. Pages have no inline scripts or event handlers: a slice passes its
+script's settings as JSON in a `<script type="application/json">` element (`WebsiteJsonContext.ToSettingsScript`).
+That's what lets every page send a Content-Security-Policy that only runs the gallery's own scripts, along with
+headers that keep it out of other sites' frames.
+
 ## Hosting it
 
 The website is a Razor class library. The Windows and Linux hosts in `pub` add it to the server's

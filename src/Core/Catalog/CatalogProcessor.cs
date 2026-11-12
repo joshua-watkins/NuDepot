@@ -107,7 +107,7 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
         }
 
         if (newCursor.HasValue && success)
-            await Cursor.SetAsync(newCursor.Value);
+            await Cursor.SetAsync(newCursor.Value, cancellationToken);
 
         return success;
     }
@@ -119,12 +119,12 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
         {
             if (leafItem.IsPackageDelete())
             {
-                PackageDeleteCatalogLeaf packageDelete = await Client.GetPackageDeleteLeafAsync(leafItem.CatalogLeafUrl);
+                PackageDeleteCatalogLeaf packageDelete = await Client.GetPackageDeleteLeafAsync(leafItem.CatalogLeafUrl, cancellationToken);
                 success = await LeafProcessor.ProcessPackageDeleteAsync(packageDelete, cancellationToken);
             }
             else if (leafItem.IsPackageDetails())
             {
-                PackageDetailsCatalogLeaf packageDetails = await Client.GetPackageDetailsLeafAsync(leafItem.CatalogLeafUrl);
+                PackageDetailsCatalogLeaf packageDetails = await Client.GetPackageDetailsLeafAsync(leafItem.CatalogLeafUrl, cancellationToken);
                 success = await LeafProcessor.ProcessPackageDetailsAsync(packageDetails, cancellationToken);
             }
             else
@@ -132,7 +132,7 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
                 throw new NotSupportedException($"The catalog leaf type '{leafItem.Type}' is not supported.");
             }
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             Logger.LogError(
                 0,

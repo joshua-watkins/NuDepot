@@ -188,13 +188,61 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         using HttpClient thief = app.CreateBrowserClient();
         thief.DefaultRequestHeaders.Add("Cookie", cookies.GetCookieHeader(alice.BaseAddress!));
 
-        // Alice keeps using the feed, which replaces her cookie.
+        // Alice keeps using the feed, which replaces her cookie, and her browser uses the new one.
+        app.Clock.Advance(TimeSpan.FromMinutes(16));
+        Assert.True((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
         Assert.True((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
         app.Clock.Advance(TimeSpan.FromMinutes(2));
 
         // The copy is too old to have been sent with Alice's requests, so it was stolen.
         Assert.False((await GetAccountAsync(thief)).GetProperty("signedIn").GetBoolean());
         Assert.Equal(HttpStatusCode.Unauthorized, (await thief.GetAsync("api/account/apikeys")).StatusCode);
+        Assert.False((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
+    }
+
+    [Fact]
+    public async Task TheCookieIsReplacedEveryFifteenMinutes()
+    {
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
+
+        app.Clock.Advance(TimeSpan.FromMinutes(14));
+        using (HttpResponseMessage response = await alice.GetAsync("api/account"))
+            Assert.False(response.Headers.Contains("Set-Cookie"));
+
+        app.Clock.Advance(TimeSpan.FromMinutes(1));
+        using (HttpResponseMessage response = await alice.GetAsync("api/account"))
+            Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("NuDepot.User=", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ACookieThatNeverArrivedIsReplacedAgain()
+    {
+        NuDepotTestApplication app = CreateApp();
+        CookieContainer cookies = new();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice", cookies);
+        string original = cookies.GetCookieHeader(alice.BaseAddress!);
+
+        // The response with the new cookie is lost, like when Alice leaves a page while it loads.
+        app.Clock.Advance(TimeSpan.FromMinutes(16));
+        using (HttpClient lost = app.CreateClient())
+        {
+            lost.DefaultRequestHeaders.Add("Cookie", original);
+            using HttpResponseMessage response = await lost.GetAsync("api/account");
+            Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("NuDepot.User=", StringComparison.Ordinal));
+        }
+
+        // Her browser still has the old cookie, long after it was replaced, and gets another.
+        app.Clock.Advance(TimeSpan.FromMinutes(5));
+        Assert.True((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
+        Assert.NotEqual(original, cookies.GetCookieHeader(alice.BaseAddress!));
+        Assert.True((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
+
+        // Once her browser used the new one, the old cookie is a copy.
+        app.Clock.Advance(TimeSpan.FromMinutes(2));
+        using HttpClient copy = app.CreateClient();
+        copy.DefaultRequestHeaders.Add("Cookie", original);
+        Assert.False((await GetAccountAsync(copy)).GetProperty("signedIn").GetBoolean());
         Assert.False((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
     }
 
@@ -209,9 +257,38 @@ public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         using HttpClient sentTogether = app.CreateClient();
         sentTogether.DefaultRequestHeaders.Add("Cookie", cookies.GetCookieHeader(alice.BaseAddress!));
 
+        app.Clock.Advance(TimeSpan.FromMinutes(16));
         Assert.True((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
         Assert.True((await GetAccountAsync(sentTogether)).GetProperty("signedIn").GetBoolean());
         Assert.True((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData("Sec-Fetch-Site", "same-site", HttpStatusCode.Unauthorized)]
+    [InlineData("Sec-Fetch-Site", "cross-site", HttpStatusCode.Unauthorized)]
+    [InlineData("Origin", "http://localhost:8080", HttpStatusCode.Unauthorized)]
+    [InlineData("Origin", "null", HttpStatusCode.Unauthorized)]
+    [InlineData("Sec-Fetch-Site", "same-origin", HttpStatusCode.Created)]
+    [InlineData("Origin", "http://localhost", HttpStatusCode.Created)]
+    public async Task OnlyTheGallerysPagesCanChangeThingsAsTheUser(string header, string value, HttpStatusCode expected)
+    {
+        NuDepotTestApplication app = CreateApp();
+        (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
+
+        // Like a form on another port or subdomain of the same host, which the browser sends the cookie with.
+        using HttpRequestMessage request = new(HttpMethod.Post, "api/account/apikeys")
+        {
+            Content = new StringContent(@"{""name"":""Planted""}", Encoding.UTF8, "text/plain"),
+        };
+        request.Headers.Add(header, value);
+        using HttpResponseMessage response = await alice.SendAsync(request);
+
+        Assert.Equal(expected, response.StatusCode);
+
+        // The user stays signed in, and can still read.
+        using HttpRequestMessage read = new(HttpMethod.Get, "api/account");
+        read.Headers.Add("Sec-Fetch-Site", "cross-site");
+        Assert.True((await (await alice.SendAsync(read)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("signedIn").GetBoolean());
     }
 
     [Fact]

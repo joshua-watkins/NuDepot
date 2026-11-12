@@ -35,75 +35,67 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
     /// <inheritdoc />
     public async Task<SymbolIndexingResult> IndexAsync(Stream stream, CancellationToken cancellationToken)
     {
+        // Extract the portable PDBs from the snupkg. Nothing is stored until all of them are extracted and valid.
+        using PdbList pdbs = new();
+        string packageId;
+        NuGetVersion packageVersion;
         try
         {
-            using (PackageArchiveReader symbolPackage = new(stream, leaveStreamOpen: true))
-            {
-                IReadOnlyList<string>? pdbPaths = await GetSymbolPackagePdbPathsOrNullAsync(symbolPackage, cancellationToken);
-                if (pdbPaths == null)
-                    return SymbolIndexingResult.InvalidSymbolPackage;
+            using PackageArchiveReader symbolPackage = new(stream, leaveStreamOpen: true);
+            IReadOnlyList<string>? pdbPaths = await GetSymbolPackagePdbPathsOrNullAsync(symbolPackage, cancellationToken);
+            if (pdbPaths == null)
+                return SymbolIndexingResult.InvalidSymbolPackage;
 
-                // Ensure a corresponding NuGet package exists.
-                string packageId = symbolPackage.NuspecReader.GetId();
-                NuGetVersion packageVersion = symbolPackage.NuspecReader.GetVersion();
+            packageId = symbolPackage.NuspecReader.GetId();
+            packageVersion = symbolPackage.NuspecReader.GetVersion();
 
-                Package? package = await Packages.FindOrNullAsync(packageId, packageVersion, includeUnlisted: true, cancellationToken);
-                if (package == null)
-                    return SymbolIndexingResult.PackageNotFound;
-
-                using (PdbList pdbs = new())
-                {
-                    // Extract the portable PDBs from the snupkg. Nothing is persisted until after all
-                    // PDBs have been extracted and validated sucessfully.
-                    foreach (string pdbPath in pdbPaths)
-                    {
-                        PortablePdb? portablePdb = await ExtractPortablePdbAsync(symbolPackage, pdbPath, cancellationToken);
-                        if (portablePdb == null)
-                            return SymbolIndexingResult.InvalidSymbolPackage;
-
-                        pdbs.Add(portablePdb);
-                    }
-
-                    // Persist the portable PDBs to storage.
-                    foreach (PortablePdb pdb in pdbs)
-                    {
-                        await Storage.SavePortablePdbContentAsync(pdb.Filename, pdb.Key, pdb.Content, cancellationToken);
-                    }
-
-                    return SymbolIndexingResult.Success;
-                }
-            }
+            foreach (string pdbPath in pdbPaths)
+                pdbs.Add(await ExtractPortablePdbAsync(symbolPackage, pdbPath, cancellationToken));
         }
-        catch (Exception e)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
-            Logger.LogError(e, "Unable to index symbol package due to exception");
+            Logger.LogWarning(e, "The pushed symbol package isn't valid");
             return SymbolIndexingResult.InvalidSymbolPackage;
         }
+
+        // Ensure a corresponding NuGet package exists.
+        Package? package = await Packages.FindOrNullAsync(packageId, packageVersion, includeUnlisted: true, cancellationToken);
+        if (package == null)
+            return SymbolIndexingResult.PackageNotFound;
+
+        // Storage failures aren't the package's fault, so they're the caller's errors.
+        foreach (PortablePdb pdb in pdbs)
+        {
+            if (!await Storage.SavePortablePdbContentAsync(pdb.Filename, pdb.Key, pdb.Content, cancellationToken))
+            {
+                Logger.LogWarning(
+                    "The symbol package of {PackageId} {PackageVersion} has {Filename} with the key {Key}, but the feed has a different PDB with that key",
+                    packageId,
+                    packageVersion,
+                    pdb.Filename,
+                    pdb.Key);
+                return SymbolIndexingResult.SymbolsConflict;
+            }
+        }
+
+        return SymbolIndexingResult.Success;
     }
 
-    private async Task<IReadOnlyList<string>?> GetSymbolPackagePdbPathsOrNullAsync(PackageArchiveReader symbolPackage, CancellationToken cancellationToken)
+    private static async Task<IReadOnlyList<string>?> GetSymbolPackagePdbPathsOrNullAsync(PackageArchiveReader symbolPackage, CancellationToken cancellationToken)
     {
-        try
-        {
-            await symbolPackage.ValidatePackageEntriesAsync(cancellationToken);
+        // Entries can't leave the package's folder when it's extracted.
+        await symbolPackage.ValidatePackageEntriesAsync(cancellationToken);
 
-            List<string> files = [.. (await symbolPackage.GetFilesAsync(cancellationToken))];
+        List<string> files = [.. (await symbolPackage.GetFilesAsync(cancellationToken))];
 
-            // Ensure there are no unexpected file extensions within the symbol package.
-            if (!AreSymbolFilesValid(files))
-                return null;
-
-            return [.. files.Where(p => Path.GetExtension(p) == ".pdb")];
-        }
-        catch (Exception)
-        {
-            // TODO: ValidatePackageEntries throws PackagingException.
-            // Add better logging.
+        // Ensure there are no unexpected file extensions within the symbol package.
+        if (!AreSymbolFilesValid(files))
             return null;
-        }
+
+        return [.. files.Where(p => Path.GetExtension(p) == ".pdb")];
     }
 
-    private bool AreSymbolFilesValid(IReadOnlyList<string> entries)
+    private static bool AreSymbolFilesValid(IReadOnlyList<string> entries)
     {
         // TODO: Validate that all PDBs are portable. See: https://github.com/NuGet/NuGetGallery/blob/master/src/NuGetGallery/Services/SymbolPackageService.cs#L174
         bool IsValidSymbolFileInfo(FileInfo file)
@@ -123,7 +115,8 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
             .All(IsValidSymbolFileInfo);
     }
 
-    private async Task<PortablePdb?> ExtractPortablePdbAsync(PackageArchiveReader symbolPackage, string pdbPath, CancellationToken cancellationToken)
+    // Throws if the PDB isn't a portable PDB that can be stored.
+    private static async Task<PortablePdb> ExtractPortablePdbAsync(PackageArchiveReader symbolPackage, string pdbPath, CancellationToken cancellationToken)
     {
         // TODO: Validate that the PDB has a corresponding DLL
         // See: https://github.com/NuGet/NuGet.Jobs/blob/master/src/Validation.Symbols/SymbolsValidatorService.cs#L170
@@ -134,7 +127,7 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
         {
             using (Stream rawPdbStream = await symbolPackage.GetStreamAsync(pdbPath, cancellationToken))
             {
-                pdbStream = await rawPdbStream.AsTemporaryFileStreamAsync();
+                pdbStream = await rawPdbStream.AsTemporaryFileStreamAsync(cancellationToken);
 
                 string signature;
                 using (MetadataReaderProvider pdbReaderProvider = MetadataReaderProvider.FromPortablePdbStream(pdbStream, MetadataStreamOptions.LeaveOpen))
@@ -153,6 +146,8 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
                     .GetFileName(pdbPath)
                     .ToLowerInvariant();
                 string key = $"{signature}ffffffff";
+                if (SymbolStorageService.GetPathForKeyOrNull(fileName, key) == null)
+                    throw new InvalidDataException($"The symbol file name '{fileName}' isn't valid.");
 
                 pdbStream.Position = 0;
                 result = new PortablePdb(fileName, key, pdbStream);
@@ -164,7 +159,7 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
                 pdbStream?.Dispose();
         }
 
-        return result;
+        return result!;
     }
 
     private class PortablePdb(string filename, string key, Stream content) : IDisposable

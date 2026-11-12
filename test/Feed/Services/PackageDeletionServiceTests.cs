@@ -17,6 +17,7 @@ public class PackageDeletionServiceTests
 
     private Mock<IPackageDatabase> Packages { get; }
     private Mock<IPackageStorageService> Storage { get; }
+    private PackageLocks Locks { get; } = new();
 
     private FeedOptions Options { get; }
     private PackageDeletionService Target { get; }
@@ -36,6 +37,7 @@ public class PackageDeletionServiceTests
             Packages.Object,
             Storage.Object,
             Mock.Of<ICatalogService>(),
+            Locks,
             optionsSnapshot.Object,
             Mock.Of<ILogger<PackageDeletionService>>());
     }
@@ -114,5 +116,31 @@ public class PackageDeletionServiceTests
         Packages.Verify(
             p => p.UnlistPackageAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task HardDeleteWaitsForAPushOfTheVersion()
+    {
+        Options.PackageDeletionBehavior = PackageDeletionBehavior.HardDelete;
+        Packages
+            .Setup(p => p.HardDeletePackageAsync(PackageId, PackageVersion, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // A push of the version holds its lock.
+        SemaphoreSlim packageLock = Locks.For(PackageId, PackageVersion);
+        await packageLock.WaitAsync();
+
+        Task<bool> deletion = Target.TryDeletePackageAsync(PackageId, PackageVersion, CancellationToken.None);
+        await Task.Delay(100);
+
+        Assert.False(deletion.IsCompleted);
+        Packages.Verify(
+            p => p.HardDeletePackageAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        packageLock.Release();
+
+        Assert.True(await deletion);
+        Assert.Equal(1, packageLock.CurrentCount);
     }
 }

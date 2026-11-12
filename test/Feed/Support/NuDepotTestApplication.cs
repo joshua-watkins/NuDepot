@@ -55,6 +55,11 @@ internal sealed class NuDepotTestApplication : IDisposable
 
     public IServiceProvider Services => App.Value.Services;
 
+    /// <summary>
+    /// The application, as hosts pass it to <see cref="NuDepotCommands.TryRunCommandAsync"/>.
+    /// </summary>
+    public Microsoft.Extensions.Hosting.IHost Host => App.Value;
+
     public TestServer Server => App.Value.GetTestServer();
 
     public HttpClient CreateClient() => Server.CreateClient();

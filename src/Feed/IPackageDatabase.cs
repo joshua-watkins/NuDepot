@@ -55,6 +55,15 @@ public interface IPackageDatabase
     Task<bool> ExistsAsync(string id, NuGetVersion version, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Whether any version of the package, listed or not, was pushed to the feed rather than mirrored. Then the
+    /// package ID belongs to the feed, and its mirrors aren't asked for it.
+    /// </summary>
+    /// <param name="id">The package's ID.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>True if a version was pushed.</returns>
+    Task<bool> HasPushedVersionsAsync(string id, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Unlist a package, making it undiscoverable.
     /// </summary>
     /// <param name="id">The id of the package to unlist.</param>

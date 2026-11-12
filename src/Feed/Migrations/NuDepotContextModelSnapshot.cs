@@ -126,6 +126,9 @@ namespace NuDepot.Feed.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("TEXT COLLATE NOCASE");
 
+                    b.Property<bool>("IsMirrored")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsPrerelease")
                         .HasColumnType("INTEGER");
 
@@ -528,6 +531,9 @@ namespace NuDepot.Feed.Migrations
 
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsTokenUsed")
+                        .HasColumnType("INTEGER");
 
                     b.Property<byte[]>("PreviousTokenHash")
                         .HasMaxLength(32)

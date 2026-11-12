@@ -34,25 +34,71 @@ public static class GalleryApplicationBuilderExtensions
 
         endpoints
             .MapGet("/", WebsiteEndpoints.IndexAsync)
+            .WithPageHeaders()
             .WithSignedInUser();
         endpoints
             .MapGet("/packages/{id}/{version?}", WebsiteEndpoints.PackageAsync)
+            .WithPageHeaders()
             .WithSignedInUser();
         endpoints
             .MapGet("/upload", WebsiteEndpoints.UploadAsync)
+            .WithPageHeaders()
             .WithSignedInUser();
         endpoints
             .MapGet("/account/signin", WebsiteEndpoints.SignIn)
+            .WithPageHeaders()
             .WithSignedInUser();
         endpoints
             .MapGet("/account", WebsiteEndpoints.Account)
+            .WithPageHeaders()
             .WithSignedInUser();
         endpoints
             .MapGet("/admin", WebsiteEndpoints.Admin)
+            .WithPageHeaders()
             .WithSignedInUser();
-        endpoints.MapGet(WebsiteFiles.RequestPath + "/{**path}", WebsiteFiles.GetFile);
+        endpoints
+            .MapGet(WebsiteFiles.RequestPath + "/{**path}", WebsiteFiles.GetFile)
+            .AddEndpointFilter(async (context, next) =>
+            {
+                context.HttpContext.Response.Headers.XContentTypeOptions = "nosniff";
+                return await next(context);
+            });
 
         return app;
+    }
+
+    /// <summary>
+    /// The gallery's pages only run the gallery's own scripts, which they load from its files: they have no inline
+    /// scripts or event handlers. So script that a package's metadata might sneak into a page doesn't run. Package
+    /// icons and readme images may come from anywhere.
+    /// </summary>
+    internal const string PagePolicy =
+        "default-src 'self'; " +
+        "script-src 'self'; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src * data:; " +
+        "connect-src 'self'; " +
+        "object-src 'none'; " +
+        "base-uri 'none'; " +
+        "form-action 'self'; " +
+        "frame-ancestors 'none'";
+
+    /// <summary>
+    /// Keeps the gallery's pages out of other sites' frames, so they can't trick a signed-in user into clicking its
+    /// buttons, only runs the gallery's scripts, and keeps the pages' addresses from leaking to the sites they link to.
+    /// </summary>
+    private static RouteHandlerBuilder WithPageHeaders(this RouteHandlerBuilder builder)
+    {
+        return builder.AddEndpointFilter(async (context, next) =>
+        {
+            IHeaderDictionary headers = context.HttpContext.Response.Headers;
+            headers.XFrameOptions = "DENY";
+            headers.ContentSecurityPolicy = PagePolicy;
+            headers.XContentTypeOptions = "nosniff";
+            headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+
+            return await next(context);
+        });
     }
 
     /// <summary>

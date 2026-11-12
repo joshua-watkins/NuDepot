@@ -17,6 +17,11 @@ public enum SymbolIndexingResult
     PackageNotFound,
 
     /// <summary>
+    /// The feed already has a different PDB with the same key as one of the symbol package's.
+    /// </summary>
+    SymbolsConflict,
+
+    /// <summary>
     /// The symbol package has been indexed successfully.
     /// </summary>
     Success,

@@ -67,9 +67,19 @@ only let the proxy reach that port, with a firewall.
 
 ### Forwarded headers
 
-NuDepot reads `X-Forwarded-Proto` and `X-Forwarded-For` from any client, since the proxy may be on another machine.
-A client that can reach NuDepot without going through the proxy could set them too, and claim to use HTTPS. If
-clients can reach NuDepot directly, turn forwarded headers off:
+NuDepot reads `X-Forwarded-Proto` and `X-Forwarded-For` from proxies on the same machine or a private network:
+loopback addresses, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7` and `fe80::/10`. Requests from
+anywhere else keep their own scheme and address, whatever headers they send. If your proxy has a public address,
+list it, or its network, in `TrustedProxies`, which then replaces the private networks:
+
+```json
+"Feed": {
+    "TrustedProxies": [ "203.0.113.7", "198.51.100.0/24" ]
+}
+```
+
+A client on a trusted network that can reach NuDepot without going through the proxy could set those headers too,
+and claim to use HTTPS. If that matters, list only the proxy's address, or turn forwarded headers off:
 
 ```json
 "Feed": {

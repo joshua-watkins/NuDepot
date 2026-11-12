@@ -58,15 +58,6 @@ public interface IUrlGenerator
     string GetRegistrationIndexUrl(string id, bool semVer2 = false);
 
     /// <summary>
-    /// Get the URL for the metadata of several versions of a single package.
-    /// See: https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource#registration-page
-    /// </summary>
-    /// <param name="id">The package's ID</param>
-    /// <param name="lower">The lowest SemVer 2.0.0 version in the page (inclusive)</param>
-    /// <param name="upper">The highest SemVer 2.0.0 version in the page (inclusive)</param>
-    string GetRegistrationPageUrl(string id, NuGetVersion lower, NuGetVersion upper);
-
-    /// <summary>
     /// Get the URL for the metadata of a specific package ID and version.
     /// See: https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource#registration-leaf
     /// </summary>
@@ -76,26 +67,12 @@ public interface IUrlGenerator
     string GetRegistrationLeafUrl(string id, NuGetVersion version, bool semVer2 = false);
 
     /// <summary>
-    /// Get the URL that lists a package's versions.
-    /// See: https://docs.microsoft.com/en-us/nuget/api/package-base-address-resource#enumerate-package-versions
-    /// </summary>
-    /// <param name="id">The package's ID</param>
-    string GetPackageVersionsUrl(string id);
-
-    /// <summary>
     /// Get the URL to download a package (.nupkg).
     /// See: https://docs.microsoft.com/en-us/nuget/api/package-base-address-resource#download-package-content-nupkg
     /// </summary>
     /// <param name="id">The package's ID</param>
     /// <param name="version">The package's version</param>
     string GetPackageDownloadUrl(string id, NuGetVersion version);
-
-    /// <summary>
-    /// Get the URL to download a package's manifest (.nuspec).
-    /// </summary>
-    /// <param name="id">The package's ID</param>
-    /// <param name="version">The package's version</param>
-    string GetPackageManifestDownloadUrl(string id, NuGetVersion version);
 
     /// <summary>
     /// Get the URL to download a package icon.

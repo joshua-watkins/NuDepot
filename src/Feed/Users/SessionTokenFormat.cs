@@ -29,7 +29,7 @@ internal sealed class SessionTokenFormat(SessionSigningKeys keys, CookieAuthenti
     public const string SessionIdClaim = "sid";
 
     /// <summary>
-    /// The claim of the session's current token, which is replaced with each request.
+    /// The claim of the session's current token, which is replaced every few minutes.
     /// </summary>
     public const string SessionTokenClaim = "sit";
 

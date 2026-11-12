@@ -72,8 +72,8 @@ public class User
 }
 
 /// <summary>
-/// A signed-in browser. Its cookie has a token that's replaced with each request, so a cookie that's
-/// used again after it was replaced was copied, and the session is revoked. Only the tokens' hashes are stored.
+/// A signed-in browser. Its cookie has a token that's replaced every few minutes, so a cookie that's used
+/// again after the browser used its replacement was copied, and the session is revoked. Only the tokens' hashes are stored.
 /// </summary>
 public class UserSession
 {
@@ -109,9 +109,15 @@ public class UserSession
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
-    /// When the token was last replaced, which is when the session was last used.
+    /// When the token was last replaced, in UTC. Tokens are replaced every few minutes while the session is used.
     /// </summary>
     public DateTime RotatedAt { get; set; }
+
+    /// <summary>
+    /// Whether the browser has sent the current token. Until it does, the cookie with it may never have arrived, so
+    /// the previous token gets a new one instead of revoking the session.
+    /// </summary>
+    public bool IsTokenUsed { get; set; }
 
     /// <summary>
     /// When the session expires, in UTC, unless it's used before then.

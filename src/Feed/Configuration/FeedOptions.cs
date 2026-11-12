@@ -24,10 +24,17 @@ public class FeedOptions
 
     /// <summary>
     /// Whether requests' X-Forwarded-Proto and X-Forwarded-For headers, which a reverse proxy sets, give their
-    /// scheme and client address. On by default, for a reverse proxy that serves HTTPS. Any client that reaches
-    /// the feed directly can set them too, so turn this off if the feed isn't only reached through a proxy.
+    /// scheme and client address. On by default, for a reverse proxy that serves HTTPS. They're only trusted from
+    /// the <see cref="TrustedProxies"/>.
     /// </summary>
     public bool UseForwardedHeaders { get; set; } = true;
+
+    /// <summary>
+    /// The addresses, like "203.0.113.7", and networks, like "203.0.113.0/24", of the reverse proxies whose
+    /// forwarded headers are trusted. If empty, proxies on this machine or a private network are trusted: loopback,
+    /// 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7 and fe80::/10.
+    /// </summary>
+    public List<string> TrustedProxies { get; set; } = [];
 
     /// <summary>
     /// If enabled, the database will be updated at app startup by running

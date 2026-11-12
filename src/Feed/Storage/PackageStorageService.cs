@@ -218,15 +218,15 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
         string nuspecPath = NuspecPath(lowercasedId, lowercasedNormalizedVersion);
         string readmePath = ReadmePath(lowercasedId, lowercasedNormalizedVersion);
         string iconPath = IconPath(lowercasedId, lowercasedNormalizedVersion);
-        string licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, false);
-        if (!File.Exists(licensePath))
-            licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, true);
 
         await Storage.DeleteAsync(packagePath, cancellationToken);
         await Storage.DeleteAsync(nuspecPath, cancellationToken);
         await Storage.DeleteAsync(readmePath, cancellationToken);
         await Storage.DeleteAsync(iconPath, cancellationToken);
-        await Storage.DeleteAsync(licensePath, cancellationToken);
+
+        // The license is text or Markdown, and storage paths aren't local files to check, so delete either.
+        await Storage.DeleteAsync(LicensePath(lowercasedId, lowercasedNormalizedVersion, licenseIsMarkDown: false), cancellationToken);
+        await Storage.DeleteAsync(LicensePath(lowercasedId, lowercasedNormalizedVersion, licenseIsMarkDown: true), cancellationToken);
     }
 
     private async Task<Stream?> GetStreamAsync(string id, NuGetVersion version, Func<string, string, string> pathFunc, CancellationToken cancellationToken)

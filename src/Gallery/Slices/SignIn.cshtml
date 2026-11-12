@@ -1,7 +1,7 @@
 @inherits RazorSlice<SignInModel>
 @implements IUsesLayout<_Layout, LayoutModel>
 
-<div class="col-sm-12 account-page" id="signin-page">
+<div class="account-page" id="signin-page">
     <h1>Sign in</h1>
     <hr class="breadcrumb-divider" />
 
@@ -9,9 +9,9 @@
 
     <section>
         <p>Sign in with a passkey saved on this device, on your phone or in your password manager.</p>
-        <form id="signin-form" class="form-inline">
-            <div class="form-group">
-                <label for="signin-username" class="sr-only">User name</label>
+        <form id="signin-form" class="inline-form">
+            <div>
+                <label for="signin-username" class="visually-hidden">User name</label>
                 <input type="text"
                        id="signin-username"
                        class="form-control"
@@ -20,8 +20,8 @@
                        maxlength="64"
                        required />
             </div>
-            <button type="submit" class="btn btn-default btn-brand" id="signin-button">
-                <i class="ms-Icon ms-Icon--Permissions" aria-hidden="true"></i> Sign in with a passkey
+            <button type="submit" class="btn btn-brand" id="signin-button">
+                <i class="icon icon-key" aria-hidden="true"></i> Sign in with a passkey
             </button>
         </form>
     </section>
@@ -32,9 +32,9 @@
             Your account is protected by a passkey instead of a password.
             <span id="signup-first" hidden>You're the first person to sign up, so your account will be an administrator.</span>
         </p>
-        <form id="signup-form" class="form-inline">
-            <div class="form-group">
-                <label for="signup-username" class="sr-only">User name</label>
+        <form id="signup-form" class="inline-form">
+            <div>
+                <label for="signup-username" class="visually-hidden">User name</label>
                 <input type="text"
                        id="signup-username"
                        class="form-control"
@@ -43,16 +43,14 @@
                        maxlength="64"
                        required />
             </div>
-            <button type="submit" class="btn btn-default">Create account</button>
+            <button type="submit" class="btn btn-outline-secondary">Create account</button>
         </form>
     </section>
 
     <p class="passkey-unsupported text-muted" hidden>Passkeys aren't available on this page. They need the gallery to be served over HTTPS.</p>
 </div>
 
-<script type="text/javascript">
-    window.nudepotAccount = @WebsiteJsonContext.ToScriptValue(new AccountScriptSettings(Model.PathBase, Model.ReturnUrl));
-</script>
+@WebsiteJsonContext.ToSettingsScript("account-settings", new AccountScriptSettings(Model.PathBase, Model.ReturnUrl))
 <script src="@LayoutModel.Content("js/account.js")" defer></script>
 
 @functions {

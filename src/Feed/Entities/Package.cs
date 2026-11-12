@@ -201,6 +201,12 @@ public class Package
     public long PackageSize { get; set; }
 
     /// <summary>
+    /// Whether the version was downloaded from a mirror, rather than pushed to the feed. A package ID with a pushed
+    /// version belongs to the feed, so its mirrors aren't asked for it.
+    /// </summary>
+    public bool IsMirrored { get; set; }
+
+    /// <summary>
     /// Whether the stored package carries this server's repository signature.
     /// </summary>
     public bool IsRepositorySigned { get; set; }

@@ -51,6 +51,15 @@ public class PackageDatabase(NuDepotContext context) : IPackageDatabase
     }
 
     /// <inheritdoc />
+    public async Task<bool> HasPushedVersionsAsync(string id, CancellationToken cancellationToken)
+    {
+        return await Context
+            .Packages
+            .Where(p => p.Id == id && !p.IsMirrored)
+            .AnyAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<Package>> FindAsync(string id, bool includeUnlisted, CancellationToken cancellationToken)
     {
         IQueryable<Package> query = Context.Packages

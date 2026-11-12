@@ -1,3 +1,5 @@
+using NuGet.Versioning;
+
 namespace NuDepot.Feed.Indexing;
 
 /// <summary>
@@ -46,4 +48,17 @@ public interface IPackageIndexingService
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The result of the attempted indexing operation.</returns>
     Task<PackageIndexingResult> IndexAsync(Stream stream, bool allowOverwrite, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Index a package downloaded from a mirror, which never replaces a package the feed has.
+    /// </summary>
+    /// <param name="stream">The stream containing the package's content.</param>
+    /// <param name="id">The package ID that was asked for.</param>
+    /// <param name="version">The package version that was asked for.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>
+    /// The result of the attempted indexing operation: <see cref="PackageIndexingResult.InvalidPackage"/> if the
+    /// package isn't the one that was asked for.
+    /// </returns>
+    Task<PackageIndexingResult> MirrorAsync(Stream stream, string id, NuGetVersion version, CancellationToken cancellationToken);
 }

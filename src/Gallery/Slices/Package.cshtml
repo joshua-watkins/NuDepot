@@ -12,14 +12,14 @@
 else
 {
     <div class="row display-package">
-        <aside class="col-sm-1 package-icon">
+        <aside class="col-md-1 package-icon">
             <img src="@(Model.IconUrl ?? LayoutModel.Content(DefaultIcon))"
-                 class="img-responsive"
-                 onerror="this.src='@LayoutModel.Content(DefaultIcon)'"
-                 alt="The package icon" />
+                 class="img-fluid"
+                 data-fallback="@LayoutModel.Content(DefaultIcon)"
+                 alt="" />
         </aside>
 
-        <article class="col-sm-8 package-details-main">
+        <article class="col-md-8 package-details-main">
             <div class="package-title">
                 <h1>
                     @Model.Package.PackageId
@@ -31,7 +31,7 @@ else
             @if (Model.Deprecation != null)
             {
                 <div class="alert alert-warning package-deprecation" role="alert">
-                    <i class="ms-Icon ms-Icon--Warning" aria-hidden="true"></i>
+                    <i class="icon icon-exclamation-triangle" aria-hidden="true"></i>
                     This package @string.Join(" and ", Model.Deprecation.Reasons.Select(PackageModel.DeprecationReasonText)).
                     @if (!string.IsNullOrEmpty(Model.Deprecation.Message))
                     {
@@ -50,16 +50,16 @@ else
             @foreach (var vulnerability in Model.Vulnerabilities)
             {
                 <div class="alert alert-danger package-vulnerability" role="alert">
-                    <i class="ms-Icon ms-Icon--Shield" aria-hidden="true"></i>
+                    <i class="icon icon-shield-exclamation" aria-hidden="true"></i>
                     This package has a known @PackageModel.SeverityName(vulnerability.Severity) severity vulnerability,
-                    <a href="@vulnerability.AdvisoryUrl" target="_blank" rel="noopener noreferrer">@vulnerability.AdvisoryUrl</a>.
+                    <a href="@SafeUrls.AbsoluteOrNull(vulnerability.AdvisoryUrl)" target="_blank" rel="noopener noreferrer">@vulnerability.AdvisoryUrl</a>.
                 </div>
             }
 
             @if (!Model.Package.IsListed())
             {
                 <div class="alert alert-info package-unlisted" role="alert">
-                    <i class="ms-Icon ms-Icon--Hide" aria-hidden="true"></i>
+                    <i class="icon icon-eye-slash" aria-hidden="true"></i>
                     This version is unlisted: searches don't show it, but it can still be restored.
                 </div>
             }
@@ -91,14 +91,14 @@ else
                                         <tr>
                                             <td><a href="@Model.PackageLink(Model.Package.PackageId, version.Version)">@normalized</a></td>
                                             <td>@(version.Listed ? "Listed" : "Unlisted")</td>
-                                            <td class="text-right">
+                                            <td class="text-end text-nowrap">
                                                 @if (version.Listed && !Model.Visitor.DeletesPermanently && Model.Visitor.CanUnlist)
                                                 {
-                                                    <button type="button" class="btn btn-default btn-sm" data-manage-method="DELETE" data-manage-url="@packageUrl">Unlist</button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-manage-method="DELETE" data-manage-url="@packageUrl">Unlist</button>
                                                 }
                                                 @if (!version.Listed && Model.Visitor.CanUnlist)
                                                 {
-                                                    <button type="button" class="btn btn-default btn-sm" data-manage-method="POST" data-manage-url="@packageUrl">Relist</button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-manage-method="POST" data-manage-url="@packageUrl">Relist</button>
                                                 }
                                                 @if (Model.Visitor.DeletesPermanently && Model.Visitor.CanDelete)
                                                 {
@@ -116,26 +116,27 @@ else
                         {
                             <h3>Deprecation of @Model.Version.ToNormalizedString()</h3>
                             <form id="deprecation-form">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     @foreach (var reason in DeprecationReasons)
                                     {
-                                        <label class="checkbox-inline">
-                                            <input type="checkbox" name="reasons" value="@reason.Key" checked="@(Model.Deprecation?.Reasons.Contains(reason.Key) == true)" /> @reason.Value
-                                        </label>
+                                        <div class="form-check form-check-inline">
+                                            <input type="checkbox" class="form-check-input" id="deprecation-@reason.Key" name="reasons" value="@reason.Key" checked="@(Model.Deprecation?.Reasons.Contains(reason.Key) == true)" />
+                                            <label class="form-check-label" for="deprecation-@reason.Key">@reason.Value</label>
+                                        </div>
                                     }
                                 </div>
-                                <div class="form-group">
-                                    <label for="deprecation-message">Message</label>
+                                <div class="mb-3">
+                                    <label class="form-label" for="deprecation-message">Message</label>
                                     <input type="text" id="deprecation-message" name="message" class="form-control" maxlength="4000" value="@Model.Deprecation?.Message" />
                                 </div>
-                                <div class="form-group">
-                                    <label for="deprecation-alternate">Alternative package ID</label>
+                                <div class="mb-3">
+                                    <label class="form-label" for="deprecation-alternate">Alternative package ID</label>
                                     <input type="text" id="deprecation-alternate" name="alternatePackageId" class="form-control" maxlength="128" value="@Model.Deprecation?.AlternatePackage?.Id" />
                                 </div>
-                                <button type="submit" class="btn btn-default">@(Model.Deprecation == null ? "Deprecate" : "Update the deprecation")</button>
+                                <button type="submit" class="btn btn-outline-secondary">@(Model.Deprecation == null ? "Deprecate" : "Update the deprecation")</button>
                                 @if (Model.Deprecation != null)
                                 {
-                                    <button type="button" class="btn btn-default" data-manage-method="DELETE" data-manage-url="@DeprecationUrl">Remove the deprecation</button>
+                                    <button type="button" class="btn btn-outline-secondary" data-manage-method="DELETE" data-manage-url="@DeprecationUrl">Remove the deprecation</button>
                                 }
                             </form>
                         }
@@ -149,51 +150,56 @@ else
                                 </thead>
                                 <tbody id="vulnerabilities"></tbody>
                             </table>
-                            <form id="vulnerability-form" class="form-inline">
-                                <div class="form-group">
-                                    <label for="vulnerability-versions" class="sr-only">Vulnerable versions</label>
+                            <form id="vulnerability-form" class="inline-form">
+                                <div>
+                                    <label for="vulnerability-versions" class="visually-hidden">Vulnerable versions</label>
                                     <input type="text" id="vulnerability-versions" name="versions" class="form-control" placeholder="Versions, like (, 1.2.0)" required />
                                 </div>
-                                <div class="form-group">
-                                    <label for="vulnerability-url" class="sr-only">Advisory URL</label>
+                                <div>
+                                    <label for="vulnerability-url" class="visually-hidden">Advisory URL</label>
                                     <input type="url" id="vulnerability-url" name="url" class="form-control" placeholder="Advisory URL" required />
                                 </div>
-                                <div class="form-group">
-                                    <label for="vulnerability-severity" class="sr-only">Severity</label>
-                                    <select id="vulnerability-severity" name="severity" class="form-control">
+                                <div>
+                                    <label for="vulnerability-severity" class="visually-hidden">Severity</label>
+                                    <select id="vulnerability-severity" name="severity" class="form-select">
                                         <option value="0">Low</option>
                                         <option value="1">Moderate</option>
                                         <option value="2" selected>High</option>
                                         <option value="3">Critical</option>
                                     </select>
                                 </div>
-                                <button type="submit" class="btn btn-default">Record the vulnerability</button>
+                                <button type="submit" class="btn btn-outline-secondary">Record the vulnerability</button>
                             </form>
                         }
                     @EndSection()
                 </div>
             }
 
-            <div class="tabbed-info" x-data="{ tabs: tabs, active: tabs[0] }">
-                <ul class="nav">
-                    <template x-for="tab in tabs" :key="tab.name">
-                        <li x-bind:class="{ active: tab.name === active.name }">
-                            <a href="#" x-text="tab.name" @@click="active = tab"></a>
-                        </li>
-                    </template>
-                </ul>
-
-                <div class="content">
-                    <div class="script" x-text="`${active.prefix} ${active.content}`"></div>
-
-                    <div class="copy-button">
-                        <button class="btn btn-default btn-warning"
-                                type="button"
-                                @@click="window.nudepot.copyTextToClipboard(active.content.join('\n'), $el)">
-                            <i class="ms-Icon ms-Icon--Copy"></i>
-                        </button>
-                    </div>
+            <div class="tabbed-info" data-tabs>
+                <div class="tab-list" role="tablist" aria-label="Install with">
+                    @for (var i = 0; i < Instructions.Count; i++)
+                    {
+                        <button type="button" role="tab" id="install-tab-@i" aria-controls="install-panel-@i" aria-selected="@(i == 0 ? "true" : "false")" tabindex="@(i == 0 ? 0 : -1)">@Instructions[i].Name</button>
+                    }
                 </div>
+
+                @for (var i = 0; i < Instructions.Count; i++)
+                {
+                    <div role="tabpanel" id="install-panel-@i" aria-labelledby="install-tab-@i" hidden="@(i != 0)">
+                        <div class="command-box">
+                            <div class="script">
+                                @foreach (var line in Instructions[i].Content)
+                                {
+                                    <div class="script-line" data-prefix="@Instructions[i].Prefix">@line</div>
+                                }
+                            </div>
+                            <button class="btn btn-copy" type="button" title="Copy" data-copy>
+                                <i class="icon icon-clipboard" aria-hidden="true"></i>
+                                <span class="visually-hidden">Copy</span>
+                            </button>
+                        </div>
+                    </div>
+                }
             </div>
 
             @BeginSection("Readme", expanded: false)
@@ -221,11 +227,11 @@ else
                         {
                             <p>Showing the top 20 packages that depend on @Model.Package.PackageId.</p>
                             <div>
-                                <table>
+                                <table class="table">
                                     <thead>
                                         <tr>
-                                            <th class="col-sm-10">Packages</th>
-                                            <th class="col-sm-2">Downloads</th>
+                                            <th>Packages</th>
+                                            <th>Downloads</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -236,8 +242,8 @@ else
                                                     <a href="@Model.PackageLink(package.Id)">@package.Id</a>
                                                     <div>@package.Description</div>
                                                 </td>
-                                                <td>
-                                                    <i class="ms-Icon ms-Icon--Download" aria-hidden="true"></i>
+                                                <td class="text-nowrap">
+                                                    <i class="icon icon-download" aria-hidden="true"></i>
                                                     <span>@package.TotalDownloads.ToString("N0")</span>
                                                 </td>
                                             </tr>
@@ -296,8 +302,8 @@ else
             @EndSection()
 
             @BeginSection("Versions", expanded: true)
-                <div class="version-list" x-data="{ showAll: false }">
-                    <table class="table borderless">
+                <div class="version-list" data-show-more-list>
+                    <table class="table table-borderless">
                         <thead>
                             <tr>
                                 <th>Version</th>
@@ -305,13 +311,13 @@ else
                                 <th>Last updated</th>
                             </tr>
                         </thead>
-                        <tbody class="no-border">
+                        <tbody>
                             @for (var i = 0; i < Versions.Count; i++)
                             {
                                 var version = Versions[i];
-                                var alwaysShow = i < DefaultVisibleVersions ? "true" : "false";
+                                var rowClass = string.Join(" ", new[] { version.Selected ? "selected-version" : null, i >= DefaultVisibleVersions ? "more" : null }.OfType<string>());
 
-                                <tr class="@(version.Selected ? "bg-info" : "")" x-show="showAll || @alwaysShow">
+                                <tr class="@(rowClass.Length > 0 ? rowClass : null)" aria-current="@(version.Selected ? "page" : null)">
                                     <td><a href="@Model.PackageLink(Model.Package.PackageId, version.Version)">@version.Version.ToNormalizedString()</a></td>
                                     <td>@version.Downloads.ToString("N0")</td>
                                     <td>@version.LastUpdated.ToShortDateString()</td>
@@ -322,52 +328,51 @@ else
 
                     @if (Versions.Count > DefaultVisibleVersions)
                     {
-                        <button type="button" class="link-button" @@click="showAll = !showAll">
-                            <i class="ms-Icon" x-bind:class="{ 'ms-Icon--CalculatorAddition': !showAll, 'ms-Icon--CalculatorSubtract': showAll }"></i>
-                            <span x-text="showAll ? 'Show less' : 'Show more'"></span>
+                        <button type="button" class="link-button" aria-expanded="false" data-show-more>
+                            <i class="icon icon-plus-circle" aria-hidden="true"></i>
+                            <span>Show more</span>
                         </button>
                     }
-
                 </div>
             @EndSection()
         </article>
 
-        <aside class="col-sm-3 package-details-info">
+        <aside class="col-md-3 package-details-info">
             <div>
                 <h2>Info</h2>
 
-                <ul class="list-unstyled ms-Icon-ul">
+                <ul class="list-unstyled icon-list">
                     <li>
-                        <i class="ms-Icon ms-Icon--History" aria-hidden="true"></i>
+                        <i class="icon icon-clock-history" aria-hidden="true"></i>
                         Last updated @Model.LastUpdated.Humanize()
                     </li>
 
-                    @if (!string.IsNullOrEmpty(Model.Package.ProjectUrl))
+                    @if (Model.ProjectUrl != null)
                     {
                         <li>
-                            <i class="ms-Icon ms-Icon--Globe"></i>
-                            <a href="@Model.Package.ProjectUrl">Project URL</a>
+                            <i class="icon icon-globe" aria-hidden="true"></i>
+                            <a href="@Model.ProjectUrl" rel="noopener noreferrer nofollow">Project URL</a>
                         </li>
                     }
 
-                    @if (!string.IsNullOrEmpty(Model.Package.RepositoryUrl))
+                    @if (Model.RepositoryUrl != null)
                     {
                         <li>
-                            <img class="icon" aria-hidden="true" alt="GitHub logo" src="@LayoutModel.Content("images/github-32x32.png")" />
-                            <a href="@Model.Package.RepositoryUrl">Source code</a>
+                            <i class="icon icon-github" aria-hidden="true"></i>
+                            <a href="@Model.RepositoryUrl" rel="noopener noreferrer nofollow">Source code</a>
                         </li>
                     }
 
                     @if (Model.LicenseUrl != null)
                     {
                         <li>
-                            <i class="ms-Icon ms-Icon--Certificate"></i>
+                            <i class="icon icon-file-earmark-text" aria-hidden="true"></i>
                             <a href="@Model.LicenseUrl">@(string.IsNullOrEmpty(Model.Package.LicenseExpression) ? "License" : $"License: {Model.Package.LicenseExpression}")</a>
                         </li>
                     }
 
                     <li>
-                        <i class="ms-Icon ms-Icon--CloudDownload"></i>
+                        <i class="icon icon-cloud-download" aria-hidden="true"></i>
                         <a href="@Model.PackageDownloadUrl">Download package</a>
                     </li>
                 </ul>
@@ -376,14 +381,14 @@ else
             <div>
                 <h2>Statistics</h2>
 
-                <ul class="list-unstyled ms-Icon-ul">
+                <ul class="list-unstyled icon-list">
                     <li>
-                        <i class="ms-Icon ms-Icon--Download"></i>
+                        <i class="icon icon-download" aria-hidden="true"></i>
                         @Model.TotalDownloads.ToString("N0") total downloads
                     </li>
 
                     <li>
-                        <i class="ms-Icon ms-Icon--Giftbox"></i>
+                        <i class="icon icon-box-seam" aria-hidden="true"></i>
                         @Model.Package.Downloads.ToString("N0") downloads of current version
                     </li>
                 </ul>
@@ -400,15 +405,9 @@ else
         </aside>
     </div>
 
-    <script type="text/javascript">
-        let tabs = @WebsiteJsonContext.ToScriptValue(Model.GetInstallInstructions());
-    </script>
-
     @if (Model.IsManaged)
     {
-        <script type="text/javascript">
-            window.nudepotManage = @WebsiteJsonContext.ToScriptValue(new ManageScriptSettings(Model.PathBase, Model.Package.PackageId, Model.Version.ToNormalizedString()));
-        </script>
+        @WebsiteJsonContext.ToSettingsScript("manage-settings", new ManageScriptSettings(Model.PathBase, Model.Package.PackageId, Model.Version.ToNormalizedString()))
         <script src="@LayoutModel.Content("js/manage.js")" defer></script>
     }
 }
@@ -423,6 +422,9 @@ else
 
     private IReadOnlyList<PackageModel.VersionModel> Versions => Model.Versions ?? Array.Empty<PackageModel.VersionModel>();
 
+    private IReadOnlyList<InstallInstructions>? _instructions;
+    private IReadOnlyList<InstallInstructions> Instructions => _instructions ??= Model.GetInstallInstructions();
+
     // The reasons the feed's deprecation endpoint takes, and how the form shows them.
     private static readonly IReadOnlyDictionary<string, string> DeprecationReasons = new Dictionary<string, string>
     {
@@ -434,22 +436,22 @@ else
     private string DeprecationUrl
         => $"{Model.PathBase}/api/package/{Uri.EscapeDataString(Model.Package.PackageId)}/{Uri.EscapeDataString(Model.Version.ToNormalizedString())}/deprecation";
 
-    // A section that the user can expand and collapse. Its content goes between BeginSection and EndSection.
+    // A section that the user can expand and collapse, which browsers do for <details> without scripts. Its content
+    // goes between BeginSection and EndSection.
     private static HtmlString BeginSection(string title, bool expanded)
     {
-        var expandedValue = expanded ? "true" : "false";
         var encodedTitle = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(title);
 
         return new HtmlString(
-            $"<div class=\"expandable-section\" x-data=\"{{ expanded: {expandedValue} }}\">" +
-                "<h2>" +
-                    "<button type=\"button\" class=\"link-button\" @click=\"expanded = !expanded\">" +
-                        "<i x-bind:class=\"{ 'ms-Icon--ChevronDown': expanded, 'ms-Icon--ChevronRight': !expanded }\" class=\"ms-Icon\"></i>" +
+            $"<details class=\"expandable-section\"{(expanded ? " open" : "")}>" +
+                "<summary>" +
+                    "<h2>" +
+                        "<i class=\"icon icon-chevron-right\" aria-hidden=\"true\"></i>" +
                         $"<span>{encodedTitle}</span>" +
-                    "</button>" +
-                "</h2>" +
-                "<div x-show=\"expanded\">");
+                    "</h2>" +
+                "</summary>" +
+                "<div class=\"section-body\">");
     }
 
-    private static HtmlString EndSection() => new("</div></div>");
+    private static HtmlString EndSection() => new("</div></details>");
 }

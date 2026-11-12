@@ -1,81 +1,208 @@
-/* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
-for details on configuring this project to bundle and minify static web assets. */
+/* The website's styles, on Bootstrap 5. js/theme.js sets Bootstrap's color mode from the system's light or dark
+setting, and these colors theme Bootstrap green, like the website's navigation bar. */
 
-/* Colors. The website follows the system's light or dark setting.
+/* Colors
 -------------------------------------------------- */
 :root {
-    color-scheme: light dark;
-
     /* The green navigation bar and command boxes look the same in both themes. */
     --brand: #008048;
     --brand-dark: #004d2b;
     --brand-darker: #004024;
+    --header-text: #e3f1eb;
+    --search: #d87e00;
+    --search-dark: #a56000;
 
-    --background: #fff;
-    --text: #333;
-    --text-strong: #000;
-    --text-muted: #666;
-    --link: #008048;
-    --link-hover: #004d2b;
-    --rule: #d8d8d8;
+    --bs-body-font-family: 'Segoe UI', "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+:root,
+[data-bs-theme="light"] {
+    color-scheme: light;
+
+    --bs-link-color: #008048;
+    --bs-link-color-rgb: 0, 128, 72;
+    --bs-link-hover-color: #004d2b;
+    --bs-link-hover-color-rgb: 0, 77, 43;
+
     --tab: #eaeaea;
-    --warning: #fff4ce;
-    --warning-text: #000;
+    --selected: #d9efe4;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --background: #141917;
-        --text: #dfe5e2;
-        --text-strong: #f2f5f3;
-        --text-muted: #9aa6a0;
-        --link: #3dbf85;
-        --link-hover: #7fdcb0;
-        --rule: #333c37;
-        --tab: #27302b;
-        --warning: #3d3214;
-        --warning-text: #f5e6b8;
+[data-bs-theme="dark"] {
+    --bs-body-bg: #141917;
+    --bs-body-bg-rgb: 20, 25, 23;
+    --bs-body-color: #dfe5e2;
+    --bs-body-color-rgb: 223, 229, 226;
+    --bs-emphasis-color: #f2f5f3;
+    --bs-secondary-color: rgba(223, 229, 226, .7);
+    --bs-secondary-bg: #1d2420;
+    --bs-tertiary-bg: #1a201d;
+    --bs-border-color: #3b4540;
+    --bs-link-color: #3dbf85;
+    --bs-link-color-rgb: 61, 191, 133;
+    --bs-link-hover-color: #7fdcb0;
+    --bs-link-hover-color-rgb: 127, 220, 176;
 
-        /* Bootstrap's components, which only come in light colors. */
-        --surface: #1d2420;
-        --surface-hover: #27302b;
-        --border: #3b4540;
-    }
+    --tab: #27302b;
+    --selected: #1d3a2c;
 }
 
-/* Layout
--------------------------------------------------- */
-body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Segoe UI', "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 16px;
-    color: var(--text);
-    background-color: var(--background);
-    accent-color: var(--brand);
-}
-
-/* Theme: green in place of nuget.org's (and Bootstrap's) blue
--------------------------------------------------- */
+/* Links are underlined when they're pointed at, like on nuget.org. */
 a {
-    color: var(--link);
+    text-decoration: none;
 }
 
 a:hover,
-a:focus {
-    color: var(--link-hover);
+a:focus-visible {
+    text-decoration: underline;
 }
 
-.form-control:focus {
+a.btn,
+a.dropdown-item,
+.site-nav-links a {
+    text-decoration: none;
+}
+
+/* Forms and buttons, green in place of Bootstrap's blue
+-------------------------------------------------- */
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
     border-color: #66e9af;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 8px rgba(102, 233, 175, .6);
+    box-shadow: 0 0 0 .25rem rgba(0, 128, 72, .25);
 }
 
+.form-check-input:checked {
+    background-color: var(--brand);
+    border-color: var(--brand);
+}
+
+.btn-brand {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--brand);
+    --bs-btn-border-color: var(--brand-dark);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--brand-dark);
+    --bs-btn-hover-border-color: var(--brand-darker);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--brand-darker);
+    --bs-btn-active-border-color: var(--brand-darker);
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-bg: var(--brand);
+    --bs-btn-disabled-border-color: var(--brand-dark);
+    --bs-btn-focus-shadow-rgb: 0, 128, 72;
+}
+
+/* The search and copy buttons are orange, next to the green. */
+.btn-search,
+.btn-copy {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--search);
+    --bs-btn-border-color: #bf6f00;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--search-dark);
+    --bs-btn-hover-border-color: #814b00;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--search-dark);
+    --bs-btn-active-border-color: #814b00;
+    --bs-btn-focus-shadow-rgb: 216, 126, 0;
+    --bs-btn-border-radius: 0;
+}
+
+.link-button {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    color: var(--bs-link-color);
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.link-button:hover,
+.link-button:focus-visible {
+    color: var(--bs-link-hover-color);
+    text-decoration: underline;
+}
+
+.link-button:disabled {
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+    cursor: default;
+}
+
+/* A form on one line, which wraps on narrow screens. */
+.inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.inline-form .form-control,
+.inline-form .form-select {
+    width: auto;
+    max-width: 100%;
+}
+
+/* Icons: Bootstrap Icons, drawn in the text's color.
+-------------------------------------------------- */
+.icon {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    vertical-align: -.125em;
+    background-color: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
+}
+
+.icon-box-seam { --icon: url("../lib/bootstrap-icons/icons/box-seam.svg"); }
+.icon-check2 { --icon: url("../lib/bootstrap-icons/icons/check2.svg"); }
+.icon-chevron-down { --icon: url("../lib/bootstrap-icons/icons/chevron-down.svg"); }
+.icon-chevron-right { --icon: url("../lib/bootstrap-icons/icons/chevron-right.svg"); }
+.icon-clipboard { --icon: url("../lib/bootstrap-icons/icons/clipboard.svg"); }
+.icon-clock-history { --icon: url("../lib/bootstrap-icons/icons/clock-history.svg"); }
+.icon-cloud-download { --icon: url("../lib/bootstrap-icons/icons/cloud-download.svg"); }
+.icon-dash-circle { --icon: url("../lib/bootstrap-icons/icons/dash-circle.svg"); }
+.icon-download { --icon: url("../lib/bootstrap-icons/icons/download.svg"); }
+.icon-exclamation-triangle { --icon: url("../lib/bootstrap-icons/icons/exclamation-triangle.svg"); }
+.icon-eye-slash { --icon: url("../lib/bootstrap-icons/icons/eye-slash.svg"); }
+.icon-file-earmark-text { --icon: url("../lib/bootstrap-icons/icons/file-earmark-text.svg"); }
+.icon-flag { --icon: url("../lib/bootstrap-icons/icons/flag.svg"); }
+.icon-gear { --icon: url("../lib/bootstrap-icons/icons/gear.svg"); }
+.icon-github { --icon: url("../lib/bootstrap-icons/icons/github.svg"); }
+.icon-globe { --icon: url("../lib/bootstrap-icons/icons/globe.svg"); }
+.icon-key { --icon: url("../lib/bootstrap-icons/icons/key.svg"); }
+.icon-person-circle { --icon: url("../lib/bootstrap-icons/icons/person-circle.svg"); }
+.icon-plus-circle { --icon: url("../lib/bootstrap-icons/icons/plus-circle.svg"); }
+.icon-search { --icon: url("../lib/bootstrap-icons/icons/search.svg"); }
+.icon-shield-exclamation { --icon: url("../lib/bootstrap-icons/icons/shield-exclamation.svg"); }
+.icon-tag { --icon: url("../lib/bootstrap-icons/icons/tag.svg"); }
+
+/* A list with an icon in the margin of each item. */
+.icon-list {
+    margin-left: 24px;
+}
+
+.icon-list li {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.icon-list li > .icon {
+    position: absolute;
+    top: .25em;
+    left: -24px;
+}
+
+/* Text
+-------------------------------------------------- */
 h1, h2, h3, h4, h5, h6 {
-    font-family: inherit;
-    font-weight: 100;
+    font-weight: 300;
     line-height: 1.1;
-    color: inherit;
 }
 
 h1, h2, h3, p {
@@ -96,93 +223,75 @@ h4 {
     font-size: 20px;
 }
 
-.img-responsive {
-    display: block;
-    max-width: 100%;
-    height: auto;
+h1 small {
+    margin-left: 10px;
+    font-size: 45%;
+    color: var(--bs-secondary-color);
 }
 
-.ms-Icon-ul {
-    margin-left: 24px;
-}
-
-.ms-Icon-ul li {
-    position: relative;
-}
-
-.ms-Icon-ul li i.ms-Icon {
-    position: absolute;
-    left: -24px;
+pre {
+    padding: 9.5px;
+    background-color: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
 }
 
 .alert {
-    padding: 8px 8px;
-    border: 1px solid transparent;
+    padding: 8px;
     border-radius: 0;
 }
 
-.alert-warning {
-    color: var(--warning-text);
-    background-color: var(--warning);
-    border-color: var(--warning);
+/* Header
+-------------------------------------------------- */
+.site-header {
+    margin-bottom: 20px;
+    color: var(--header-text);
+    background-color: var(--brand);
+    border-bottom: 1px solid var(--brand-dark);
 }
 
-/* Navigation
--------------------------------------------------- */
-#navbar ul {
+.site-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.site-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.site-nav-links:first-child {
     margin-left: -15px;
 }
 
-.navbar-inverse {
-    background-color: var(--brand);
-    border-color: var(--brand-dark);
-}
-
-.navbar {
-    border-radius: 0;
-}
-
-.navbar-inverse .navbar-nav > li > a {
-    font-weight: 100;
-    color: #e3f1eb;
-}
-
-.navbar-nav > li > a {
+.site-nav-links a {
+    display: block;
+    padding: 15px;
+    font-weight: 300;
     line-height: 22px;
+    color: var(--header-text);
+    text-decoration: none;
 }
 
-.navbar-inverse .navbar-nav a.active {
-    color: #e3f1eb;
-}
-
-.navbar-inverse .navbar-nav a.active,
-.navbar-inverse .navbar-nav a.active:hover,
-.navbar-inverse .navbar-nav a.active:focus {
-    background-color: transparent;
-}
-
-.navbar-inverse .navbar-nav > .active > a:hover {
+.site-nav-links a:hover,
+.site-nav-links a:focus-visible {
     color: #fff;
 }
 
-.navbar-inverse .navbar-nav a.active span {
+.site-nav-links a.active span {
     padding: 5px 0;
     border-bottom: 1px solid #fff;
 }
 
-.nav > li {
-    position: relative;
-    display: block;
-}
-
-.nav > li > a {
-    position: relative;
-    display: block;
-    padding: 10px 15px;
+.site-nav-links .icon {
+    margin-right: 2px;
 }
 
 .search-container {
-    padding-top: 16px;
     padding-bottom: 16px;
 }
 
@@ -190,66 +299,62 @@ h4 {
     border-radius: 0;
 }
 
-.search-container button {
-  height: 34px;
-  color: #fff;
-  background-color: #d87e00;
-  border-color: #bf6f00;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.search-container button:active,
-.search-container button:active:focus,
-.search-container button:active:hover,
-.search-container button:focus,
-.search-container button:hover {
-  background-color: #a56000;
-  border-color: #814b00;
-}
-
-.link-button {
-    background-color: transparent;
-    border: none;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline;
-    margin: 0;
-    padding: 0;
-    color: var(--link);
-}
-
-.link-button:hover,
-.link-button:focus {
-    outline: none;
-    text-decoration: underline;
-    color: var(--link-hover);
-}
-
-/* Index page
+/* Search page
 -------------------------------------------------- */
 .search-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 24px;
     margin-bottom: 20px;
 }
 
-.search-options span.ms-Checkbox-text {
-    font-weight: bold;
-    font-size: 16px;
+.search-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.search-options .form-group {
-    margin-right: 10px;
+.search-option.form-check {
+    min-height: 0;
+    margin: 0;
+    padding: 0;
 }
 
-.search-options select, .search-options #prerelease {
-    margin-left: 10px;
+.search-option.form-check .form-check-input {
+    float: none;
+    margin: 0;
 }
 
-.search-dropdown {
-    margin-left: 5px;
-    display: inline-block;
-    width: auto;
-    vertical-align: middle;
+/* Dropdowns are <details>, so they open without scripts. */
+details.dropdown {
+    position: relative;
+}
+
+details.dropdown > summary {
+    list-style: none;
+}
+
+details.dropdown > summary::-webkit-details-marker {
+    display: none;
+}
+
+details.dropdown > summary .icon {
+    margin-left: 4px;
+    font-size: .75em;
+    vertical-align: 0;
+}
+
+details.dropdown > .dropdown-menu {
+    top: 100%;
+    left: 0;
+    max-height: 70vh;
+    margin-top: 2px;
+    overflow-y: auto;
+}
+
+details.dropdown[open] > .dropdown-menu {
+    display: block;
 }
 
 .search-result {
@@ -258,127 +363,96 @@ h4 {
 }
 
 .search-result .package-title {
+    margin-right: 5px;
     font-size: 24px;
     font-weight: 300;
-    line-height: .9;
-    margin-right: 5px;
 }
 
 .search-result .info {
-    padding-left: 0;
-    margin-top: 8px;
-    margin-bottom: 8px;
-    margin-left: -5px;
+    display: flex;
+    flex-wrap: wrap;
+    margin: 8px 0;
+    padding: 0;
     line-height: 20px;
-    color: var(--text-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.search-result .info span:not(:first-child) {
-    padding-left: 10px;
-}
-
-.search-result .info li {
-    display: inline;
+    color: var(--bs-secondary-color);
+    list-style: none;
 }
 
 .search-result .info li + li {
-    padding-left: 10px;
     margin-left: 10px;
-    border-color: var(--rule);
-    border-width: 1px;
-    border-left-style: solid;
+    padding-left: 10px;
+    border-left: 1px solid var(--bs-border-color);
 }
 
-.search-result .ms-Icon {
-    position: relative;
-    top: 2px;
-    margin-right: 2px;
-}
-
-.search-result .tags {
+.search-result .info .tags {
+    min-width: 0;
+    flex: 1 1 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* Tabbed instructions, used on upload and package page
+.pager {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+/* Commands, in tabs on the upload and package pages
 -------------------------------------------------- */
 .tabbed-info {
-    font-size: 0.8em;
     margin-top: 15px;
+    font-size: .8em;
 }
 
-.tabbed-info ul {
-    margin-left: 0;
-    margin-bottom: 0;
-    padding-left: 0;
-    list-style: none;
-    border: 0;
-    width: 750px;
+.tab-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
 }
 
-.tabbed-info li {
-    padding: 0;
-    margin-right: 5px;
-    margin-bottom: 0;
-    float: left;
-    position: relative;
-    display: block;
-}
-
-.tabbed-info li a {
+.tab-list [role="tab"] {
     padding: 5px 10px;
-    margin: 0;
-    color: var(--text-strong);
+    color: var(--bs-emphasis-color);
     background-color: var(--tab);
     border: 0;
-    position: relative;
-    display: block;
-    text-decoration: none;
 }
 
-.tabbed-info li.active a {
+.tab-list [role="tab"][aria-selected="true"] {
     font-weight: 600;
     color: #fff;
     text-decoration: underline;
     background-color: var(--brand-darker);
 }
 
-.tabbed-info .content {
-    display: table;
-    height: 1px;
+.command-box {
+    display: flex;
+    align-items: stretch;
 }
 
-.tabbed-info .content .script {
-    display: table-cell;
-    width: 100%;
-    max-width: 1px;
-    padding: 0 10px 8px 10px;
+.command-box .script {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
     font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
     line-height: 1.5;
     color: #fff;
     background-color: var(--brand-darker);
-    border-color: var(--brand-darker);
-    border-style: solid;
-    border-width: 1px 0 1px 1px;
+    overflow-wrap: anywhere;
 }
 
-.tabbed-info .content .script .script-line:before {
-    content: "> ";
+.script-line:not([data-prefix=""])::before {
+    content: attr(data-prefix) " ";
 }
 
-.tabbed-info .content .copy-button {
-    display: table-cell;
-}
-
-.tabbed-info .content .copy-button button {
-    height: 100%;
+.command-box .btn-copy {
+    min-width: 42px;
     min-height: 42px;
-    vertical-align: baseline;
-    border-radius: 0px;
+}
+
+.tabbed-info .alert {
+    margin-top: 10px;
 }
 
 /* Package page
@@ -387,87 +461,100 @@ h4 {
     margin-top: 15px;
 }
 
-@media screen and (max-width: 768px) {
-  .display-package .package-icon img {
-    margin-left: auto;
-    margin-right: auto;
-    max-height: 60px;
-    max-width: 60px;
-  }
+@media (max-width: 767.98px) {
+    .display-package .package-icon img {
+        max-width: 60px;
+        max-height: 60px;
+        margin-right: auto;
+        margin-left: auto;
+    }
+}
+
+@media (min-width: 768px) {
+    .package-details-info {
+        margin-top: -25px;
+    }
 }
 
 .display-package .package-title {
-    word-break: break-word;
     overflow-wrap: break-word;
-}
-
-.display-package h1 small {
-    margin-left: 10px;
-    font-size: 45%;
+    word-break: break-word;
 }
 
 .display-package .tabbed-info {
     margin-bottom: 20px;
 }
 
-.display-package .package-description {
-    white-space: pre-wrap;
-}
-
-.display-package .package-readme img {
-    max-width: 100%;
-}
-
+.display-package .package-description,
 .display-package .package-release-notes {
     white-space: pre-wrap;
 }
 
-.package-details-info {
-    margin-top: -25px;
+.package-readme img {
+    max-width: 100%;
 }
 
-.package-details-info .ms-Icon-ul li {
-    margin-bottom: 15px;
+.package-readme blockquote {
+    padding: 0 1em;
+    color: var(--bs-secondary-color);
+    border-left: .25em solid var(--bs-border-color);
 }
 
-.package-details-info .icon {
-  position: absolute;
-  left: -24px;
-  width: 16px;
-  height: 16px;
-  margin-top: 3px;
+.package-readme table {
+    margin-bottom: 1rem;
 }
 
-.display-package .expandable-section h2 button {
-    color: var(--text-strong);
-    text-decoration: none;
+.package-readme th,
+.package-readme td {
+    padding: 6px 13px;
+    border: 1px solid var(--bs-border-color);
 }
 
-.display-package .expandable-section h2 .ms-Icon {
-    font-size: 0.6em;
-    position: relative;
-    top: -2px;
-    margin-right: 5px;
+/* Sections that expand and collapse are <details>. */
+.expandable-section > summary {
+    list-style: none;
+    cursor: pointer;
 }
 
-.display-package .package-used-by td, .display-package .package-used-by th {
-  padding: 8px 8px 8px 15px;
+.expandable-section > summary::-webkit-details-marker {
+    display: none;
 }
 
-.display-package .package-used-by thead tr {
-  border-bottom: 2px solid var(--rule);
+.expandable-section > summary h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 28px;
+    margin-bottom: 16px;
+    color: var(--bs-emphasis-color);
 }
 
-.display-package .package-used-by tbody tr {
-  border-bottom: 1px solid var(--rule);
+.expandable-section > summary:hover h2 span {
+    text-decoration: underline;
 }
 
-.display-package .package-used-by td div {
-  margin-top: 4px;
+.expandable-section > summary .icon {
+    font-size: .6em;
+    transition: transform .15s;
 }
 
-.display-package .package-used-by td span {
-  margin-left: 3px;
+.expandable-section[open] > summary .icon {
+    transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .expandable-section > summary .icon {
+        transition: none;
+    }
+}
+
+.package-used-by td div {
+    margin-top: 4px;
+    color: var(--bs-secondary-color);
+}
+
+.package-used-by td span {
+    margin-left: 3px;
 }
 
 .dependency-groups h4 {
@@ -475,201 +562,72 @@ h4 {
 }
 
 .dependency-groups h4 > span {
-    border-bottom: 1px solid var(--rule);
-    margin-bottom: 3px;
+    border-bottom: 1px solid var(--bs-border-color);
 }
 
 .dependency-group li span {
-    color: var(--text-muted);
+    color: var(--bs-secondary-color);
 }
 
-.display-package .version-list .ms-Icon {
-    position: relative;
-    top: 2px;
+/* The versions after the first few show after "Show more". */
+.version-list tr.more {
+    display: none;
+}
+
+.version-list.show-all tr.more {
+    display: table-row;
+}
+
+.version-list tr.selected-version {
+    --bs-table-bg-state: var(--selected);
+}
+
+.version-list .link-button .icon {
     margin-right: 5px;
 }
 
-/* Dark theme for Bootstrap's components
+/* Accounts and management, which only signed-in users see
 -------------------------------------------------- */
-@media (prefers-color-scheme: dark) {
-    hr {
-        border-top-color: var(--rule);
-    }
-
-    .text-muted,
-    h1 small,
-    .dropdown-header {
-        color: var(--text-muted);
-    }
-
-    .form-control,
-    .btn-default:where(:not(.btn-warning)),
-    .dropdown-menu,
-    .pager li > a,
-    .pager li > span {
-        color: var(--text);
-        background-color: var(--surface);
-        border-color: var(--border);
-    }
-
-    .form-control::placeholder {
-        color: var(--text-muted);
-    }
-
-    .btn-default:where(:not(.btn-warning)):hover,
-    .btn-default:where(:not(.btn-warning)):focus,
-    .btn-default:where(:not(.btn-warning)):active,
-    .btn-default:where(:not(.btn-warning)).active,
-    .open > .dropdown-toggle.btn-default,
-    .pager li > a:hover,
-    .pager li > a:focus {
-        color: var(--text-strong);
-        background-color: var(--surface-hover);
-        border-color: var(--border);
-    }
-
-    .pager .disabled > a,
-    .pager .disabled > a:hover,
-    .pager .disabled > span {
-        color: var(--text-muted);
-        background-color: var(--surface);
-    }
-
-    .dropdown-menu > li > a {
-        color: var(--text);
-    }
-
-    .dropdown-menu > li > a:hover,
-    .dropdown-menu > li > a:focus {
-        color: var(--text-strong);
-        background-color: var(--surface-hover);
-    }
-
-    .dropdown-menu .divider {
-        background-color: var(--border);
-    }
-
-    .table > thead > tr > th,
-    .table > tbody > tr > td,
-    .table > tbody > tr > th {
-        border-color: var(--rule);
-    }
-
-    /* Highlights the version being viewed in the package's version list. */
-    .bg-info {
-        background-color: #1d3a2c;
-    }
-
-    .alert-danger {
-        color: #f1b0b0;
-        background-color: #3d1f1f;
-        border-color: #5c2b2b;
-    }
-
-    /* Code in package readmes and the website's own pages. */
-    code {
-        color: #f08cab;
-        background-color: var(--surface);
-    }
-
-    pre {
-        color: var(--text);
-        background-color: var(--surface);
-        border-color: var(--border);
-    }
-
-    pre code {
-        color: inherit;
-        background-color: transparent;
-    }
-
-    blockquote {
-        border-left-color: var(--border);
-    }
-
-    /* The GitHub logo is black. */
-    .package-details-info img[src$="github-32x32.png"] {
-        filter: invert(1);
-    }
-}
-
-/* Accounts
--------------------------------------------------- */
-.btn-brand,
-.btn-brand:hover,
-.btn-brand:focus {
-    color: #fff;
-    background-color: var(--brand);
-    border-color: var(--brand-dark);
-}
-
-.btn-brand:hover,
-.btn-brand:focus {
-    background-color: var(--brand-dark);
-}
-
-.btn-brand .ms-Icon,
-.account-nav .ms-Icon {
-    position: relative;
-    top: 2px;
-}
-
-.navbar-inverse .account-nav > li > a {
-    font-weight: 100;
-    color: #e3f1eb;
-}
-
-.account-page section {
+.account-page section,
+.admin-page section {
     margin-bottom: 40px;
 }
 
-.account-page h1 small {
-    margin-left: 10px;
-    font-size: 45%;
-}
-
-.account-page .form-inline .form-group {
-    margin-right: 5px;
-}
-
-.account-table {
+.account-table,
+.settings-table,
+.new-apikey {
     max-width: 900px;
 }
 
 .new-apikey {
     margin-top: 20px;
-    max-width: 900px;
 }
 
-.new-apikey .tabbed-info .content .script {
-    padding-top: 8px;
-    word-break: break-all;
-}
-
-.new-apikey .tabbed-info {
+.new-apikey .command-box {
     margin-bottom: 15px;
 }
 
-/* Management, which only signed-in users who may manage see. */
+.new-apikey .script {
+    word-break: break-all;
+}
 
 .manage-package h3 {
-    font-size: 18px;
     margin-top: 20px;
+    font-size: 18px;
 }
 
-.manage-package .table td {
+.manage-package .table td,
+.admin-table td {
     vertical-align: middle;
-}
-
-.manage-package .form-inline .form-group,
-.upload-packages .form-inline .form-group,
-.admin-page .form-inline .form-group {
-    margin-right: 5px;
 }
 
 .manage-package .link-button + .link-button,
 .admin-page .link-button + .link-button {
     margin-left: 10px;
+}
+
+.admin-table select {
+    width: auto;
 }
 
 .upload-packages {
@@ -678,22 +636,6 @@ h4 {
 
 .upload-results {
     margin-top: 15px;
-}
-
-.admin-page section {
-    margin-bottom: 40px;
-}
-
-.admin-table td {
-    vertical-align: middle;
-}
-
-.admin-table select {
-    width: auto;
-}
-
-.settings-table {
-    max-width: 900px;
 }
 
 .settings-table th {

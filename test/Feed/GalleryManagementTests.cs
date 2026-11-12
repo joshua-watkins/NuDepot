@@ -1,14 +1,19 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NuDepot.Core;
+using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Tests.Support;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -24,6 +29,7 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
     private ITestOutputHelper Output { get; } = output;
     private List<WebApplication> Apps { get; } = [];
     private List<IDisposable> Disposables { get; } = [];
+    private Dictionary<HttpClient, CookieContainer> Cookies { get; } = [];
 
     public async ValueTask DisposeAsync()
     {
@@ -183,7 +189,158 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("admin")).StatusCode);
     }
 
-    private async Task<(WebApplication App, Uri Address)> StartAsync(Dictionary<string, string?>? settings = null, bool users = true)
+    [Theory]
+    [InlineData("/packages/Contoso.Utils", "/packages/Contoso.Utils")]
+    [InlineData("/", "/")]
+    // Signing in never sends the visitor to another site.
+    [InlineData("https://phishing.example/", "/")]
+    [InlineData("//phishing.example/", "/")]
+    [InlineData("/\\phishing.example/", "/")]
+    [InlineData("javascript:alert(1)", "/")]
+    [InlineData(null, "/")]
+    public async Task SigningInOnlyReturnsToThisSite(string? returnUrl, string expected)
+    {
+        (_, Uri address) = await StartAsync();
+        HttpClient visitor = CreateBrowser(address);
+
+        string url = returnUrl == null ? "account/signin" : "account/signin?returnUrl=" + Uri.EscapeDataString(returnUrl);
+        string page = await GetPageAsync(visitor, url);
+
+        Assert.Contains("id=\"signin-page\"", page);
+        Assert.Equal(expected, GetSetting(page, "account-settings", "returnUrl"));
+    }
+
+    [Fact]
+    public async Task TheAccountPageNeedsASignedInUser()
+    {
+        (_, Uri address) = await StartAsync();
+        HttpClient visitor = CreateBrowser(address);
+
+        using HttpResponseMessage anonymous = await visitor.GetAsync("account?tab=keys");
+
+        Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
+        Assert.Equal("/account/signin?returnUrl=" + Uri.EscapeDataString("/account?tab=keys"), anonymous.Headers.Location!.OriginalString);
+
+        HttpClient alice = await SignUpAsync(address, "alice");
+        string page = await GetPageAsync(alice, "account");
+        Assert.Contains("id=\"account-page\"", page);
+        Assert.Contains("<span id=\"account-name\">alice</span>", page);
+    }
+
+    [Fact]
+    public async Task AFeedClosedToVisitorsAsksThemToSignIn()
+    {
+        (WebApplication app, Uri address) = await StartAsync(new() { ["Feed:Authorization:Users:AnonymousReads"] = "false" });
+        await AddPackageAsync(app, "Contoso.Utils", "1.0.0");
+
+        using HttpResponseMessage response = await CreateBrowser(address).GetAsync("packages/Contoso.Utils");
+        string page = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Contains("href=\"/account/signin?returnUrl=" + Uri.EscapeDataString("/packages/Contoso.Utils") + "\"", page);
+
+        // Once they sign in, they can read it.
+        HttpClient alice = await SignUpAsync(address, "alice");
+        Assert.Contains("Contoso.Utils", await GetPageAsync(alice, "packages/Contoso.Utils"));
+    }
+
+    // A setting from one of the page's settings scripts.
+    private static string? GetSetting(string page, string id, string name)
+    {
+        Match settings = Regex.Match(page, $"<script type=\"application/json\" id=\"{id}\">(.*?)</script>");
+        Assert.True(settings.Success, page);
+
+        using JsonDocument document = JsonDocument.Parse(settings.Groups[1].Value);
+        return document.RootElement
+            .EnumerateObject()
+            .Single(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
+            .Value
+            .GetString();
+    }
+
+    [Fact]
+    public async Task PageLoadsKeepTheUserSignedIn()
+    {
+        TestClock clock = new();
+        (WebApplication app, Uri address) = await StartAsync(clock: clock);
+        await AddPackageAsync(app, "Contoso.Utils", "1.0.0");
+        HttpClient alice = await SignUpAsync(address, "alice");
+        string[] files = await GetPageFilesAsync(alice, address, "packages/Contoso.Utils");
+        Assert.True(files.Length > 10, string.Join(", ", files));
+
+        // Each load sends the page and its files at once, with the cookie the browser has: the gallery renders the
+        // page with its own requests to the feed, and every file request authenticates too. The token is replaced
+        // during the first load after 15 minutes.
+        for (int load = 0; load < 3; load++)
+        {
+            clock.Advance(TimeSpan.FromMinutes(16));
+            await LoadPageAsync(alice, "packages/Contoso.Utils", files);
+        }
+
+        // A load whose responses never arrived, like when Alice leaves the page while it loads, replaced the token.
+        clock.Advance(TimeSpan.FromMinutes(16));
+        // Its client drops the new cookie, so it never uses it either.
+        using (HttpClient lost = new(new HttpClientHandler { UseCookies = false }) { BaseAddress = address })
+        {
+            lost.DefaultRequestHeaders.Add("Cookie", Cookies[alice].GetCookieHeader(address));
+            await Task.WhenAll(files.Select(file => lost.GetAsync(file)));
+        }
+
+        // Her next load, long after, still has the old cookie, and keeps her signed in.
+        clock.Advance(TimeSpan.FromMinutes(5));
+        await LoadPageAsync(alice, "packages/Contoso.Utils", files);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        await LoadPageAsync(alice, "packages/Contoso.Utils", files);
+        clock.Advance(TimeSpan.FromMinutes(16));
+        await LoadPageAsync(alice, "packages/Contoso.Utils", files);
+    }
+
+    // Loads a page and its files at once, like a browser, and checks the page is still shown to its signed-in Admin.
+    private static async Task LoadPageAsync(HttpClient browser, string url, string[] files)
+    {
+        Task<string> page = GetPageAsync(browser, url);
+        HttpResponseMessage[] responses = await Task.WhenAll(files.Select(file => browser.GetAsync(file)));
+        foreach (HttpResponseMessage response in responses)
+        {
+            Assert.True(response.IsSuccessStatusCode, $"{response.RequestMessage!.RequestUri}: {(int)response.StatusCode}");
+            response.Dispose();
+        }
+
+        Assert.Contains("href=\"/admin\"", await page);
+        AccountState account = await browser.GetFromJsonAsync<AccountState>("api/account") ?? new();
+        Assert.True(account.SignedIn);
+    }
+
+    // The gallery's files a page loads: its stylesheets and scripts, and the icons its stylesheet uses.
+    private static async Task<string[]> GetPageFilesAsync(HttpClient browser, Uri address, string url)
+    {
+        string html = await GetPageAsync(browser, url);
+        List<Uri> files = [.. Regex
+            .Matches(html, "(?:src|href)=\"(/_content/[^\"]+)\"")
+            .Select(m => new Uri(address, WebUtility.HtmlDecode(m.Groups[1].Value)))];
+
+        foreach (Uri stylesheet in files.Where(f => f.AbsolutePath.EndsWith("site.css", StringComparison.Ordinal)).ToList())
+        {
+            string css = await browser.GetStringAsync(stylesheet);
+            files.AddRange(Regex
+                .Matches(css, "url\\(\"([^\"]+)\"\\)")
+                .Select(m => new Uri(stylesheet, m.Groups[1].Value)));
+        }
+
+        return [.. files.Select(f => f.PathAndQuery).Distinct()];
+    }
+
+    private sealed class AccountState
+    {
+        public bool SignedIn { get; set; }
+    }
+
+    private sealed class ClockTime(TestClock clock) : SystemTime
+    {
+        public override DateTime UtcNow => clock.GetUtcNow().UtcDateTime;
+    }
+
+    private async Task<(WebApplication App, Uri Address)> StartAsync(Dictionary<string, string?>? settings = null, bool users = true, TestClock? clock = null)
     {
         string testId = Guid.NewGuid().ToString("N");
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -209,6 +366,13 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
         if (users)
             nuDepot.AddUsers();
         nuDepot.AddGallery();
+
+        // A clock the test moves forward, for the sessions and their cookies.
+        if (clock != null)
+        {
+            builder.Services.AddSingleton<SystemTime>(new ClockTime(clock));
+            builder.Services.Configure<CookieAuthenticationOptions>(NuDepotAuthenticationSchemes.User, options => options.TimeProvider = clock);
+        }
 
         WebApplication app = builder.Build();
         Core.Hosting.NuDepotApplicationBuilder pipeline = app
@@ -238,7 +402,9 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
 
     private HttpClient CreateBrowser(Uri address)
     {
-        HttpClient browser = new(new HttpClientHandler { CookieContainer = new CookieContainer(), AllowAutoRedirect = false }) { BaseAddress = address };
+        CookieContainer cookies = new();
+        HttpClient browser = new(new HttpClientHandler { CookieContainer = cookies, AllowAutoRedirect = false }) { BaseAddress = address };
+        Cookies[browser] = cookies;
         Disposables.Add(browser);
         return browser;
     }

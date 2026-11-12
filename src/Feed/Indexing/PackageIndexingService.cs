@@ -8,6 +8,7 @@ using NuDepot.Feed.Search;
 using NuDepot.Feed.Signing;
 using NuDepot.Feed.Storage;
 using NuGet.Packaging;
+using NuGet.Versioning;
 
 namespace NuDepot.Feed.Indexing;
 
@@ -21,9 +22,10 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="signing">Signs packages with the feed's repository certificate.</param>
 /// <param name="url">Generates the feed's URLs.</param>
 /// <param name="time">The current time.</param>
+/// <param name="locks">The packages' locks, so a version is pushed once at a time.</param>
 /// <param name="options">The feed's options.</param>
 /// <param name="logger">The logger.</param>
-public class PackageIndexingService(IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, IOptionsSnapshot<FeedOptions> options, ILogger<PackageIndexingService> logger) : IPackageIndexingService
+public class PackageIndexingService(IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, ILogger<PackageIndexingService> logger) : IPackageIndexingService
 {
     private IPackageDatabase Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;
@@ -32,6 +34,7 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
     private IRepositorySigningService Signing { get; } = signing;
     private IUrlGenerator Url { get; } = url;
     private SystemTime Time { get; } = time;
+    private PackageLocks Locks { get; } = locks;
     private IOptionsSnapshot<FeedOptions> Options { get; } = options;
     private ILogger<PackageIndexingService> Logger { get; } = logger;
 
@@ -42,63 +45,57 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
     /// <inheritdoc />
     public async Task<PackageIndexingResult> IndexAsync(Stream packageStream, bool allowOverwrite, CancellationToken cancellationToken)
     {
-        // Try to extract all the necessary information from the package.
-        Package package;
-        Stream nuspecStream;
-        Stream? readmeStream;
-        Stream? iconStream;
-        Stream? licenseStream;
+        using PackageContents? contents = await ReadOrNullAsync(packageStream, cancellationToken);
+        if (contents == null)
+            return PackageIndexingResult.InvalidPackage;
 
-        try
+        return await IndexWithLockAsync(packageStream, contents, allowOverwrite, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<PackageIndexingResult> MirrorAsync(Stream packageStream, string id, NuGetVersion version, CancellationToken cancellationToken)
+    {
+        using PackageContents? contents = await ReadOrNullAsync(packageStream, cancellationToken);
+        if (contents == null)
+            return PackageIndexingResult.InvalidPackage;
+
+        // A mirror can only add the package it was asked for, not another ID or version.
+        Package package = contents.Package;
+        if (!string.Equals(package.Id, id, StringComparison.OrdinalIgnoreCase) || package.Version != version)
         {
-            using (PackageArchiveReader packageReader = new(packageStream, leaveStreamOpen: true))
-            {
-                package = packageReader.GetPackageMetadata();
-                package.PublishedAt = Time.UtcNow;
-
-                nuspecStream = await packageReader.GetNuspecAsync(cancellationToken);
-                nuspecStream = await nuspecStream.AsTemporaryFileStreamAsync(cancellationToken);
-
-                if (package.HasReadme)
-                {
-                    readmeStream = await packageReader.GetReadmeAsync(cancellationToken);
-                    readmeStream = await readmeStream.AsTemporaryFileStreamAsync(cancellationToken);
-                }
-                else
-                {
-                    readmeStream = null;
-                }
-
-                if (package.HasEmbeddedIcon)
-                {
-                    iconStream = await packageReader.GetIconAsync(cancellationToken);
-                    iconStream = await iconStream.AsTemporaryFileStreamAsync(cancellationToken);
-                }
-                else
-                {
-                    iconStream = null;
-                }
-
-                if (package.HasEmbeddedLicense)
-                {
-                    Stream license = await packageReader.GetLicenseAsync(cancellationToken)
-                        ?? throw new InvalidOperationException("Package does not have a license file!");
-                    licenseStream = await license.AsTemporaryFileStreamAsync(cancellationToken);
-                }
-                else
-                {
-                    licenseStream = null;
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            Logger.LogError(e, "Uploaded package is invalid");
-
+            Logger.LogWarning(
+                "A mirror was asked for package {PackageId} {PackageVersion}, but sent {MirroredId} {MirroredVersion}, so it isn't added",
+                id,
+                version,
+                package.Id,
+                package.NormalizedVersionString);
             return PackageIndexingResult.InvalidPackage;
         }
 
-        // The package is well-formed. Ensure this is a new package.
+        package.IsMirrored = true;
+        return await IndexWithLockAsync(packageStream, contents, allowOverwrite: false, cancellationToken);
+    }
+
+    private async Task<PackageIndexingResult> IndexWithLockAsync(Stream packageStream, PackageContents contents, bool allowOverwrite, CancellationToken cancellationToken)
+    {
+        // Pushes of the same version wait for each other, so the second finds the first's package.
+        Package package = contents.Package;
+        SemaphoreSlim packageLock = Locks.For(package.Id, package.Version);
+        await packageLock.WaitAsync(cancellationToken);
+        try
+        {
+            return await IndexAsync(packageStream, contents, allowOverwrite, cancellationToken);
+        }
+        finally
+        {
+            packageLock.Release();
+        }
+    }
+
+    private async Task<PackageIndexingResult> IndexAsync(Stream packageStream, PackageContents contents, bool allowOverwrite, CancellationToken cancellationToken)
+    {
+        Package package = contents.Package;
+
         if (await Packages.ExistsAsync(package.Id, package.Version, cancellationToken))
         {
             if (!Options.Value.AllowPackageOverwrites || !allowOverwrite)
@@ -108,9 +105,13 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
             await Storage.DeleteAsync(package.Id, package.Version, cancellationToken);
             await Catalog.AddPackageDeleteAsync(package.Id, package.Version, cancellationToken);
         }
+        else
+        {
+            // The database decides which packages the feed has, so any files already stored for this version are
+            // left from a push that failed before it was recorded.
+            await Storage.DeleteAsync(package.Id, package.Version, cancellationToken);
+        }
 
-        // TODO: Add more package validations
-        // TODO: Call PackageArchiveReader.ValidatePackageEntriesAsync
         Logger.LogInformation(
             "Validated package {PackageId} {PackageVersion}, persisting content to storage...",
             package.Id,
@@ -119,10 +120,11 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
         RepositorySigningResult signing = Signing.IsEnabled
             ? await Signing.SignAsync(packageStream, Url.GetServiceIndexUrl(), cancellationToken)
             : RepositorySigningResult.Unsigned;
-        Stream storedPackageStream = signing.SignedPackage ?? packageStream;
 
-        try
+        using (signing.SignedPackage)
         {
+            Stream storedPackageStream = signing.SignedPackage ?? packageStream;
+
             // Record the repository signature, this server's or another repository's, like nuget.org's.
             package.IsRepositorySigned = signing.IsRepositorySigned;
             RepositorySignatureDetails? signature = await Signing.GetRepositorySignatureAsync(storedPackageStream, cancellationToken);
@@ -134,31 +136,28 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
             (package.PackageHash, package.PackageSize) = await storedPackageStream.ComputeSha512Async(cancellationToken);
             storedPackageStream.Position = 0;
 
-            await Storage.SavePackageContentAsync(
-                package,
-                storedPackageStream,
-                nuspecStream,
-                readmeStream,
-                iconStream,
-                licenseStream,
-                cancellationToken);
-        }
-        catch (Exception e)
-        {
-            // This may happen due to concurrent pushes.
-            // TODO: Make IPackageStorageService.SavePackageContentAsync return a result enum so this
-            // can be properly handled.
-            Logger.LogError(
-                e,
-                "Failed to persist package {PackageId} {PackageVersion} content to storage",
-                package.Id,
-                package.NormalizedVersionString);
+            try
+            {
+                await Storage.SavePackageContentAsync(
+                    package,
+                    storedPackageStream,
+                    contents.Nuspec,
+                    contents.Readme,
+                    contents.Icon,
+                    contents.License,
+                    cancellationToken);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError(
+                    e,
+                    "Failed to persist package {PackageId} {PackageVersion} content to storage",
+                    package.Id,
+                    package.NormalizedVersionString);
 
-            throw;
-        }
-        finally
-        {
-            signing.SignedPackage?.Dispose();
+                await DeleteOrphanedContentAsync(package);
+                throw;
+            }
         }
 
         Logger.LogInformation(
@@ -166,9 +165,20 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
             package.Id,
             package.NormalizedVersionString);
 
-        PackageAddResult result = await Packages.AddAsync(package, cancellationToken);
+        PackageAddResult result;
+        try
+        {
+            result = await Packages.AddAsync(package, cancellationToken);
+        }
+        catch
+        {
+            await DeleteOrphanedContentAsync(package);
+            throw;
+        }
+
         if (result == PackageAddResult.PackageAlreadyExists)
         {
+            // Another process added it. Its files are the same as these, or this push's files lost to its.
             Logger.LogWarning(
                 "Package {Id} {Version} metadata already exists in database",
                 package.Id,
@@ -199,5 +209,93 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
             package.NormalizedVersionString);
 
         return PackageIndexingResult.Success;
+    }
+
+    // Reads what the feed stores from a package, or null if it isn't a valid package. The files are copied, so they
+    // can be stored after the package is signed.
+    private async Task<PackageContents?> ReadOrNullAsync(Stream packageStream, CancellationToken cancellationToken)
+    {
+        PackageContents? contents = null;
+        try
+        {
+            using PackageArchiveReader packageReader = new(packageStream, leaveStreamOpen: true);
+
+            // Entries can't leave the package's folder when it's extracted, as NuGet does on restore.
+            await packageReader.ValidatePackageEntriesAsync(cancellationToken);
+
+            Package package = packageReader.GetPackageMetadata();
+            package.PublishedAt = Time.UtcNow;
+            contents = new PackageContents(package);
+
+            contents.Nuspec = await CopyAsync(await packageReader.GetNuspecAsync(cancellationToken));
+
+            if (package.HasReadme)
+                contents.Readme = await CopyAsync(await packageReader.GetReadmeAsync(cancellationToken));
+
+            if (package.HasEmbeddedIcon)
+                contents.Icon = await CopyAsync(await packageReader.GetIconAsync(cancellationToken));
+
+            if (package.HasEmbeddedLicense)
+            {
+                Stream license = await packageReader.GetLicenseAsync(cancellationToken)
+                    ?? throw new InvalidDataException("The package's license file is missing.");
+                contents.License = await CopyAsync(license);
+            }
+
+            return contents;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            Logger.LogError(e, "Uploaded package is invalid");
+
+            contents?.Dispose();
+            return null;
+        }
+        catch
+        {
+            contents?.Dispose();
+            throw;
+        }
+
+        async Task<Stream> CopyAsync(Stream entry)
+        {
+            using (entry)
+                return await entry.AsTemporaryFileStreamAsync(cancellationToken);
+        }
+    }
+
+    // Removes what a failed push stored, even if the push was canceled, so the version can be pushed again.
+    private async Task DeleteOrphanedContentAsync(Package package)
+    {
+        try
+        {
+            await Storage.DeleteAsync(package.Id, package.Version, CancellationToken.None);
+        }
+        catch (Exception e)
+        {
+            Logger.LogWarning(
+                e,
+                "Failed to delete the stored content of package {PackageId} {PackageVersion} after its push failed",
+                package.Id,
+                package.NormalizedVersionString);
+        }
+    }
+
+    // A package's metadata and the files the feed serves from it, in temporary files that are deleted when they're disposed.
+    private sealed class PackageContents(Package package) : IDisposable
+    {
+        public Package Package { get; } = package;
+        public Stream Nuspec { get; set; } = Stream.Null;
+        public Stream? Readme { get; set; }
+        public Stream? Icon { get; set; }
+        public Stream? License { get; set; }
+
+        public void Dispose()
+        {
+            Nuspec.Dispose();
+            Readme?.Dispose();
+            Icon?.Dispose();
+            License?.Dispose();
+        }
     }
 }

@@ -3,9 +3,9 @@
 (() => {
     'use strict';
 
-    const settings = window.nudepotManage ?? {};
+    const { settings: readSettings, request, showError, busy } = window.nudepot;
+    const settings = readSettings('manage-settings');
     const base = settings.pathBase ?? '';
-    const { request, showError, busy } = window.nudepot;
     const encode = encodeURIComponent;
 
     // Buttons that call one of the feed's endpoints, like unlisting a version, then show the page again.
@@ -78,7 +78,7 @@
                 busy(remove, request('DELETE', url).then(() => window.location.reload()));
             });
             const actions = row.insertCell();
-            actions.className = 'text-right';
+            actions.className = 'text-end';
             actions.appendChild(remove);
         }
     };

@@ -229,6 +229,7 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
     /// <param name="cancellationToken">A token to cancel the task.</param>
     public async Task RunMigrationsAsync(CancellationToken cancellationToken)
     {
+        bool isSqliteFile = false;
         if (Database.IsSqlite())
         {
             // SQLite creates the database file, but not the folder it lives in.
@@ -236,6 +237,7 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
             string dataSource = connectionString.DataSource;
             if (!string.IsNullOrEmpty(dataSource) && dataSource != ":memory:" && connectionString.Mode != SqliteOpenMode.Memory)
             {
+                isSqliteFile = true;
                 string? directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
                 if (!string.IsNullOrEmpty(directory))
                     Directory.CreateDirectory(directory);
@@ -243,6 +245,11 @@ public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContex
         }
 
         await Database.MigrateAsync(cancellationToken);
+
+        // Write-ahead logging lets downloads and searches read while a push writes, instead of waiting for it. The
+        // database file remembers it, so every connection uses it.
+        if (isSqliteFile)
+            await Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
     }
 
     /// <inheritdoc />

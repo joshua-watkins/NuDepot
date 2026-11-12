@@ -49,11 +49,19 @@ internal sealed class UserCookieEvents : CookieAuthenticationEvents
 
     /// <summary>
     /// The session's user is loaded with each request, since their name and role can change, and
-    /// their account can be deleted. Each request also replaces the cookie's token, and the cookie
-    /// lasts another year, so a user who keeps using the feed stays signed in.
+    /// their account can be deleted. Every few minutes, a request also replaces the cookie's token, and
+    /// the cookie lasts another year, so a user who keeps using the feed stays signed in.
     /// </summary>
     public override async Task ValidatePrincipal(CookieValidatePrincipalContext context)
     {
+        // The browser sends the cookie with requests that other sites on the same domain, like another port or
+        // subdomain, make it send. They can't change anything: those requests continue without the user.
+        if (IsFromAnotherOrigin(context.HttpContext.Request))
+        {
+            context.RejectPrincipal();
+            return;
+        }
+
         (int Key, string Token)? session = GetSession(context.Properties);
         SessionValidation result = session == null
             ? SessionValidation.SignedOut
@@ -78,5 +86,27 @@ internal sealed class UserCookieEvents : CookieAuthenticationEvents
             context.Properties.ExpiresUtc = now + UserService.SessionLifetime;
             context.ShouldRenew = true;
         }
+    }
+
+    /// <summary>
+    /// Whether a request that may change something was made by a page from another origin. Browsers say where
+    /// requests come from in Sec-Fetch-Site, or at least in Origin. Requests without either aren't from browsers.
+    /// </summary>
+    internal static bool IsFromAnotherOrigin(HttpRequest request)
+    {
+        string method = request.Method;
+        if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method) || HttpMethods.IsTrace(method))
+            return false;
+
+        string? site = request.Headers["Sec-Fetch-Site"];
+        if (!string.IsNullOrEmpty(site))
+            return site is not ("same-origin" or "none");
+
+        string? origin = request.Headers.Origin;
+        if (string.IsNullOrEmpty(origin))
+            return false;
+
+        string expected = request.Scheme + "://" + request.Host.ToUriComponent();
+        return !string.Equals(origin, expected, StringComparison.OrdinalIgnoreCase);
     }
 }

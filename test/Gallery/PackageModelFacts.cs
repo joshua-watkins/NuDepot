@@ -330,6 +330,70 @@ public class PackageModelFacts
         }
     }
 
+    [Theory]
+    [InlineData("<script>alert(1)</script>")]
+    [InlineData("<img src=x onerror=alert(1)>")]
+    [InlineData("<iframe src=\"https://evil.test\"></iframe>")]
+    public void ReadmeHtmlIsShownAsText(string markdown)
+    {
+        string html = PackageModel.RenderReadme(markdown);
+
+        Assert.DoesNotContain("<script", html);
+        Assert.DoesNotContain("<img", html);
+        Assert.DoesNotContain("<iframe", html);
+        Assert.Contains("&lt;", html);
+    }
+
+    [Theory]
+    [InlineData("[click](javascript:alert(1))")]
+    [InlineData("[click]( JaVaScRiPt:alert(1))")]
+    [InlineData("[click](data:text/html,<script>alert(1)</script>)")]
+    [InlineData("[click](vbscript:msgbox)")]
+    [InlineData("![image](javascript:alert(1))")]
+    [InlineData("[click][ref]\n\n[ref]: javascript:alert(1)")]
+    [InlineData("<javascript:alert(1)>")]
+    public void ReadmeDropsScriptLinks(string markdown)
+    {
+        string html = PackageModel.RenderReadme(markdown);
+
+        Assert.DoesNotContain("javascript:", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("vbscript:", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("data:", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("[docs](https://contoso.test/docs)", "href=\"https://contoso.test/docs\"")]
+    [InlineData("[docs](docs/readme.md)", "href=\"docs/readme.md\"")]
+    [InlineData("[anchor](#usage)", "href=\"#usage\"")]
+    [InlineData("<https://contoso.test>", "href=\"https://contoso.test\"")]
+    [InlineData("<someone@contoso.test>", "href=\"mailto:someone@contoso.test\"")]
+    public void ReadmeKeepsSafeLinks(string markdown, string expected)
+    {
+        Assert.Contains(expected, PackageModel.RenderReadme(markdown));
+    }
+
+    [Theory]
+    [InlineData("javascript:alert(1)", null)]
+    [InlineData("data:text/html,hi", null)]
+    [InlineData("contoso.test", null)]
+    [InlineData("", null)]
+    [InlineData("https://contoso.test/project", "https://contoso.test/project")]
+    [InlineData("http://contoso.test/", "http://contoso.test/")]
+    public async Task OnlyLinksToWebPages(string url, string? expected)
+    {
+        NuDepotPackageMetadata package = CreatePackage("1.0.0");
+        package.ProjectUrl = url;
+        package.RepositoryUrl = url;
+        package.LicenseUrl = url;
+        SetupPackages(package);
+
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
+
+        Assert.Equal(expected, Target.ProjectUrl);
+        Assert.Equal(expected, Target.RepositoryUrl);
+        Assert.Equal(expected, Target.LicenseUrl);
+    }
+
     private void SetupPackages(params NuDepotPackageMetadata[] packages)
     {
         Packages

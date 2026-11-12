@@ -26,7 +26,7 @@ public class DownloadsImporter(NuDepotContext context, IPackageDownloadsSource d
     public async Task ImportAsync(CancellationToken cancellationToken)
     {
         Dictionary<string, Dictionary<string, long>> packageDownloads = await DownloadsSource.GetPackageDownloadsAsync();
-        int packages = await Context.Packages.CountAsync();
+        int packages = await Context.Packages.CountAsync(cancellationToken);
         int batches = packages / BatchSize + 1;
 
         for (int batch = 0; batch < batches; batch++)

@@ -10,7 +10,7 @@ namespace NuDepot.Gallery.Slices;
 public record LayoutModel(string Title, string PathBase, WebsitePage ActivePage = WebsitePage.None, string? SearchQuery = null)
 {
     /// <summary>
-    /// The URL of one of the website's files, like "images/github-32x32.png".
+    /// The URL of one of the website's files, like "css/site.css".
     /// </summary>
     public string Content(string path) => $"{PathBase}{WebsiteFiles.RequestPath}/{path}";
 }

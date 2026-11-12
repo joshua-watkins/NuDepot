@@ -70,8 +70,35 @@ public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixt
     [Fact]
     public async Task GetRegistrationPageDeprecated()
     {
-        // TODO
-        await Task.Yield();
+        RegistrationPageResponse result = await Target.GetRegistrationPageAsync(TestData.RegistrationPageDeprecatedUrl);
+
+        Assert.NotNull(result.ItemsOrNull);
+        Assert.Equal(2, result.ItemsOrNull.Count);
+
+        // With every part of a deprecation, and a vulnerability.
+        Models.PackageMetadata first = result.ItemsOrNull[0].PackageMetadata;
+        PackageDeprecation deprecation = Assert.IsType<PackageDeprecation>(first.Deprecation);
+        Assert.Equal(["Legacy", "CriticalBugs"], deprecation.Reasons);
+        Assert.Equal("Use Replacement.Package instead.", deprecation.Message);
+        Assert.EndsWith("deprecated.package.1.0.0.json#deprecation", deprecation.CatalogLeafUrl);
+        AlternatePackage alternate = Assert.IsType<AlternatePackage>(deprecation.AlternatePackage);
+        Assert.Equal("Replacement.Package", alternate.Id);
+        Assert.Equal("[2.0.0, )", alternate.Range);
+        Assert.Equal("https://test.example/v3/metadata/replacement.package/index.json", alternate.Url);
+        PackageVulnerability vulnerability = Assert.Single(first.Vulnerabilities!);
+        Assert.Equal("https://test.example/advisories/1", vulnerability.AdvisoryUrl);
+        Assert.Equal("2", vulnerability.Severity);
+
+        // With only its reasons.
+        Models.PackageMetadata second = result.ItemsOrNull[1].PackageMetadata;
+        Assert.Equal(["Other"], Assert.IsType<PackageDeprecation>(second.Deprecation).Reasons);
+        Assert.Null(second.Deprecation.Message);
+        Assert.Null(second.Deprecation.AlternatePackage);
+        Assert.Null(second.Vulnerabilities);
+
+        // Versions that aren't deprecated have none.
+        RegistrationPageResponse other = await Target.GetRegistrationPageAsync(TestData.RegistrationPageUrl);
+        Assert.All(other.ItemsOrNull!, item => Assert.Null(item.PackageMetadata.Deprecation));
     }
 
     [Fact]

@@ -22,6 +22,12 @@ public class ValidateFeedOptions : IValidateOptions<FeedOptions>
 
         ValidateAuthorization(options, failures);
 
+        for (int i = 0; i < options.TrustedProxies.Count; i++)
+        {
+            if (!ConfigureFeedOptions.IsValidProxy(options.TrustedProxies[i]))
+                failures.Add($"'{Field(nameof(FeedOptions.TrustedProxies), i.ToString(System.Globalization.CultureInfo.InvariantCulture))}' isn't an IP address, like \"203.0.113.7\", or a network, like \"203.0.113.0/24\".");
+        }
+
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 

@@ -85,6 +85,7 @@ internal static class PackagePublishEndpoints
             {
                 SymbolIndexingResult.InvalidSymbolPackage => StatusCodes.Status400BadRequest,
                 SymbolIndexingResult.PackageNotFound => StatusCodes.Status404NotFound,
+                SymbolIndexingResult.SymbolsConflict => StatusCodes.Status409Conflict,
                 _ => StatusCodes.Status201Created,
             });
         }
@@ -99,12 +100,13 @@ internal static class PackagePublishEndpoints
     }
 
     // GET api/download/symbols/{file}/{key}/{file2}
-    public static async Task<IResult> DownloadSymbolsAsync(string file, string key, ISymbolStorageService storage)
+    public static async Task<IResult> DownloadSymbolsAsync(string file, string key, HttpResponse response, ISymbolStorageService storage)
     {
         Stream? pdbStream = await storage.GetPortablePdbContentStreamOrNullAsync(file, key);
         if (pdbStream == null)
             return Results.NotFound();
 
+        response.Headers.XContentTypeOptions = "nosniff";
         return Results.Stream(pdbStream, "application/octet-stream");
     }
 }

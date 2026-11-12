@@ -8,80 +8,64 @@
     <!-- Lets the browser draw the page in the system's light or dark colors before the styles load. -->
     <meta name="color-scheme" content="light dark">
 
-    <link rel="shortcut icon" href="@Model.Content("favicon.ico")">
+    <link rel="icon" href="@Model.Content("favicon.ico")">
 
     <link rel="stylesheet" href="@Model.Content("lib/bootstrap/dist/css/bootstrap.min.css")" />
-    <link rel="stylesheet" href="@Model.Content("lib/office-ui-fabric-core/dist/css/fabric.min.css")" />
     <link rel="stylesheet" href="@Model.Content("css/site.css")" />
+    <script src="@Model.Content("js/theme.js")"></script>
 
     <title>@Model.Title - NuDepot</title>
 </head>
 <body>
-    <header>
-
-        <nav class="navbar navbar-inverse" role="navigation">
-            <div class="container">
-                <div class="row">
-                    <div id="navbar" class="col-sm-12">
-                        <ul class="nav navbar-nav" role="tablist">
-                            <li role="presentation"><a href="@Model.PathBase/" role="tab" class="@(Model.ActivePage == WebsitePage.Packages ? "active" : null)"><span>Packages</span></a></li>
-                            <li role="presentation"><a href="@Model.PathBase/upload" role="tab" class="@(Model.ActivePage == WebsitePage.Upload ? "active" : null)"><span>Upload</span></a></li>
-                        </ul>
-                        @if (HttpContext?.RequestServices.GetService(typeof(FeedConnection)) is FeedConnection { SignInAvailable: true })
+    <header class="site-header">
+        <nav class="container site-nav" aria-label="Main">
+            <ul class="site-nav-links">
+                <li><a href="@Model.PathBase/" aria-current="@(Model.ActivePage == WebsitePage.Packages ? "page" : null)" class="@(Model.ActivePage == WebsitePage.Packages ? "active" : null)"><span>Packages</span></a></li>
+                <li><a href="@Model.PathBase/upload" aria-current="@(Model.ActivePage == WebsitePage.Upload ? "page" : null)" class="@(Model.ActivePage == WebsitePage.Upload ? "active" : null)"><span>Upload</span></a></li>
+            </ul>
+            @if (HttpContext?.RequestServices.GetService(typeof(FeedConnection)) is FeedConnection { SignInAvailable: true })
+            {
+                <ul class="site-nav-links account-nav">
+                    @if (WebsiteEndpoints.IsSignedIn(HttpContext))
+                    {
+                        @if (HttpContext.RequestServices.GetService(typeof(Visitor)) is Visitor { CanAdminister: true })
                         {
-                            <ul class="nav navbar-nav navbar-right account-nav">
-                                @if (WebsiteEndpoints.IsSignedIn(HttpContext))
-                                {
-                                    @if (HttpContext.RequestServices.GetService(typeof(Visitor)) is Visitor { CanAdminister: true })
-                                    {
-                                        <li><a href="@Model.PathBase/admin" class="@(Model.ActivePage == WebsitePage.Admin ? "active" : null)"><i class="ms-Icon ms-Icon--Settings" aria-hidden="true"></i> <span>Admin</span></a></li>
-                                    }
-                                    <li><a href="@Model.PathBase/account" class="@(Model.ActivePage == WebsitePage.Account ? "active" : null)"><i class="ms-Icon ms-Icon--Contact" aria-hidden="true"></i> <span>@HttpContext.User.Identity!.Name</span></a></li>
-                                }
-                                else if (Model.ActivePage != WebsitePage.Account)
-                                {
-                                    <li><a href="@WebsiteEndpoints.GetSignInUrl(HttpContext.Request)"><span>Sign in</span></a></li>
-                                }
-                            </ul>
+                            <li><a href="@Model.PathBase/admin" class="@(Model.ActivePage == WebsitePage.Admin ? "active" : null)"><i class="icon icon-gear" aria-hidden="true"></i> <span>Admin</span></a></li>
                         }
-                    </div>
-                </div>
-            </div>
-            <div class="container search-container">
-                <div class="row">
-                    <form class="col-sm-12" action="@Model.PathBase/" method="get">
-                        <div class="input-group">
-                            <input type="text"
-                                   name="q"
-                                   value="@Model.SearchQuery"
-                                   class="form-control"
-                                   autoComplete="off"
-                                   placeholder="Search packages..." />
-
-                            <span class="input-group-btn">
-                                <button type="submit"
-                                        class="btn btn-default"
-                                        title="Search for packages">
-                                    <span class="ms-Icon ms-Icon--Search" aria-hidden="true"></span>
-                                </button>
-                            </span>
-                        </div>
-
-                        @await RenderSectionAsync("SearchForm")
-                    </form>
-                </div>
-            </div>
+                        <li><a href="@Model.PathBase/account" class="@(Model.ActivePage == WebsitePage.Account ? "active" : null)"><i class="icon icon-person-circle" aria-hidden="true"></i> <span>@HttpContext.User.Identity!.Name</span></a></li>
+                    }
+                    else if (Model.ActivePage != WebsitePage.Account)
+                    {
+                        <li><a href="@WebsiteEndpoints.GetSignInUrl(HttpContext.Request)"><span>Sign in</span></a></li>
+                    }
+                </ul>
+            }
         </nav>
+        <div class="container search-container">
+            <form action="@Model.PathBase/" method="get" role="search">
+                <div class="input-group">
+                    <input type="search"
+                           name="q"
+                           value="@Model.SearchQuery"
+                           class="form-control"
+                           autocomplete="off"
+                           aria-label="Search packages"
+                           placeholder="Search packages..." />
+                    <button type="submit" class="btn btn-search" title="Search for packages">
+                        <i class="icon icon-search" aria-hidden="true"></i>
+                        <span class="visually-hidden">Search</span>
+                    </button>
+                </div>
+
+                @await RenderSectionAsync("SearchForm")
+            </form>
+        </div>
     </header>
 
-    <section role="main" class="container main-container">
+    <main class="container main-container">
         @await RenderBodyAsync()
-    </section>
+    </main>
 
-    <script src="@Model.Content("lib/alpinejs/dist/alpine.js")"></script>
-
-    <script src="@Model.Content("lib/jquery/dist/jquery.min.js")"></script>
-    <script src="@Model.Content("lib/bootstrap/dist/js/bootstrap.min.js")"></script>
     <script src="@Model.Content("js/site.js")"></script>
 </body>
 </html>

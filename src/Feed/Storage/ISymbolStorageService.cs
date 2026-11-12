@@ -6,15 +6,15 @@ namespace NuDepot.Feed.Storage;
 public interface ISymbolStorageService
 {
     /// <summary>
-    /// Persist a portable PDB's content to storage. This operation MUST fail if a PDB
-    /// with the same key but different content has already been stored.
+    /// Persist a portable PDB's content to storage, unless a PDB with the same key but different content has
+    /// already been stored.
     /// </summary>
     /// <param name="file">The portable PDB's file name.</param>
     /// <param name="key">The portable PDB's Signature GUID followed by its age.</param>
     /// <param name="pdbStream">The PDB's content stream.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
-    /// <returns>A task that completes when the PDB is stored.</returns>
-    Task SavePortablePdbContentAsync(string file, string key, Stream pdbStream, CancellationToken cancellationToken);
+    /// <returns>False if a different PDB is stored with the key.</returns>
+    Task<bool> SavePortablePdbContentAsync(string file, string key, Stream pdbStream, CancellationToken cancellationToken);
 
     /// <summary>
     /// Retrieve a portable PDB's content stream.

@@ -4,7 +4,7 @@
 (() => {
     'use strict';
 
-    const settings = window.nudepotAccount ?? {};
+    const settings = window.nudepot.settings('account-settings');
     const api = `${settings.pathBase ?? ''}/api/account`;
 
     // Binary values

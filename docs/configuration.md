@@ -44,7 +44,22 @@ like `Feed__RepositorySigning__CertificatePassword` or `--Feed:Mirroring:IsEnabl
 
 NuDepot listens on `http://localhost:3333`, or the port and address you chose when installing, for a reverse proxy
 that serves HTTPS. See [Serve NuDepot over HTTPS](installation/https.md), which also covers serving HTTPS without a
-proxy, and the `PathBase` and `UseForwardedHeaders` settings.
+proxy, and the `PathBase`, `UseForwardedHeaders` and `TrustedProxies` settings.
+
+### Allowed host names
+
+The feed's links, like those in its service index, use the host name each request was sent to. Set the top-level
+`AllowedHosts` setting to the names clients use, so requests for any other host are refused with `400 Bad Request`
+instead of answered with links to it, which matters most when a cache sits in front of NuDepot:
+
+```json
+{
+    "AllowedHosts": "nuget.example.com;localhost"
+}
+```
+
+Keep `localhost`, or the address NuDepot listens on if it isn't localhost: a gallery hosted with its feed reads the
+feed there. Behind a reverse proxy, the proxy should also send the public host name, not its own.
 
 ## Require an API key
 
@@ -313,10 +328,11 @@ use the gallery or feed. Each signed-in browser has a session in the `UserSessio
 checked with each request, so changing a user's role, or deleting their account, on the **Admin** page applies
 straight away.
 
-Each request also replaces the sign-in cookie. If a cookie is used again after it was replaced,
-it was copied, so the server revokes the session: neither the copy nor the browser is signed in
-any more, and the server logs a warning. Requests the browser sent at the same time still share the
-old cookie for a minute.
+Every 15 minutes, the next request also replaces the sign-in cookie. If a cookie is used again after
+the browser used its replacement, it was copied, so the server revokes the session: neither the copy nor
+the browser is signed in any more, and the server logs a warning. Requests the browser sent at the same
+time still share the old cookie for a minute. If the replacement never reached the browser, like when the
+user left a page while it loaded, the browser gets another one instead.
 
 The cookie is a JWT, signed with ES256: it carries the user's ID, name and role, and their session's ID and current
 token, which the server checks against the `UserSessions` table. Scripts can't read it, and browsers only send it to
@@ -385,6 +401,9 @@ logs:
 }
 ```
 
+- **Packages pushed to this feed are its own.** Once any version of a package ID is pushed here, the mirrors aren't
+  asked for that ID: clients only see the versions pushed here, so nobody can publish a higher version on nuget.org
+  to get it into your builds. Packages the feed downloaded from its mirrors keep getting the mirrors' new versions.
 - **Order.** The mirrors are asked in the list's order.
 - **The first mirror that has a package provides it.** All of that package's versions come from it. A later
   mirror can't add versions of it, so put your private feeds before nuget.org, with `"WhenUnreachable": "Stop"`:
@@ -622,6 +641,12 @@ Relative paths are relative to the settings folder. See
 [SQLite connection strings](https://learn.microsoft.com/dotnet/standard/data/sqlite/connection-strings) for what the
 connection string can say. As environment variables, these are `Feed__Database__ConnectionString`,
 `Feed__Storage__Type`, `Feed__Storage__Path` and `Feed__Search__Type`.
+
+The database uses SQLite's [write-ahead log](https://sqlite.org/wal.html), so reads don't wait for pushes. It keeps
+recent changes in `nudepot.db-wal` and `nudepot.db-shm` beside the database, so keep the database on a local disk,
+not a network share. To back it up while the service runs, copy it with SQLite's own backup, like
+`sqlite3 nudepot.db ".backup nudepot-backup.db"`, rather than copying the file. Or stop the service, then copy all
+three files.
 
 ## Health
 

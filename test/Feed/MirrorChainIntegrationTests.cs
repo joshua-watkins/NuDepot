@@ -52,6 +52,38 @@ public class MirrorChainIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task MirrorsCantAddVersionsOfPushedPackages()
+    {
+        // Someone publishes the feed's own package ID publicly, with a higher version.
+        await Public.AddPackageAsync(TestPackages.Create("Contoso.Internal", "1.0.0"));
+        await Public.AddPackageAsync(TestPackages.Create("Contoso.Internal", "99.0.0"));
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"));
+        NuDepotTestApplication mirror = CreateMirror();
+        await mirror.AddPackageAsync(TestPackages.Create("Contoso.Internal", "1.0.0"));
+        HttpClient client = mirror.CreateClient();
+
+        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/contoso.internal/index.json"));
+        using (HttpResponseMessage response = await client.GetAsync("v3/package/contoso.internal/99.0.0/contoso.internal.99.0.0.nupkg"))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        using (HttpResponseMessage response = await client.GetAsync("v3/registration/contoso.internal/index.json"))
+        {
+            Assert.DoesNotContain("99.0.0", await response.Content.ReadAsStringAsync());
+        }
+
+        // Packages the feed mirrored keep getting the mirror's new versions.
+        using (HttpResponseMessage response = await client.GetAsync("v3/package/public.package/1.0.0/public.package.1.0.0.nupkg"))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "2.0.0"));
+        Assert.Equal(@"{""versions"":[""1.0.0"",""2.0.0""]}", await client.GetStringAsync("v3/package/public.package/index.json"));
+    }
+
+    [Fact]
     public async Task MirrorsAreAskedInTheirListsOrder()
     {
         await Private.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));

@@ -144,8 +144,8 @@ public static class FeedServiceCollectionExtensions
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-                // Each request gets a new cookie, so the user stays signed in for a year after their
-                // last request. The cookie's session is checked in the database with each request.
+                // Every few minutes, a request gets a new cookie, so the user stays signed in for a year
+                // after they last used the feed. The cookie's session is checked in the database with each request.
                 options.ExpireTimeSpan = UserService.SessionLifetime;
                 options.SlidingExpiration = false;
                 options.EventsType = typeof(UserCookieEvents);
@@ -389,7 +389,7 @@ public static class FeedServiceCollectionExtensions
         services.TryAddTransient<IPackageDeprecationService, PackageDeprecationService>();
         services.TryAddSingleton<IRepositorySigningService, RepositorySigningService>();
         services.TryAddTransient<PackageResigner>();
-        services.TryAddSingleton<PackageResignerLocks>();
+        services.TryAddSingleton<PackageLocks>();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton(GeneratedCertificateKeySize.Default);
         services.TryAddSingleton<ConfiguredSigningCertificate>();

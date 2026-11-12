@@ -66,7 +66,7 @@ public class PackageDependencyRangeJsonConverterTests
     public void SerializesNull()
     {
         JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
+        options.Converters.Add(new PackageDependencyRangeJsonConverter());
 
         string json = JsonSerializer.Serialize<string?>(null, options);
 
@@ -77,7 +77,7 @@ public class PackageDependencyRangeJsonConverterTests
     public void SerializesString()
     {
         JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
+        options.Converters.Add(new PackageDependencyRangeJsonConverter());
 
         string json = JsonSerializer.Serialize("foo", options);
 

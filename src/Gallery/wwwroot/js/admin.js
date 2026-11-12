@@ -3,9 +3,9 @@
 (() => {
     'use strict';
 
-    const settings = window.nudepotManage ?? {};
+    const { settings: readSettings, request, showError, busy } = window.nudepot;
+    const settings = readSettings('manage-settings');
     const api = `${settings.pathBase ?? ''}/api/admin`;
-    const { request, showError, busy } = window.nudepot;
     const page = document.getElementById('admin-page');
     if (!page) return;
 
@@ -35,7 +35,7 @@
             row.insertCell().textContent = user.userName + (user.isCurrentUser ? ' (you)' : '');
 
             const role = document.createElement('select');
-            role.className = 'form-control input-sm';
+            role.className = 'form-select form-select-sm';
             role.setAttribute('aria-label', `${user.userName}'s role`);
             for (const name of roles) role.add(new Option(name, name, false, name === user.role));
             role.addEventListener('change', () => busy(role, (async () => {
@@ -54,7 +54,7 @@
             row.insertCell().textContent = user.sessions;
 
             const actions = row.insertCell();
-            actions.className = 'text-right text-nowrap';
+            actions.className = 'text-end text-nowrap';
             if (user.sessions > 0 && !user.isCurrentUser) {
                 actions.appendChild(button('Sign out', 'link-button', (element) => {
                     if (!window.confirm(`Sign ${user.userName} out of every browser?`)) return;
@@ -120,10 +120,10 @@
         Admin: 'Everything',
     };
 
-    // A health status, as a label colored like Bootstrap's alerts.
+    // A health status, as a badge colored like Bootstrap's alerts.
     const healthLabel = (status) => {
         const label = document.createElement('span');
-        label.className = `label ${{ Healthy: 'label-success', Degraded: 'label-warning' }[status] ?? 'label-danger'}`;
+        label.className = `badge ${{ Healthy: 'text-bg-success', Degraded: 'text-bg-warning' }[status] ?? 'text-bg-danger'}`;
         label.textContent = status;
         return label;
     };

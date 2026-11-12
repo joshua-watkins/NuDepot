@@ -62,13 +62,17 @@ public class SessionTokenTests(ITestOutputHelper output) : IDisposable
     }
 
     [Fact]
-    public async Task EachRequestGetsANewToken()
+    public async Task TheTokenIsReplacedEveryFifteenMinutes()
     {
         NuDepotTestApplication app = CreateApp();
         CookieContainer cookies = new();
         HttpClient browser = await SignUpAsync(app, "alice", cookies);
         string first = Decode(GetCookie(cookies).Split('.')[1]).GetProperty("sit").GetString()!;
 
+        await browser.GetAsync("api/account");
+        Assert.Equal(first, Decode(GetCookie(cookies).Split('.')[1]).GetProperty("sit").GetString());
+
+        app.Clock.Advance(TimeSpan.FromMinutes(15));
         await browser.GetAsync("api/account");
 
         string second = Decode(GetCookie(cookies).Split('.')[1]).GetProperty("sit").GetString()!;

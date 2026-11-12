@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -111,6 +112,38 @@ public class HostIntegrationTests
         {
             NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
             Assert.Equal(1, await context.VulnerabilityAdvisories.CountAsync());
+        }
+    }
+
+    [Fact]
+    public async Task DatabaseFilesUseWriteAheadLogging()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        string databasePath = Path.Combine(folder, "nudepot.db");
+        try
+        {
+            ServiceProvider provider = (ServiceProvider)BuildServiceProvider(new Dictionary<string, string?>
+            {
+                { ConnectionStringKey, $"Data Source={databasePath};Pooling=false" }
+            });
+
+            await using (provider)
+            {
+                using IServiceScope scope = provider.CreateScope();
+                NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+                await context.RunMigrationsAsync(default);
+            }
+
+            // A new connection reads the mode from the file.
+            await using SqliteConnection connection = new($"Data Source={databasePath};Pooling=false");
+            await connection.OpenAsync();
+            await using SqliteCommand command = connection.CreateCommand();
+            command.CommandText = "PRAGMA journal_mode;";
+            Assert.Equal("wal", await command.ExecuteScalarAsync());
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
         }
     }
 

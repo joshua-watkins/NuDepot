@@ -18,7 +18,7 @@ namespace NuDepot.Feed.Signing;
 /// <list type="bullet">
 /// <item>A package this server signed with a certificate other than the current one, like last year's generated
 /// certificate, is re-signed with the current one.</item>
-/// <item>A package mirrored from another repository, whose signature expired, is downloaded from that repository
+/// <item>A package mirrored from another repository, whose signature expired, is downloaded from its mirrors
 /// again, in case it was re-signed there, like by another NuDepot feed with generated certificates.</item>
 /// </list>
 /// The stored package is replaced, and its hash, size and catalog entry are updated. Unsigned packages aren't changed.
@@ -33,7 +33,7 @@ namespace NuDepot.Feed.Signing;
 /// <param name="time">The current time, which signatures expire by.</param>
 /// <param name="locks">The feed's package locks, and when mirrored packages were last downloaded again.</param>
 /// <param name="logger">The logger.</param>
-public class PackageResigner(IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, TimeProvider time, PackageResignerLocks locks, ILogger<PackageResigner> logger)
+public class PackageResigner(IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, TimeProvider time, PackageLocks locks, ILogger<PackageResigner> logger)
 {
     // A mirrored package whose upstream copy is also expired is only downloaded again after this long.
     private static readonly TimeSpan UpstreamRetryInterval = TimeSpan.FromHours(1);
@@ -46,7 +46,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
     private IUpstreamClient Upstream { get; } = upstream;
     private IUrlGenerator Url { get; } = url;
     private TimeProvider Time { get; } = time;
-    private PackageResignerLocks Locks { get; } = locks;
+    private PackageLocks Locks { get; } = locks;
     private ILogger<PackageResigner> Logger { get; } = logger;
 
     // An upstream client other than the feed's mirror chain is taken to mirror something.
@@ -83,7 +83,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
             });
         }
 
-        if (!IsMirroring || state.ExpiresAt == null || state.ExpiresAt > Time.GetUtcNow().UtcDateTime)
+        if (!IsMirroring || !state.IsMirrored || state.ExpiresAt == null || state.ExpiresAt > Time.GetUtcNow().UtcDateTime)
             return content;
 
         DateTimeOffset now = Time.GetUtcNow();
@@ -105,13 +105,13 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         string normalizedVersion = version.ToNormalizedString();
         var row = await Context.Packages
             .Where(p => p.Id == id && p.NormalizedVersionString == normalizedVersion)
-            .Select(p => new { p.IsRepositorySigned, p.RepositorySignatureFingerprint, p.RepositorySignatureExpiresAt })
+            .Select(p => new { p.IsRepositorySigned, p.IsMirrored, p.RepositorySignatureFingerprint, p.RepositorySignatureExpiresAt })
             .FirstOrDefaultAsync(cancellationToken);
         if (row == null)
             return null;
 
         if (row.RepositorySignatureFingerprint != null)
-            return new(row.IsRepositorySigned, row.RepositorySignatureFingerprint, row.RepositorySignatureExpiresAt);
+            return new(row.IsRepositorySigned, row.IsMirrored, row.RepositorySignatureFingerprint, row.RepositorySignatureExpiresAt);
 
         // Packages stored before the signature was recorded: read it from the package, once.
         RepositorySignatureDetails? signature = await Signing.GetRepositorySignatureAsync(content, cancellationToken);
@@ -127,7 +127,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
                     .SetProperty(p => p.RepositorySignatureExpiresAt, expiresAt),
                 cancellationToken);
 
-        return new(row.IsRepositorySigned, signature.Fingerprint, expiresAt);
+        return new(row.IsRepositorySigned, row.IsMirrored, signature.Fingerprint, expiresAt);
     }
 
     private async Task<Stream> WithLockAsync(string id, NuGetVersion version, Stream content, Func<Task<Stream>> action)
@@ -274,7 +274,8 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
     /// A package's repository signature, as recorded.
     /// </summary>
     /// <param name="IsOurs">Whether this server made it.</param>
+    /// <param name="IsMirrored">Whether the package came from a mirror, which may have re-signed it.</param>
     /// <param name="Fingerprint">The fingerprint of the certificate that made it.</param>
     /// <param name="ExpiresAt">When it stops being valid, or null if it's timestamped.</param>
-    private sealed record SignatureState(bool IsOurs, string Fingerprint, DateTime? ExpiresAt);
+    private sealed record SignatureState(bool IsOurs, bool IsMirrored, string Fingerprint, DateTime? ExpiresAt);
 }

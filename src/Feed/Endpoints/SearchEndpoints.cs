@@ -12,6 +12,11 @@ namespace NuDepot.Feed.Endpoints;
 /// </summary>
 internal static class SearchEndpoints
 {
+    /// <summary>
+    /// The most results a request may ask for, as on nuget.org.
+    /// </summary>
+    public const int MaxTake = 1000;
+
     // GET v3/search
     public static async Task<IResult> SearchAsync(
         ISearchService searchService,
@@ -28,8 +33,8 @@ internal static class SearchEndpoints
     {
         SearchRequest request = new()
         {
-            Skip = skip,
-            Take = take,
+            Skip = Math.Max(skip, 0),
+            Take = Math.Clamp(take, 0, MaxTake),
             IncludePrerelease = prerelease,
             IncludeSemVer2 = semVerLevel == "2.0.0",
             PackageType = packageType,
@@ -76,8 +81,8 @@ internal static class SearchEndpoints
             IncludePrerelease = prerelease,
             IncludeSemVer2 = semVerLevel == "2.0.0",
             PackageType = packageType,
-            Skip = skip,
-            Take = take,
+            Skip = Math.Max(skip, 0),
+            Take = Math.Clamp(take, 0, MaxTake),
             Query = autocompleteQuery,
         };
 

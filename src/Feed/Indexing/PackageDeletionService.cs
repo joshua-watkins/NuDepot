@@ -14,13 +14,15 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="packages">The package database.</param>
 /// <param name="storage">Where packages are stored.</param>
 /// <param name="catalog">The catalog that records the change.</param>
+/// <param name="locks">The packages' locks, so a version isn't deleted while it's pushed.</param>
 /// <param name="options">The feed's options.</param>
 /// <param name="logger">The logger.</param>
-public class PackageDeletionService(IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IOptionsSnapshot<FeedOptions> options, ILogger<PackageDeletionService> logger) : IPackageDeletionService
+public class PackageDeletionService(IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, ILogger<PackageDeletionService> logger) : IPackageDeletionService
 {
     private IPackageDatabase Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;
     private ICatalogService Catalog { get; } = catalog;
+    private PackageLocks Locks { get; } = locks;
     private FeedOptions Options { get; } = options.Value;
     private ILogger<PackageDeletionService> Logger { get; } = logger;
 
@@ -83,6 +85,22 @@ public class PackageDeletionService(IPackageDatabase packages, IPackageStorageSe
     }
 
     private async Task<bool> TryHardDeletePackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
+    {
+        // A push of the same version stores its files before it records the package, so deleting meanwhile could
+        // leave a package without files.
+        SemaphoreSlim packageLock = Locks.For(id, version);
+        await packageLock.WaitAsync(cancellationToken);
+        try
+        {
+            return await HardDeletePackageAsync(id, version, cancellationToken);
+        }
+        finally
+        {
+            packageLock.Release();
+        }
+    }
+
+    private async Task<bool> HardDeletePackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
         Logger.LogInformation(
             "Hard deleting package {PackageId} {PackageVersion} from the database...",

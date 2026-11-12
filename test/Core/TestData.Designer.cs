@@ -469,6 +469,24 @@ namespace NuDepot.Core.Tests {
                 return ResourceManager.GetString("RegistrationPageUrl", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to a registration page with deprecated versions.
+        /// </summary>
+        internal static string RegistrationPageDeprecated {
+            get {
+                return ResourceManager.GetString("RegistrationPageDeprecated", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to https://test.example/v3/metadata/deprecated.package/page/1.0.0/2.0.0.json.
+        /// </summary>
+        internal static string RegistrationPageDeprecatedUrl {
+            get {
+                return ResourceManager.GetString("RegistrationPageDeprecatedUrl", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to https://test.example/v3/search.

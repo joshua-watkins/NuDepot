@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using NuDepot.Core.Catalog;
 using NuDepot.Core.Models;
 using NuDepot.Feed.Catalog;
@@ -49,6 +50,52 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
 
         Assert.Equal(3, autocomplete.GetProperty("totalHits").GetInt32());
         Assert.Equal(2, autocomplete.GetProperty("data").GetArrayLength());
+    }
+
+    [Theory]
+    [InlineData("v3/search?q=contoso")]
+    [InlineData("v3/autocomplete?q=contoso")]
+    [InlineData("v3/autocomplete?id=contoso.searched")]
+    [InlineData("v3/dependents?packageId=contoso.searched")]
+    public async Task SearchCanBeTurnedOff(string url)
+    {
+        HttpClient client = CreateClient(out _, new Dictionary<string, string> { ["Search:Type"] = "Null" });
+        await PushAsync(client, TestPackages.Create("Contoso.Searched", "1.0.0"));
+
+        JsonElement results = await GetJsonAsync(client, url);
+
+        Assert.Equal(0, results.GetProperty("totalHits").GetInt32());
+        Assert.Equal(0, results.GetProperty("data").GetArrayLength());
+
+        // The package is still on the feed.
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("v3/package/contoso.searched/index.json")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("v3/search?skip=-5&take=5000")]
+    [InlineData("v3/autocomplete?q=a&skip=-5&take=5000")]
+    public async Task SearchPagesAreLimited(string url)
+    {
+        Mock<Search.ISearchService> search = new();
+        search
+            .Setup(s => s.SearchAsync(It.IsAny<Search.SearchRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SearchResponse { Data = [] });
+        search
+            .Setup(s => s.AutocompleteAsync(It.IsAny<Search.AutocompleteRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AutocompleteResponse { Data = [] });
+        NuDepotTestApplication app = new(Output, configureServices: services => services.AddSingleton(search.Object));
+        Disposables.Add(app);
+
+        using HttpResponseMessage response = await app.CreateClient().GetAsync(url);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        (int Skip, int Take) page = Assert.Single(search.Invocations).Arguments[0] switch
+        {
+            Search.SearchRequest request => (request.Skip, request.Take),
+            Search.AutocompleteRequest request => (request.Skip, request.Take),
+            var other => throw new InvalidOperationException($"Unexpected request {other}"),
+        };
+        Assert.Equal((0, 1000), page);
     }
 
     [Theory]
@@ -357,6 +404,80 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
         HttpResponseMessage delete = await client.DeleteAsync("api/vulnerabilities?packageId=Vulnerable.Package&url=" + Uri.EscapeDataString("https://example.com/advisories/1"));
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
         Assert.DoesNotContain("VulnerabilityInfo/6.7.0", await GetResourceTypesAsync(client));
+    }
+
+    [Fact]
+    public async Task UpdatingAnAdvisoryChangesWhichVersionsReportIt()
+    {
+        HttpClient client = CreateClient(out _);
+        await PushAsync(client, TestPackages.Create("Vulnerable.Package", "1.0.0"));
+        await PushAsync(client, TestPackages.Create("Vulnerable.Package", "2.0.0"));
+        await PutAdvisoryAsync(client, "https://example.com/advisories/1", "(, 2.0.0)", 1);
+
+        // The same package and URL is the same advisory.
+        await PutAdvisoryAsync(client, "https://example.com/advisories/1", "[2.0.0, )", 3);
+
+        JsonElement file = await GetJsonAsync(client, "v3/vulnerabilities/base.json");
+        JsonElement advisory = Assert.Single(file.GetProperty("vulnerable.package").EnumerateArray());
+        Assert.Equal("[2.0.0, )", advisory.GetProperty("versions").GetString());
+        Assert.Equal(3, advisory.GetProperty("severity").GetInt32());
+
+        Dictionary<string, JsonElement> entries = (await GetJsonAsync(client, "v3/registration/vulnerable.package/index.json"))
+            .GetProperty("items")[0]
+            .GetProperty("items")
+            .EnumerateArray()
+            .Select(i => i.GetProperty("catalogEntry"))
+            .ToDictionary(e => e.GetProperty("version").GetString()!);
+        Assert.False(entries["1.0.0"].TryGetProperty("vulnerabilities", out _));
+        Assert.Equal("3", entries["2.0.0"].GetProperty("vulnerabilities")[0].GetProperty("severity").GetString());
+
+        // Both versions changed, so both are in the catalog again.
+        JsonElement page = await GetJsonAsync(client, (await GetJsonAsync(client, "v3/catalog/index.json")).GetProperty("items")[0].GetProperty("@id").GetString()!);
+        string[] latest = [.. page.GetProperty("items").EnumerateArray().TakeLast(2).Select(i => i.GetProperty("nuget:version").GetString()!).Order()];
+        Assert.Equal(["1.0.0", "2.0.0"], latest);
+    }
+
+    [Fact]
+    public async Task VulnerabilityFilesListEachPackagesRangesInTheProtocolsOrder()
+    {
+        HttpClient client = CreateClient(out _);
+
+        // Descending by upper bound, then by lower bound, then by URL, with unbounded ends first.
+        // See: https://learn.microsoft.com/en-us/nuget/api/vulnerability-info
+        await PutAdvisoryAsync(client, "https://example.com/a", "[1.0.0, 2.0.0)", 1);
+        await PutAdvisoryAsync(client, "https://example.com/b", "[3.0.0, )", 1);
+        await PutAdvisoryAsync(client, "https://example.com/c", "(, 2.0.0)", 1);
+        await PutAdvisoryAsync(client, "https://example.com/d", "[1.5.0, 2.0.0)", 1);
+        await PutAdvisoryAsync(client, "https://example.com/e", "[1.0.0, 2.0.0)", 1);
+
+        JsonElement file = await GetJsonAsync(client, "v3/vulnerabilities/base.json");
+
+        Assert.Equal(
+            ["https://example.com/b", "https://example.com/c", "https://example.com/d", "https://example.com/a", "https://example.com/e"],
+            file.GetProperty("vulnerable.package").EnumerateArray().Select(a => a.GetProperty("url").GetString()));
+    }
+
+    [Fact]
+    public async Task DeletingAMissingAdvisoryIsNotFound()
+    {
+        HttpClient client = CreateClient(out _);
+        await PutAdvisoryAsync(client, "https://example.com/advisories/1", "(, 2.0.0)", 1);
+
+        using HttpResponseMessage response = await client.DeleteAsync("api/vulnerabilities?packageId=Vulnerable.Package&url=" + Uri.EscapeDataString("https://example.com/advisories/2"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private static async Task PutAdvisoryAsync(HttpClient client, string url, string versions, int severity)
+    {
+        using HttpResponseMessage response = await client.PutAsJsonAsync("api/vulnerabilities", new
+        {
+            packageId = "Vulnerable.Package",
+            versions,
+            url,
+            severity,
+        });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

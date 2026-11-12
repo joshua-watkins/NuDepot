@@ -20,6 +20,7 @@ public class TestDataHttpMessageHandler : HttpMessageHandler
         { TestData.RegistrationLeafUnlistedUrl, () => TestData.RegistrationLeafUnlisted },
         { TestData.RegistrationLeafListedUrl, () => TestData.RegistrationLeafListed },
         { TestData.RegistrationPageUrl, () => TestData.RegistrationPage },
+        { TestData.RegistrationPageDeprecatedUrl, () => TestData.RegistrationPageDeprecated },
 
         { TestData.PackageContentVersionListUrl, () => TestData.PackageContentVersionList },
 
