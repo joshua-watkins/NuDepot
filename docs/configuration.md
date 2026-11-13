@@ -461,6 +461,21 @@ to overwrite the already existing package by setting `AllowPackageOverwrites`:
 }
 ```
 
+## Package size limit
+
+Packages and symbol packages up to 250 MB may be pushed, like on nuget.org. Larger pushes get `413 Payload Too
+Large`. `MaxPackageSize` sets the limit in bytes, and `0` removes it:
+
+```json
+"Feed": {
+    "MaxPackageSize": 524288000,
+    ...
+}
+```
+
+A reverse proxy has its own limit, which needs raising too; see
+[Package size](installation/https.md#package-size).
+
 ## Private feeds
 
 A private feed requires a key or a signed-in user for everything, reading included. With users, set

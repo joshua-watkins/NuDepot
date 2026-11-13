@@ -54,6 +54,18 @@ public class FeedOptions
     public bool AllowPackageOverwrites { get; set; } = false;
 
     /// <summary>
+    /// The default <see cref="MaxPackageSize"/>, 250 MB, which is nuget.org's limit.
+    /// </summary>
+    public const long DefaultMaxPackageSize = 250L * 1024 * 1024;
+
+    /// <summary>
+    /// The largest package or symbol package that may be pushed, in bytes. Larger pushes are refused with
+    /// 413 Payload Too Large. 0 for no limit. A reverse proxy in front of the feed has its own limit, which needs to be
+    /// at least as large.
+    /// </summary>
+    public long MaxPackageSize { get; set; } = DefaultMaxPackageSize;
+
+    /// <summary>
     /// If true, nobody may change the feed, whatever their API key's role.
     /// </summary>
     public bool IsReadOnlyMode { get; set; } = false;

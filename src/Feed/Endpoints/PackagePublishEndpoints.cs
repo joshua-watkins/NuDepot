@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NuDepot.Feed.Authentication;
+using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Storage;
@@ -18,11 +20,11 @@ internal static class PackagePublishEndpoints
 
     // PUT api/v2/package
     // See: https://docs.microsoft.com/en-us/nuget/api/package-publish-resource#push-a-package
-    public static async Task<IResult> UploadPackageAsync(HttpRequest request, FeedAccess access, IPackageIndexingService indexer, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
+    public static async Task<IResult> UploadPackageAsync(HttpRequest request, IOptionsSnapshot<FeedOptions> options, FeedAccess access, IPackageIndexingService indexer, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
         try
         {
-            using Stream? uploadStream = await request.GetUploadStreamOrNullAsync(cancellationToken);
+            using Stream? uploadStream = await request.GetUploadStreamOrNullAsync(MaxSize(options.Value), cancellationToken);
             if (uploadStream == null)
                 return Results.StatusCode(StatusCodes.Status400BadRequest);
 
@@ -36,6 +38,11 @@ internal static class PackagePublishEndpoints
                 PackageIndexingResult.PackageAlreadyExists => StatusCodes.Status409Conflict,
                 _ => StatusCodes.Status201Created,
             });
+        }
+        catch (BadHttpRequestException e)
+        {
+            // Like a package that's too large.
+            return Results.StatusCode(e.StatusCode);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -71,11 +78,11 @@ internal static class PackagePublishEndpoints
 
     // PUT api/v2/symbol
     // See: https://docs.microsoft.com/en-us/nuget/api/symbol-package-publish-resource
-    public static async Task<IResult> UploadSymbolPackageAsync(HttpRequest request, ISymbolIndexingService indexer, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
+    public static async Task<IResult> UploadSymbolPackageAsync(HttpRequest request, IOptionsSnapshot<FeedOptions> options, ISymbolIndexingService indexer, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
         try
         {
-            using Stream? uploadStream = await request.GetUploadStreamOrNullAsync(cancellationToken);
+            using Stream? uploadStream = await request.GetUploadStreamOrNullAsync(MaxSize(options.Value), cancellationToken);
             if (uploadStream == null)
                 return Results.StatusCode(StatusCodes.Status400BadRequest);
 
@@ -89,6 +96,11 @@ internal static class PackagePublishEndpoints
                 _ => StatusCodes.Status201Created,
             });
         }
+        catch (BadHttpRequestException e)
+        {
+            // Like a package that's too large.
+            return Results.StatusCode(e.StatusCode);
+        }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             loggerFactory
@@ -98,6 +110,9 @@ internal static class PackagePublishEndpoints
             return Results.StatusCode(StatusCodes.Status500InternalServerError);
         }
     }
+
+    // The largest push, or null if there's no limit.
+    private static long? MaxSize(FeedOptions options) => options.MaxPackageSize > 0 ? options.MaxPackageSize : null;
 
     // GET api/download/symbols/{file}/{key}/{file2}
     public static async Task<IResult> DownloadSymbolsAsync(string file, string key, HttpResponse response, ISymbolStorageService storage)

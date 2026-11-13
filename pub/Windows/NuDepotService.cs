@@ -70,13 +70,8 @@ internal static class NuDepotService
         if (!HasAddresses(builder.Configuration))
             builder.WebHost.UseUrls($"http://localhost:{DefaultPort}");
 
-        builder.WebHost.ConfigureKestrel(options =>
-        {
-            // Remove the upload limit from Kestrel. If needed, an upload limit can
-            // be enforced by the reverse proxy.
-            options.Limits.MaxRequestBodySize = null;
-        });
-
+        // Pushes may be as large as Feed:MaxPackageSize, which the feed allows for them. Other requests keep
+        // Kestrel's limit.
         return builder;
     }
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace NuDepot.Feed.Extensions;
 
@@ -12,14 +13,28 @@ public static class HttpRequestExtensions
     /// </summary>
     public const string ApiKeyHeader = "X-NuGet-ApiKey";
 
+    // What a push's multipart form may add to its package: the boundaries and the part's headers.
+    private const long FormOverhead = 1024 * 1024;
+
     /// <summary>
     /// Copies a pushed package, from the request's form or body, to a temporary file.
     /// </summary>
     /// <param name="request">The push request.</param>
+    /// <param name="maxSize">The largest package that may be pushed, in bytes, or null for no limit.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The package, which the caller disposes.</returns>
-    public static async Task<Stream?> GetUploadStreamOrNullAsync(this HttpRequest request, CancellationToken cancellationToken)
+    /// <exception cref="BadHttpRequestException">The package is larger than <paramref name="maxSize"/>, with the
+    /// status code 413 Payload Too Large.</exception>
+    public static async Task<Stream?> GetUploadStreamOrNullAsync(this HttpRequest request, long? maxSize, CancellationToken cancellationToken)
     {
+        // The server's own limit, like Kestrel's 30 MB, gives way to the feed's, which allows for the form around the
+        // package.
+        long? bodyLimit = maxSize + FormOverhead;
+        if (request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } server)
+            server.MaxRequestBodySize = bodyLimit;
+        if (request.ContentLength > bodyLimit)
+            throw TooLarge(maxSize!.Value);
+
         // Try to get the nupkg from the multipart/form-data. If that's empty,
         // fallback to the request's body.
         Stream? rawUploadStream = null;
@@ -36,7 +51,14 @@ public static class HttpRequestExtensions
 
             // Convert the upload stream into a temporary file stream to
             // minimize memory usage.
-            return await rawUploadStream.AsTemporaryFileStreamAsync(cancellationToken);
+            Stream upload = await rawUploadStream.AsTemporaryFileStreamAsync(cancellationToken);
+            if (upload.Length > maxSize)
+            {
+                await upload.DisposeAsync();
+                throw TooLarge(maxSize.Value);
+            }
+
+            return upload;
         }
         finally
         {
@@ -53,4 +75,7 @@ public static class HttpRequestExtensions
     {
         return request.Headers[ApiKeyHeader];
     }
+
+    private static BadHttpRequestException TooLarge(long maxSize)
+        => new($"The package is larger than the feed's limit of {maxSize} bytes.", StatusCodes.Status413PayloadTooLarge);
 }

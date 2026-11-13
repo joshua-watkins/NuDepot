@@ -26,8 +26,9 @@ server {
     ssl_certificate     /etc/ssl/certs/nuget.example.com.pem;
     ssl_certificate_key /etc/ssl/private/nuget.example.com.key;
 
-    # Packages can be large.
-    client_max_body_size 500m;
+    # Packages can be large: up to NuDepot's MaxPackageSize, 250 MB, plus the form around them. nginx's
+    # default is 1 MB.
+    client_max_body_size 260m;
 
     location / {
         proxy_pass http://localhost:3333;
@@ -47,6 +48,23 @@ nuget.example.com {
     reverse_proxy localhost:3333
 }
 ```
+
+### Package size
+
+NuDepot accepts pushes of packages and symbol packages up to 250 MB, like nuget.org, and refuses larger ones with
+`413 Payload Too Large`. Change the limit with `MaxPackageSize`, in bytes, in the `Feed` section of
+`appsettings.json`, or set it to `0` for no limit:
+
+```json
+"Feed": {
+    "MaxPackageSize": 524288000
+}
+```
+
+The proxy has its own limit, which needs to be a little larger than NuDepot's, for the form a push sends the package
+in. nginx's `client_max_body_size` is only 1 MB by default, so pushes fail with `413` until it's raised, as above.
+IIS with Application Request Routing allows about 30 MB, set by `maxAllowedContentLength`. Caddy has no limit
+unless you set `request_body { max_size 260MB }`.
 
 ### Under a path
 

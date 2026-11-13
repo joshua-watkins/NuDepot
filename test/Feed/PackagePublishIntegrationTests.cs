@@ -1,7 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Moq;
+using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Tests.Support;
+using NuDepot.Feed.Validation;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
@@ -161,6 +164,84 @@ public sealed class PackagePublishIntegrationTests(ITestOutputHelper output) : I
 
         Assert.Equal(HttpStatusCode.Created, await PushAsync(client, "api/v2/symbol", Resource(TestResources.SymbolPackage)));
         Assert.Equal(HttpStatusCode.Created, await PushAsync(client, "api/v2/symbol", Resource(TestResources.SymbolPackage)));
+    }
+
+    [Theory]
+    [InlineData("api/v2/package")]
+    [InlineData("api/v2/symbol")]
+    public async Task PushingMoreThanTheLimitIsTooLarge(string url)
+    {
+        byte[] package = Resource(TestResources.Package);
+        using NuDepotTestApplication app = new(output, configuration: new Dictionary<string, string>
+        {
+            ["MaxPackageSize"] = (package.Length - 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        });
+        using HttpClient client = app.CreateClient();
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, await PushAsync(client, url, package));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/package/testdata/index.json")).StatusCode);
+    }
+
+    [Fact]
+    public async Task APackageAsLargeAsTheLimitIsPushed()
+    {
+        byte[] package = Resource(TestResources.Package);
+        using NuDepotTestApplication app = new(output, configuration: new Dictionary<string, string>
+        {
+            ["MaxPackageSize"] = package.Length.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        });
+        using HttpClient client = app.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Created, await PushAsync(client, "api/v2/package", package));
+    }
+
+    [Fact]
+    public async Task APushInTheBodyIsLimitedToo()
+    {
+        using NuDepotTestApplication app = new(output, configuration: new Dictionary<string, string>
+        {
+            ["MaxPackageSize"] = "100",
+        });
+        using HttpClient client = app.CreateClient();
+
+        // Refused by its length, before it's read, and by what's read.
+        using HttpResponseMessage huge = await client.PutAsync("api/v2/package", new ByteArrayContent(new byte[2 * 1024 * 1024]));
+        using HttpResponseMessage small = await client.PutAsync("api/v2/package", new ByteArrayContent(Resource(TestResources.Package)));
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, huge.StatusCode);
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, small.StatusCode);
+    }
+
+    [Fact]
+    public async Task WithoutALimitAnySizeIsPushed()
+    {
+        using NuDepotTestApplication app = new(output, configuration: new Dictionary<string, string>
+        {
+            ["MaxPackageSize"] = "0",
+        });
+        using HttpClient client = app.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Created, await PushAsync(client, "api/v2/package", Resource(TestResources.Package)));
+    }
+
+    [Fact]
+    public void TheLimitIsNuGetOrgsByDefault()
+    {
+        Assert.Equal(250L * 1024 * 1024, new FeedOptions().MaxPackageSize);
+    }
+
+    [Fact]
+    public void ANegativeLimitIsInvalid()
+    {
+        FeedOptions options = new()
+        {
+            MaxPackageSize = -1,
+            Database = { ConnectionString = "Data Source=test.db" },
+        };
+
+        ValidateOptionsResult result = new ValidateFeedOptions().Validate(Options.DefaultName, options);
+
+        Assert.Equal("'Feed:MaxPackageSize' can't be less than 0. Use 0 for no limit.", Assert.Single(result.Failures!));
     }
 
     private static async Task<HttpStatusCode> PushAsync(HttpClient client, string url, byte[] package)

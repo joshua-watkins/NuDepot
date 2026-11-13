@@ -22,6 +22,9 @@ public class ValidateFeedOptions : IValidateOptions<FeedOptions>
 
         ValidateAuthorization(options, failures);
 
+        if (options.MaxPackageSize < 0)
+            failures.Add($"'{Field(nameof(FeedOptions.MaxPackageSize))}' can't be less than 0. Use 0 for no limit.");
+
         for (int i = 0; i < options.TrustedProxies.Count; i++)
         {
             if (!ConfigureFeedOptions.IsValidProxy(options.TrustedProxies[i]))
