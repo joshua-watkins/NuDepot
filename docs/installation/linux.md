@@ -43,9 +43,9 @@ The script creates the `nudepot` user the service runs as, installs the applicat
 | --- | --- |
 | `/usr/share/nudepot` | The application. Upgrades replace it. |
 | `/etc/nudepot` | The settings. It's the service's working directory, so relative paths in the settings, like a certificate's, are relative to it. |
-| `/etc/nudepot/appsettings.json` | Your settings. At first, they set up users, signing and mirroring, which are off, and example API keys to replace. Upgrades keep it. |
+| `/etc/nudepot/appsettings.json` | Your settings. At first, they set up users, signing and mirroring, which are off. Upgrades keep it. |
 | `/etc/nudepot/setup.ini` | The install script's options. `appsettings.json` overrides it. |
-| `/var/lib/nudepot` | The database (`nudepot.db`) and packages (`packages`), owned by the `nudepot` user. |
+| `/var/lib/nudepot` | The database (`nudepot.db`) and packages (`packages`), owned by the `nudepot` user. Other users of the machine may not read it. |
 | `journalctl -u nudepot -f` | The service's logs. |
 
 The settings belong to root, and the `nudepot` group may read them, so the service can read them but not change them.
@@ -73,10 +73,10 @@ See the [configuration](../configuration.md) guide for every setting.
 - **Serve it over HTTPS.** The service listens on HTTP on localhost, for a reverse proxy that serves HTTPS on your
   feed's address. Passkeys and signing need HTTPS, and API keys travel with every request. See
   [Serve NuDepot over HTTPS](https.md).
-- **Replace the example API keys.** `appsettings.json` starts with example `ReadWrite` and `Admin` keys, which
-  everyone who installs NuDepot has, and the service logs a warning while they're in use. Make your own, like with
-  `openssl rand -hex 24`. A `ReadOnly` key makes the feed private, as do users with `AnonymousReads` off. See
-  [Require an API key](../configuration.md#require-an-api-key).
+- **Set API keys.** The feed starts without keys, so anyone who can reach it may push. Set random `ReadWrite` and
+  `Admin` keys in `appsettings.json`, like from `openssl rand -hex 24`, in place of its commented-out examples, which
+  everyone who installs NuDepot has. A `ReadOnly` key makes the feed private, as do users with `AnonymousReads` off.
+  See [Require an API key](../configuration.md#require-an-api-key).
 - **Create your account first.** With users on, the first person to sign up becomes an Admin, so sign up before you
   share the feed's address.
 

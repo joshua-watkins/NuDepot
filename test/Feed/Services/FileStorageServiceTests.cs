@@ -161,11 +161,9 @@ public class FileStorageServiceTests
         {
             foreach (string path in OutsideStorePathData)
             {
-                using (Stream content = StringStream("Hello world"))
-                {
-                    await Assert.ThrowsAsync<ArgumentException>(async () =>
-                        await _target.PutAsync(path, content, "text/plain"));
-                }
+                using Stream content = StringStream("Hello world");
+                await Assert.ThrowsAsync<ArgumentException>(async () =>
+                    await _target.PutAsync(path, content, "text/plain"));
             }
         }
     }
@@ -231,21 +229,21 @@ public class FileStorageServiceTests
             catch (DirectoryNotFoundException)
             {
             }
+
+            GC.SuppressFinalize(this);
         }
 
-        protected Stream StringStream(string input)
+        protected static Stream StringStream(string input)
         {
             byte[] bytes = Encoding.ASCII.GetBytes(input);
 
             return new MemoryStream(bytes);
         }
 
-        protected async Task<string> ToStringAsync(Stream input)
+        protected static async Task<string> ToStringAsync(Stream input)
         {
-            using (StreamReader reader = new(input))
-            {
-                return await reader.ReadToEndAsync();
-            }
+            using StreamReader reader = new(input);
+            return await reader.ReadToEndAsync();
         }
 
         public IEnumerable<string> OutsideStorePathData

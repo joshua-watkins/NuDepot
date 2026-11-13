@@ -6,15 +6,14 @@ namespace NuDepot.Core.Tests;
 
 public class StringOrStringArrayJsonConverterTests
 {
+    private static JsonSerializerOptions Options { get; } = new() { Converters = { new StringOrStringArrayJsonConverter() } };
+
     [Fact]
     public void DeserializesEmptyString()
     {
         string json = @"""""";
 
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
-
-        IReadOnlyList<string>? result = JsonSerializer.Deserialize<IReadOnlyList<string>>(json, options);
+        IReadOnlyList<string>? result = JsonSerializer.Deserialize<IReadOnlyList<string>>(json, Options);
 
         string first = Assert.Single(result!);
         Assert.NotNull(first);
@@ -26,10 +25,7 @@ public class StringOrStringArrayJsonConverterTests
     {
         string json = @"""Foo bar""";
 
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
-
-        IReadOnlyList<string>? result = JsonSerializer.Deserialize<IReadOnlyList<string>>(json, options);
+        IReadOnlyList<string>? result = JsonSerializer.Deserialize<IReadOnlyList<string>>(json, Options);
 
         string first = Assert.Single(result!);
         Assert.Equal("Foo bar", first);
@@ -40,10 +36,7 @@ public class StringOrStringArrayJsonConverterTests
     {
         string json = "[]";
 
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
-
-        IReadOnlyList<string>? result = JsonSerializer.Deserialize<IReadOnlyList<string>>(json, options);
+        IReadOnlyList<string>? result = JsonSerializer.Deserialize<IReadOnlyList<string>>(json, Options);
 
         Assert.Empty(result!);
     }
@@ -53,10 +46,7 @@ public class StringOrStringArrayJsonConverterTests
     {
         string json = @"[""Foo"", ""bar""]";
 
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
-
-        IReadOnlyList<string>? result = JsonSerializer.Deserialize<IReadOnlyList<string>>(json, options);
+        IReadOnlyList<string>? result = JsonSerializer.Deserialize<IReadOnlyList<string>>(json, Options);
 
         Assert.Equal(2, result!.Count);
         Assert.Equal("Foo", result[0]);
@@ -73,22 +63,16 @@ public class StringOrStringArrayJsonConverterTests
     [InlineData(@"[""hello"", 1")]
     public void ThrowsOnInvalidJson(string json)
     {
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
-
         Assert.Throws<JsonException>(
-            () => JsonSerializer.Deserialize<IReadOnlyList<string>>(json, options));
+            () => JsonSerializer.Deserialize<IReadOnlyList<string>>(json, Options));
     }
 
     [Fact]
     public void SerializesNull()
     {
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
-
         IReadOnlyList<string>? list = null;
 
-        string json = JsonSerializer.Serialize(list, options);
+        string json = JsonSerializer.Serialize(list, Options);
 
         Assert.Equal("null", json);
     }
@@ -96,12 +80,9 @@ public class StringOrStringArrayJsonConverterTests
     [Fact]
     public void SerializesEmptyString()
     {
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
-
         IReadOnlyList<string> list = [""];
 
-        string json = JsonSerializer.Serialize(list, options);
+        string json = JsonSerializer.Serialize(list, Options);
 
         Assert.Equal(@"[""""]", json);
     }
@@ -109,12 +90,9 @@ public class StringOrStringArrayJsonConverterTests
     [Fact]
     public void SerializesList()
     {
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new StringOrStringArrayJsonConverter());
-
         IReadOnlyList<string> list = ["Hello", "World", null!];
 
-        string json = JsonSerializer.Serialize(list, options);
+        string json = JsonSerializer.Serialize(list, Options);
 
         Assert.Equal(@"[""Hello"",""World"",null]", json);
     }

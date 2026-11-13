@@ -33,7 +33,7 @@ public class TestDataHttpMessageHandler : HttpMessageHandler
         return Task.FromResult(Send(request));
     }
 
-    private HttpResponseMessage Send(HttpRequestMessage request)
+    private static HttpResponseMessage Send(HttpRequestMessage request)
     {
         if (request.Method != HttpMethod.Get
             || request.RequestUri == null

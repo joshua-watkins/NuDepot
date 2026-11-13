@@ -25,7 +25,7 @@ namespace NuDepot.Feed.Tests;
 /// visitor may manage, and that nobody else sees it. The gallery calls the feed over the server's address, so the
 /// application listens on a real port.
 /// </summary>
-public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
+public sealed partial class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
 {
     private ITestOutputHelper Output { get; } = output;
     private List<WebApplication> Apps { get; } = [];
@@ -187,6 +187,9 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
         Assert.DoesNotContain("manage-package", package);
         Assert.DoesNotContain("upload-form", upload);
         Assert.DoesNotContain("account/signin", package);
+
+        // NuGet only pushes to an HTTP source when it's told to.
+        Assert.Contains($">dotnet nuget push -s {address}v3/index.json --allow-insecure-connections package.nupkg<", upload);
         Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("admin")).StatusCode);
     }
 
@@ -209,6 +212,7 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
 
         Assert.Contains("Contoso.Utils", page);
         Assert.Contains($"href=\"https://localhost:{address.Port}/v3/package/contoso.utils/1.0.0/contoso.utils.1.0.0.nupkg\"", page);
+        Assert.Contains($">dotnet nuget push -s https://localhost:{address.Port}/v3/index.json package.nupkg<", await GetPageAsync(visitor, "upload"));
 
         // Over HTTP, the feed refuses it.
         using HttpResponseMessage http = await CreateBrowser(address).GetAsync("packages/Contoso.Utils");
@@ -341,20 +345,28 @@ public class GalleryManagementTests(ITestOutputHelper output) : IAsyncDisposable
     private static async Task<string[]> GetPageFilesAsync(HttpClient browser, Uri address, string url)
     {
         string html = await GetPageAsync(browser, url);
-        List<Uri> files = [.. Regex
-            .Matches(html, "(?:src|href)=\"(/_content/[^\"]+)\"")
+        List<Uri> files = [.. GalleryFilePattern()
+            .Matches(html)
             .Select(m => new Uri(address, WebUtility.HtmlDecode(m.Groups[1].Value)))];
 
         foreach (Uri stylesheet in files.Where(f => f.AbsolutePath.EndsWith("site.css", StringComparison.Ordinal)).ToList())
         {
             string css = await browser.GetStringAsync(stylesheet);
-            files.AddRange(Regex
-                .Matches(css, "url\\(\"([^\"]+)\"\\)")
+            files.AddRange(StylesheetUrlPattern()
+                .Matches(css)
                 .Select(m => new Uri(stylesheet, m.Groups[1].Value)));
         }
 
         return [.. files.Select(f => f.PathAndQuery).Distinct()];
     }
+
+    // A page's links to the gallery's own files.
+    [GeneratedRegex("(?:src|href)=\"(/_content/[^\"]+)\"")]
+    private static partial Regex GalleryFilePattern();
+
+    // The files a stylesheet uses.
+    [GeneratedRegex("url\\(\"([^\"]+)\"\\)")]
+    private static partial Regex StylesheetUrlPattern();
 
     private sealed class AccountState
     {

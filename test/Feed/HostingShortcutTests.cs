@@ -90,7 +90,48 @@ public class HostingShortcutTests
         Assert.Same(app.UseNuDepot(), app.UseNuDepot());
     }
 
-    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> configuration, Action<FeedOptions>? configure = null, bool users = false)
+    [Fact]
+    public async Task AnOpenFeedIsWarnedAbout()
+    {
+        WarningLoggerProvider logs = new("NuDepot.Feed");
+        await using WebApplication app = await StartAsync(new Dictionary<string, string?>(), logs: logs);
+
+        Assert.Contains(logs.Warnings, warning => warning.Contains("anyone who can reach it may push", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("Feed:Authorization:ApiKeys:ReadWrite", false)]
+    [InlineData("Feed:Authorization:ApiKeys:ReadOnly", false)]
+    [InlineData(null, true)]
+    public async Task AFeedOthersMayNotPushToIsNotWarnedAbout(string? key, bool users)
+    {
+        WarningLoggerProvider logs = new("NuDepot.Feed");
+        Dictionary<string, string?> configuration = key == null
+            ? []
+            : new() { [key] = "a8c1d9e2f0b74c3e9a51d6e7f8b2c4a0" };
+        await using WebApplication app = await StartAsync(configuration, users: users, logs: logs);
+
+        Assert.Empty(logs.Warnings);
+    }
+
+    [Fact]
+    public async Task ShortApiKeysAreWarnedAbout()
+    {
+        WarningLoggerProvider logs = new("NuDepot.Feed");
+        await using WebApplication app = await StartAsync(
+            new Dictionary<string, string?>
+            {
+                { "Feed:Authorization:ApiKeys:ReadWrite", "secret" },
+                { "Feed:Authorization:ApiKeys:Admin", "a8c1d9e2f0b74c3e9a51d6e7f8b2c4a0" },
+            },
+            logs: logs);
+
+        Assert.Equal(
+            "The ReadWrite API key has only 6 characters, so it could be guessed. Use a random key of at least 16.",
+            Assert.Single(logs.Warnings));
+    }
+
+    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> configuration, Action<FeedOptions>? configure = null, bool users = false, WarningLoggerProvider? logs = null)
     {
         string testId = Guid
             .NewGuid()
@@ -103,6 +144,9 @@ public class HostingShortcutTests
 
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
+        if (logs != null)
+            builder.Logging.AddProvider(logs);
+
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             { "Feed:Database:ConnectionString", $"Data Source=HostingShortcutTests-{testId};Mode=Memory;Cache=Shared" },

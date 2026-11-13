@@ -14,7 +14,7 @@ public class StringArrayToJsonConverterTests
     [Fact]
     public void StoresValuesLikeJsonNet()
     {
-        string? stored = (string?)Converter.ConvertToProvider(new[] { "c++", "<web>", "café", "a\"b" });
+        string? stored = (string?)Converter.ConvertToProvider((string[])["c++", "<web>", "café", "a\"b"]);
 
         Assert.Equal("[\"c++\",\"<web>\",\"café\",\"a\\\"b\"]", stored);
     }
@@ -58,11 +58,9 @@ public class PackageDownloadsJsonSourceTests
             new HttpClient(new StaticResponseHandler(json)),
             NullLogger<PackageDownloadsJsonSource>.Instance);
 
-    private class StaticResponseHandler : HttpMessageHandler
+    private class StaticResponseHandler(string content) : HttpMessageHandler
     {
-        private string Content { get; }
-
-        public StaticResponseHandler(string content) => Content = content;
+        private string Content { get; } = content;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)

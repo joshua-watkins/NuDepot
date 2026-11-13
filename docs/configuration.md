@@ -12,9 +12,9 @@ The settings folder is NuDepot's working directory, so relative paths in the set
 relative to it. The `NUDEPOT_CONFIG_ROOT` environment variable chooses another settings folder.
 
 The installer starts you off with an `appsettings.json` that sets up users, signing and mirroring of nuget.org, but
-leaves them off, and has example `ReadWrite` and `Admin` API keys. **Replace the example keys**: everyone who
-installs NuDepot has them, and the service logs a warning while they're in use. Edit the file, then restart the
-service. Upgrades never change it.
+leaves them off. It has no API keys, so the feed starts open; its example keys are commented out. See
+[Require an API key](#require-an-api-key). Edit `appsettings.json`, then restart the service. Upgrades never change
+it.
 
 The installer's own options, like the port and `MIRROR=1`, are in `setup.ini` in the same folder, and
 `appsettings.json` overrides them. That's why `appsettings.json` leaves each feature's `IsEnabled` commented out:
@@ -65,9 +65,12 @@ feed there. Behind a reverse proxy, the proxy should also send the public host n
 
 Without API keys or [users](#users-and-passkeys), the feed is open: anyone may read, push, unlist and
 relist packages. Nobody may do what only an `Admin` may, like permanently deleting packages, until you
-set an `Admin` key or a user has the `Admin` role. The Windows and Linux services start with example `ReadWrite`
-and `Admin` keys, so anonymous requests may only read. Replace them with random keys of your own, like from
-`openssl rand -hex 24`, or in PowerShell:
+set an `Admin` key or a user has the `Admin` role. An open feed is a valid choice, but the feed logs a warning when
+it starts, as it does for an API key shorter than 16 characters. A feed that's meant to be open can ignore it.
+
+The Windows and Linux services start that way. Their `appsettings.json` has example `ReadWrite` and `Admin` keys,
+commented out. Everyone who installs NuDepot has those examples, and the service logs a warning while one is in use,
+so don't just uncomment them: set random keys of your own, like from `openssl rand -hex 24`, or in PowerShell:
 
 ```powershell
 $b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | % { $_.ToString('x2') })
@@ -171,8 +174,8 @@ Which to use:
 | Push from a machine, every time | `setapikey`, or `packageSourceCredentials` |
 | Push once, or from a build server's secret | `dotnet nuget push -k` |
 
-Use HTTPS, since the key travels with every request. For an `http://` source, NuGet needs
-`allowInsecureConnections="true"` on the package source.
+Use HTTPS, since the key travels with every request. For an `http://` source, even localhost, NuGet needs
+`allowInsecureConnections="true"` on the package source, or `--allow-insecure-connections` on the command.
 
 If the gallery is hosted with a private feed, give it the `ReadOnly` key in `Gallery:ApiKey`. Everyone who
 can open the gallery sees what that key can read. With users, signed-in people browse the feed as themselves

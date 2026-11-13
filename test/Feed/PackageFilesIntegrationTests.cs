@@ -15,7 +15,7 @@ namespace NuDepot.Feed.Tests;
 /// <summary>
 /// The files the feed serves from inside packages: their embedded icons, readmes and license files.
 /// </summary>
-public class PackageFilesIntegrationTests(ITestOutputHelper output) : IDisposable
+public sealed class PackageFilesIntegrationTests(ITestOutputHelper output) : IDisposable
 {
     private NuDepotTestApplication App { get; } = new(output, configuration: new Dictionary<string, string>
     {

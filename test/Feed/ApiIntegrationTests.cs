@@ -5,7 +5,7 @@ using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
-public class ApiIntegrationTests : IDisposable
+public sealed class ApiIntegrationTests : IDisposable
 {
     private NuDepotTestApplication App { get; }
     private HttpClient Client { get; }

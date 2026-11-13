@@ -1,5 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Sqlite.Infrastructure.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -186,11 +188,26 @@ public class HostIntegrationTests
         Assert.Equal(installerTurnedThemOn, mirroring.IsEnabled);
         Assert.Equal(MirrorOptions.NuGetPackageSource, Assert.Single(mirroring.Mirrors).PackageSource);
 
-        // The example keys, which the services warn about.
+        // No keys, so the feed is open. The example keys are commented out: everyone who installs NuDepot has them.
         ApiKeyOptions keys = provider.GetRequiredService<IOptions<FeedOptions>>().Value.Authorization.ApiKeys;
         Assert.Null(keys.ReadOnly);
-        Assert.NotEmpty(keys.ReadWrite!);
-        Assert.NotEmpty(keys.Admin!);
+        Assert.Null(keys.ReadWrite);
+        Assert.Null(keys.Admin);
+    }
+
+    [Fact]
+    public void PackagesAreReadWithAQueryForEachCollection()
+    {
+        using ServiceProvider provider = BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        // One query with a row for every combination of a package's dependencies, types and frameworks grows quickly.
+        SqliteOptionsExtension sqlite = scope.ServiceProvider
+            .GetRequiredService<NuDepotContext>()
+            .GetService<IDbContextOptions>()
+            .FindExtension<SqliteOptionsExtension>()!;
+
+        Assert.Equal(QuerySplittingBehavior.SplitQuery, sqlite.QuerySplittingBehavior);
     }
 
     [Fact]
@@ -212,7 +229,7 @@ public class HostIntegrationTests
         Assert.False(Directory.Exists(path));
     }
 
-    private IServiceProvider BuildServiceProvider(Dictionary<string, string?>? configs = null, Action<FeedOptions>? configure = null)
+    private ServiceProvider BuildServiceProvider(Dictionary<string, string?>? configs = null, Action<FeedOptions>? configure = null)
     {
         IConfigurationRoot configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

@@ -22,7 +22,7 @@ too, and relative paths in the settings are relative to it. The settings are rea
    with every setting commented out.
 4. Environment variables, then command line arguments.
 
-`pub/Shared/NuDepotService.cs`, which the Linux service shares, sets this up.
+`NuDepotService.cs` sets this up. The Linux service has a copy, so change both.
 
 ## Building the installer
 

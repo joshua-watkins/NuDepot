@@ -129,6 +129,7 @@ public class DatabaseSearchServiceTests
         {
             Context.Dispose();
             KeepAlive.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         protected NuDepotContext CreateContext()

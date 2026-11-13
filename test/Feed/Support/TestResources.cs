@@ -24,10 +24,8 @@ public static class TestResources
     {
         using Stream? resourceStream = typeof(TestResources)
             .Assembly
-            .GetManifestResourceStream(ResourcePrefix + resourceName);
-
-        if (resourceStream == null)
-            throw new ArgumentException($"The test resource '{resourceName}' doesn't exist.", nameof(resourceName));
+            .GetManifestResourceStream(ResourcePrefix + resourceName)
+            ?? throw new ArgumentException($"The test resource '{resourceName}' doesn't exist.", nameof(resourceName));
 
         MemoryStream bufferedStream = new();
         using (resourceStream)

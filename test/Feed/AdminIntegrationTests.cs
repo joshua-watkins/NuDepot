@@ -14,7 +14,7 @@ namespace NuDepot.Feed.Tests;
 /// Tests what the gallery's management uses: the signed-in user's permissions, their signed-in browsers, and the
 /// feed's administration.
 /// </summary>
-public class AdminIntegrationTests(ITestOutputHelper output) : IDisposable
+public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposable
 {
     private ITestOutputHelper Output { get; } = output;
     private List<IDisposable> Disposables { get; } = [];

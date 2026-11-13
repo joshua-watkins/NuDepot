@@ -22,7 +22,7 @@ namespace NuDepot.Feed.Tests;
 /// Tests the NuGet protocol resources beyond the basics: search, SemVer 2.0.0 registrations, the catalog,
 /// deprecations, vulnerabilities, license expressions, the package details template and repository signing.
 /// </summary>
-public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDisposable
+public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDisposable
 {
     private ITestOutputHelper Output { get; } = output;
     private List<IDisposable> Disposables { get; } = [];
@@ -223,7 +223,7 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
             listed.Add(leaf.GetProperty("listed").GetBoolean());
         }
 
-        Assert.Equal(new[] { true, false, true }, listed);
+        Assert.Equal([true, false, true], listed);
     }
 
     [Fact]
@@ -313,7 +313,7 @@ public class ProtocolResourceIntegrationTests(ITestOutputHelper output) : IDispo
 
         HttpResponseMessage response = await client.PutAsJsonAsync("api/package/Old.Package/1.0.0/deprecation", new
         {
-            reasons = new[] { "legacy" },
+            reasons = (string[])["legacy"],
             message = "Use New.Package instead.",
             alternatePackageId = "New.Package",
         });

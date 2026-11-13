@@ -18,7 +18,7 @@ namespace NuDepot.Feed.Tests;
 /// <summary>
 /// Tests users who sign up and sign in with passkeys, and their API keys.
 /// </summary>
-public class UserIntegrationTests(ITestOutputHelper output) : IDisposable
+public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
 {
     private ITestOutputHelper Output { get; } = output;
     private List<IDisposable> Disposables { get; } = [];

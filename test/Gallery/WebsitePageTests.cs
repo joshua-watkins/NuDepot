@@ -17,7 +17,7 @@ namespace NuDepot.Gallery.Tests;
 /// <summary>
 /// Renders the website's pages through the website application, with fake feed clients.
 /// </summary>
-public class WebsitePageTests : IDisposable
+public sealed partial class WebsitePageTests : IDisposable
 {
     private const string ServiceIndexUrl = "https://feed.test/v3/index.json";
 
@@ -322,8 +322,8 @@ public class WebsitePageTests : IDisposable
         string html = await GetPageAsync(url);
 
         // The Content-Security-Policy would block them: scripts are files, and settings are JSON, which doesn't run.
-        Assert.DoesNotMatch(new Regex("<script(?![^>]*\\bsrc=)(?![^>]*type=\"application/json\")", RegexOptions.IgnoreCase), html);
-        Assert.DoesNotMatch(new Regex("\\son[a-z]+\\s*=", RegexOptions.IgnoreCase), html);
+        Assert.DoesNotMatch(InlineScriptPattern(), html);
+        Assert.DoesNotMatch(EventHandlerPattern(), html);
         Assert.Contains("js/site.js\"></script>", html);
     }
 
@@ -347,4 +347,12 @@ public class WebsitePageTests : IDisposable
 
         return await response.Content.ReadAsStringAsync();
     }
+
+    // A script element that isn't a file or JSON settings.
+    [GeneratedRegex("<script(?![^>]*\\bsrc=)(?![^>]*type=\"application/json\")", RegexOptions.IgnoreCase)]
+    private static partial Regex InlineScriptPattern();
+
+    // An event handler attribute, like onclick.
+    [GeneratedRegex("\\son[a-z]+\\s*=", RegexOptions.IgnoreCase)]
+    private static partial Regex EventHandlerPattern();
 }

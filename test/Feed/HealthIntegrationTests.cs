@@ -16,7 +16,7 @@ namespace NuDepot.Feed.Tests;
 /// <summary>
 /// Tests the feed's health checks, which monitors read at "health", and administrators see in the gallery.
 /// </summary>
-public class HealthIntegrationTests(ITestOutputHelper output) : IDisposable
+public sealed class HealthIntegrationTests(ITestOutputHelper output) : IDisposable
 {
     private ITestOutputHelper Output { get; } = output;
     private List<IDisposable> Disposables { get; } = [];

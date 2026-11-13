@@ -39,7 +39,7 @@ public class NuGetClientRequestTests
     };
 
     [Theory]
-    [MemberData(nameof(Searches))]
+    [MemberData(nameof(Searches), DisableDiscoveryEnumeration = true)]
     public async Task SearchesAskForTheirQuery(string expected, Func<NuGetClient, Task> search)
     {
         await search(Target);
@@ -49,7 +49,7 @@ public class NuGetClientRequestTests
     }
 
     [Theory]
-    [MemberData(nameof(Autocompletes))]
+    [MemberData(nameof(Autocompletes), DisableDiscoveryEnumeration = true)]
     public async Task AutocompletesAskForTheirQuery(string expected, Func<NuGetClient, Task> autocomplete)
     {
         await autocomplete(Target);

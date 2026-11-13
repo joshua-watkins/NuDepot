@@ -24,10 +24,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Compile Include="..\Shared\NuDepotService.cs" Link="NuDepotService.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<!-- The installer puts appsettings.json in C:\ProgramData\NuDepot. The development settings aren't published. -->
 		<Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
 	</ItemGroup>

@@ -114,8 +114,8 @@ public class PackageServiceTests
 
         private void Setup(IReadOnlyList<Package>? localPackages = null, IReadOnlyList<NuGetVersion>? upstreamPackages = null)
         {
-            localPackages = localPackages ?? [];
-            upstreamPackages = upstreamPackages ?? [];
+            localPackages ??= [];
+            upstreamPackages ??= [];
 
             _db
                 .Setup(p => p.FindAsync(
@@ -223,8 +223,8 @@ public class PackageServiceTests
 
         private void Setup(IReadOnlyList<Package>? localPackages = null, IReadOnlyList<Package>? upstreamPackages = null)
         {
-            localPackages = localPackages ?? [];
-            upstreamPackages = upstreamPackages ?? [];
+            localPackages ??= [];
+            upstreamPackages ??= [];
 
             _db
                 .Setup(p => p.FindAsync(
@@ -369,19 +369,17 @@ public class PackageServiceTests
                 .Setup(p => p.ExistsAsync(_id, _version, _cancellationToken))
                 .ReturnsAsync(false);
 
-            using (MemoryStream downloadStream = new())
-            {
-                _upstream
-                    .Setup(u => u.DownloadPackageOrNullAsync(_id, _version, _cancellationToken))
-                    .ReturnsAsync(downloadStream);
+            using MemoryStream downloadStream = new();
+            _upstream
+                .Setup(u => u.DownloadPackageOrNullAsync(_id, _version, _cancellationToken))
+                .ReturnsAsync(downloadStream);
 
-                await TargetAsync();
+            await TargetAsync();
 
-                // Only the package that was asked for, which never replaces one the feed has.
-                _indexer.Verify(
-                    i => i.MirrorAsync(downloadStream, _id, _version, _cancellationToken),
-                    Times.Once);
-            }
+            // Only the package that was asked for, which never replaces one the feed has.
+            _indexer.Verify(
+                i => i.MirrorAsync(downloadStream, _id, _version, _cancellationToken),
+                Times.Once);
         }
 
         [Fact]

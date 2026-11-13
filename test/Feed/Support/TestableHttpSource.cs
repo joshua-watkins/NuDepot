@@ -9,7 +9,7 @@ public class TestableHttpSource : HttpSource
 {
     public static TestableHttpSource Create(SourceRepository source, HttpClient client)
     {
-        Func<Task<HttpHandlerResource>> factory = async () => await source.GetResourceAsync<HttpHandlerResource>()
+        async Task<HttpHandlerResource> Factory() => await source.GetResourceAsync<HttpHandlerResource>()
             ?? throw new InvalidOperationException("The source doesn't have an HTTP handler.");
 
         string httpCacheDirectory = Path.Combine(
@@ -19,7 +19,7 @@ public class TestableHttpSource : HttpSource
 
         return new TestableHttpSource(
             source.PackageSource,
-            factory,
+            Factory,
             NullThrottle.Instance,
             client,
             httpCacheDirectory);
@@ -30,14 +30,10 @@ public class TestableHttpSource : HttpSource
     {
         // Set the HTTP client on the parent's private field.
         BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
-        FieldInfo? field = typeof(HttpSource).GetField("_httpClient", flags);
-
-        if (field == null)
-        {
-            throw new InvalidOperationException(
+        FieldInfo field = typeof(HttpSource).GetField("_httpClient", flags)
+            ?? throw new InvalidOperationException(
                 $"Could not find field '_httpClient' with flags '{flags}' " +
                 $"on {nameof(HttpSource)}");
-        }
 
         field.SetValue(this, httpClient);
 

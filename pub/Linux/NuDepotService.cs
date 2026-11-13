@@ -6,7 +6,7 @@ using Microsoft.Extensions.FileProviders;
 namespace NuDepot;
 
 /// <summary>
-/// How the Windows and Linux services start. The application's folder only holds the application, so
+/// How the Linux service starts. The Windows service has a copy, so keep them alike. The application's folder only holds the application, so
 /// upgrades can replace it. The settings are in a folder of their own, which is also the working directory and
 /// the content root, so relative paths in the settings, like a signing certificate's or Kestrel's HTTPS
 /// certificate's, are relative to it. Settings are optional:
@@ -90,8 +90,8 @@ internal static class NuDepotService
         });
 
     /// <summary>
-    /// The example API keys in the appsettings.json the installers start with, which everyone who installs NuDepot
-    /// has.
+    /// The example API keys, commented out, in the appsettings.json the installers start with, which everyone who
+    /// installs NuDepot has.
     /// </summary>
     internal static IReadOnlyList<string> ExampleApiKeys { get; } =
     [

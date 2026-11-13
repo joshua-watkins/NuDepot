@@ -24,7 +24,7 @@ namespace NuDepot.Feed.Tests;
 /// and re-signing packages signed with an older one when they're downloaded. The keys are smaller than the feed's,
 /// so they generate quickly.
 /// </summary>
-public class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDisposable
+public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) : IDisposable
 {
     private const string Sha512Oid = "2.16.840.1.101.3.4.2.3";
     private const string Sha512WithRsaOid = "1.2.840.113549.1.1.13";

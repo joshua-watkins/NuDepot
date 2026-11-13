@@ -6,15 +6,14 @@ namespace NuDepot.Core.Tests;
 
 public class PackageDependencyRangeJsonConverterTests
 {
+    private static JsonSerializerOptions Options { get; } = new() { Converters = { new PackageDependencyRangeJsonConverter() } };
+
     [Fact]
     public void DeserializesNull()
     {
         string json = @"null";
 
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new PackageDependencyRangeJsonConverter());
-
-        string? result = JsonSerializer.Deserialize<string>(json, options);
+        string? result = JsonSerializer.Deserialize<string>(json, Options);
 
         Assert.Null(result);
     }
@@ -24,10 +23,7 @@ public class PackageDependencyRangeJsonConverterTests
     {
         string json = @"""Hello""";
 
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new PackageDependencyRangeJsonConverter());
-
-        string? result = JsonSerializer.Deserialize<string>(json, options);
+        string? result = JsonSerializer.Deserialize<string>(json, Options);
 
         Assert.Equal("Hello", result);
     }
@@ -37,10 +33,7 @@ public class PackageDependencyRangeJsonConverterTests
     {
         string json = @"[""first"", ""second"", ""third""]";
 
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new PackageDependencyRangeJsonConverter());
-
-        string? result = JsonSerializer.Deserialize<string>(json, options);
+        string? result = JsonSerializer.Deserialize<string>(json, Options);
 
         Assert.Equal("first", result);
     }
@@ -55,20 +48,14 @@ public class PackageDependencyRangeJsonConverterTests
     [InlineData(@"[""hello"", 1")]
     public void ThrowsOnInvalidJson(string json)
     {
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new PackageDependencyRangeJsonConverter());
-
         Assert.Throws<JsonException>(
-            () => JsonSerializer.Deserialize<string>(json, options));
+            () => JsonSerializer.Deserialize<string>(json, Options));
     }
 
     [Fact]
     public void SerializesNull()
     {
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new PackageDependencyRangeJsonConverter());
-
-        string json = JsonSerializer.Serialize<string?>(null, options);
+        string json = JsonSerializer.Serialize<string?>(null, Options);
 
         Assert.Equal("null", json);
     }
@@ -76,10 +63,7 @@ public class PackageDependencyRangeJsonConverterTests
     [Fact]
     public void SerializesString()
     {
-        JsonSerializerOptions options = new();
-        options.Converters.Add(new PackageDependencyRangeJsonConverter());
-
-        string json = JsonSerializer.Serialize("foo", options);
+        string json = JsonSerializer.Serialize("foo", Options);
 
         Assert.Equal(@"""foo""", json);
     }

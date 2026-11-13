@@ -15,13 +15,16 @@ With [users](configuration.md#users-and-passkeys) on, signed-in users who may pu
 packages on the gallery's upload page. From the command line:
 
 ```sh
-dotnet nuget push -s http://localhost:3333/v3/index.json package.1.0.0.nupkg
+dotnet nuget push -s http://localhost:3333/v3/index.json --allow-insecure-connections package.1.0.0.nupkg
 ```
+
+NuGet only uses an `http://` address, even localhost, with `--allow-insecure-connections`. Leave it out for your
+feed's `https://` address.
 
 Push a [symbol package](https://learn.microsoft.com/nuget/create-packages/symbol-packages-snupkg) the same way:
 
 ```sh
-dotnet nuget push -s http://localhost:3333/v3/index.json package.1.0.0.snupkg
+dotnet nuget push -s http://localhost:3333/v3/index.json --allow-insecure-connections package.1.0.0.snupkg
 ```
 
 If the feed has a `ReadWrite` key, add `-k` with it, or with the `Admin` key. See
@@ -34,11 +37,12 @@ gallery goes in your `nuget.config` instead, with your user name, and you push w
 Add the feed as a package source:
 
 ```sh
-dotnet nuget add source http://localhost:3333/v3/index.json -n NuDepot
+dotnet nuget add source http://localhost:3333/v3/index.json -n NuDepot --allow-insecure-connections
 ```
 
 Or add it to a `nuget.config` file, or to [Visual Studio's package sources](https://learn.microsoft.com/nuget/consume-packages/install-use-packages-visual-studio#package-sources).
-For an `http://` source other than localhost, NuGet needs `allowInsecureConnections="true"` on the source.
+For any `http://` source, even localhost, NuGet needs `allowInsecureConnections="true"` on the source, which
+`--allow-insecure-connections` sets. Your feed's `https://` address doesn't need it.
 
 ## PowerShell modules and scripts
 

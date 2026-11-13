@@ -14,7 +14,7 @@ namespace NuDepot.Feed.Tests;
 /// <summary>
 /// Uses NuDepot's client SDK to interact with the NuDepot test host.
 /// </summary>
-public class NuDepotClientIntegrationTests : IDisposable
+public sealed class NuDepotClientIntegrationTests : IDisposable
 {
     private Support.NuDepotTestApplication App { get; }
     private HttpClient HttpClient { get; }

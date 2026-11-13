@@ -16,7 +16,7 @@ and packages default to `/var/lib/nudepot`, which systemd creates for the servic
    with every setting commented out.
 4. Environment variables, then command line arguments.
 
-`pub/Shared/NuDepotService.cs`, which the Windows service shares, sets this up.
+`NuDepotService.cs` sets this up. The Windows service has a copy, so change both.
 
 ## Building a release
 

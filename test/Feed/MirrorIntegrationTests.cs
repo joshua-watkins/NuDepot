@@ -5,7 +5,7 @@ using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
-public class MirrorIntegrationTests : IDisposable
+public sealed class MirrorIntegrationTests : IDisposable
 {
     private NuDepotTestApplication Upstream { get; }
     private NuDepotTestApplication Downstream { get; }

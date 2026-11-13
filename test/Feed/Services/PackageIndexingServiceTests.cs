@@ -16,7 +16,7 @@ using Xunit;
 
 namespace NuDepot.Feed.Tests.Services;
 
-public class PackageIndexingServiceTests : IDisposable
+public sealed class PackageIndexingServiceTests : IDisposable
 {
     private static readonly NuGetVersion Version = NuGetVersion.Parse("1.2.3");
 
@@ -339,10 +339,8 @@ public class PackageIndexingServiceTests : IDisposable
                     """));
             }
 
-            using (Stream content = archive.CreateEntry(entry).Open())
-            {
-                content.Write([1, 2, 3]);
-            }
+            using Stream content = archive.CreateEntry(entry).Open();
+            content.Write([1, 2, 3]);
         }
 
         stream.Position = 0;

@@ -11,7 +11,7 @@ using Xunit;
 
 namespace NuDepot.Feed.Tests.Services;
 
-public class CatalogServiceTests : IDisposable
+public sealed class CatalogServiceTests : IDisposable
 {
     // SQLite deletes an in-memory database when its last connection closes.
     private SqliteConnection KeepAlive { get; }

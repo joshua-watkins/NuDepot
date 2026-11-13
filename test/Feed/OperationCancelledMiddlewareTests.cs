@@ -18,7 +18,7 @@ public class OperationCancelledMiddlewareTests
     ];
 
     [Theory]
-    [MemberData(nameof(Cancellations))]
+    [MemberData(nameof(Cancellations), DisableDiscoveryEnumeration = true)]
     public async Task CancelledRequestsAreConflicts(Exception exception)
     {
         DefaultHttpContext context = new();

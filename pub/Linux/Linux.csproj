@@ -26,10 +26,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Compile Include="..\Shared\NuDepotService.cs" Link="NuDepotService.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<!-- install.sh puts appsettings.json in /etc/nudepot. The development settings aren't published. -->
 		<Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
 		<None Update="nudepot.service;install.sh" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

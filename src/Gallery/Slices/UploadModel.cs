@@ -86,11 +86,16 @@ public class UploadModel(IRepositorySignaturesClient repositorySignatures, FeedC
     /// </summary>
     public IReadOnlyList<PushInstructions> GetPushInstructions()
     {
+        // NuGet only pushes to an HTTP source when it's told to.
+        string insecure = ServiceIndexUrl?.StartsWith("http://", StringComparison.OrdinalIgnoreCase) == true
+            ? " --allow-insecure-connections"
+            : string.Empty;
+
         return
         [
             new PushInstructions(
                 ".NET CLI",
-                [$"dotnet nuget push -s {ServiceIndexUrl} package.nupkg"],
+                [$"dotnet nuget push -s {ServiceIndexUrl}{insecure} package.nupkg"],
                 "https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-nuget-push"),
 
             new PushInstructions(

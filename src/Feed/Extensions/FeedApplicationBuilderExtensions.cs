@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuDepot.Core.Hosting;
 using NuDepot.Feed;
+using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Extensions;
 
@@ -68,9 +70,47 @@ public static class FeedApplicationBuilderExtensions
         app.Endpoints.MapHealthChecks(FeedServiceCollectionExtensions.HealthPath);
         app.Endpoints.MapHealthChecks(FeedServiceCollectionExtensions.HealthPath + "/live", new HealthCheckOptions { Predicate = _ => false });
         GetPipeline(app).UsesFeed = true;
+        WarnAboutInsecureSettings(app.Services);
 
         return app;
     }
+
+    /// <summary>
+    /// The fewest characters an API key should have, so it can't be guessed.
+    /// </summary>
+    internal const int MinimumApiKeyLength = 16;
+
+    // Settings that work, but let in more than an administrator may expect. A feed that's meant to be open can
+    // ignore the warnings.
+    private static void WarnAboutInsecureSettings(IServiceProvider services)
+    {
+        ILogger logger = services
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger(LoggerCategory);
+        FeedAccess access = services.GetRequiredService<FeedAccess>();
+
+        if (access.AnonymousRole == FeedRole.ReadWrite)
+        {
+            logger.LogWarning(
+                "The feed has no ReadWrite API key and no users, so anyone who can reach it may push and unlist packages. Set API keys, or turn on users, unless the feed is meant to be open.");
+        }
+
+        ApiKeyOptions apiKeys = services
+            .GetRequiredService<IOptions<FeedOptions>>()
+            .Value
+            .Authorization
+            .ApiKeys;
+        foreach ((FeedRole role, string key) in FeedAccess.GetApiKeys(apiKeys).Where(apiKey => apiKey.Key.Length < MinimumApiKeyLength))
+        {
+            logger.LogWarning(
+                "The {Role} API key has only {Length} characters, so it could be guessed. Use a random key of at least {Minimum}.",
+                role,
+                key.Length,
+                MinimumApiKeyLength);
+        }
+    }
+
+    private const string LoggerCategory = "NuDepot.Feed";
 
     /// <summary>
     /// Maps the endpoints the gallery uses for the feed's users: signing up and signing in with passkeys, and

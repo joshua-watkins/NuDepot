@@ -302,32 +302,30 @@ public class PackageModelFacts
     [Fact]
     public async Task RendersReadme()
     {
-        using (MemoryStream readmeStream = new())
+        using MemoryStream readmeStream = new();
+        using (StreamWriter streamWriter = new(readmeStream, leaveOpen: true))
         {
-            using (StreamWriter streamWriter = new(readmeStream, leaveOpen: true))
-            {
-                await streamWriter.WriteLineAsync("# My readme");
-                await streamWriter.WriteLineAsync("Hello world!");
-                await streamWriter.FlushAsync();
-            }
-
-            readmeStream.Position = 0;
-
-            SetupPackages(CreatePackage("1.0.0", hasReadme: true));
-
-            Packages
-                .Setup(p => p.GetPackageReadmeStreamOrNullAsync(
-                    "testpackage",
-                    It.Is<NuGetVersion>(v => v.OriginalVersion == "1.0.0"),
-                    Cancellation))
-                .ReturnsAsync(readmeStream);
-
-            await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
-
-            Assert.Equal(
-                "<h1 id=\"my-readme\">My readme</h1>\n<p>Hello world!</p>\n",
-                Target.Readme!.Value);
+            await streamWriter.WriteLineAsync("# My readme");
+            await streamWriter.WriteLineAsync("Hello world!");
+            await streamWriter.FlushAsync();
         }
+
+        readmeStream.Position = 0;
+
+        SetupPackages(CreatePackage("1.0.0", hasReadme: true));
+
+        Packages
+            .Setup(p => p.GetPackageReadmeStreamOrNullAsync(
+                "testpackage",
+                It.Is<NuGetVersion>(v => v.OriginalVersion == "1.0.0"),
+                Cancellation))
+            .ReturnsAsync(readmeStream);
+
+        await Target.LoadAsync("testpackage", "1.0.0", Cancellation);
+
+        Assert.Equal(
+            "<h1 id=\"my-readme\">My readme</h1>\n<p>Hello world!</p>\n",
+            Target.Readme!.Value);
     }
 
     [Theory]
@@ -401,7 +399,7 @@ public class PackageModelFacts
             .ReturnsAsync([.. packages]);
     }
 
-    private NuDepotPackageMetadata CreatePackage(string version, long downloads = 0, bool hasReadme = false, bool listed = true, DateTimeOffset? published = null, IEnumerable<DependencyGroupItem>? dependencyGroups = null, IEnumerable<string>? packageTypes = null)
+    private static NuDepotPackageMetadata CreatePackage(string version, long downloads = 0, bool hasReadme = false, bool listed = true, DateTimeOffset? published = null, IEnumerable<DependencyGroupItem>? dependencyGroups = null, IEnumerable<string>? packageTypes = null)
     {
         return new NuDepotPackageMetadata
         {

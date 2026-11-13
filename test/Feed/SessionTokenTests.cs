@@ -21,7 +21,7 @@ namespace NuDepot.Feed.Tests;
 /// <summary>
 /// Tests the sign-in cookie's format: a JWT, signed with a key the feed keeps in its database.
 /// </summary>
-public class SessionTokenTests(ITestOutputHelper output) : IDisposable
+public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
 {
     private const string CookieName = "NuDepot.User";
 

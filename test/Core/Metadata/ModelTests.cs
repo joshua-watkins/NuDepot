@@ -14,91 +14,79 @@ public class ModelTests
     /// "NuDepot.Core" project. These tests ensure that the duplicates
     /// stay in sync with the original protocol models.
     /// </summary>
-    public static IEnumerable<object[]> ExtendedModelsData()
-    {
-        yield return new object[]
+    public static TheoryData<ExtendedModelData> ExtendedModelsData =>
+    [
+        new ExtendedModelData
         {
-            new ExtendedModelData
-            {
-                OriginalType = typeof(RegistrationIndexResponse),
-                DerivedType = typeof(NuDepotRegistrationIndexResponse),
+            OriginalType = typeof(RegistrationIndexResponse),
+            DerivedType = typeof(NuDepotRegistrationIndexResponse),
 
-                AddedProperties = new Dictionary<string, Type>
+            AddedProperties = new Dictionary<string, Type>
+            {
+                { "TotalDownloads", typeof(long) },
+            },
+
+            ModifiedProperties = new Dictionary<string, (Type From, Type To)>
+            {
                 {
-                    { "TotalDownloads", typeof(long) },
+                    "Pages",
+                    (
+                        From: typeof(IReadOnlyList<RegistrationIndexPage>),
+                        To: typeof(IReadOnlyList<NuDepotRegistrationIndexPage>)
+                    )
                 },
-
-                ModifiedProperties = new Dictionary<string, (Type From, Type To)>
-                {
-                    {
-                        "Pages",
-                        (
-                            From: typeof(IReadOnlyList<RegistrationIndexPage>),
-                            To: typeof(IReadOnlyList<NuDepotRegistrationIndexPage>)
-                        )
-                    },
-                }
             }
-        };
+        },
 
-        yield return new object[]
+        new ExtendedModelData
         {
-            new ExtendedModelData
+            OriginalType = typeof(RegistrationIndexPage),
+            DerivedType = typeof(NuDepotRegistrationIndexPage),
+
+            ModifiedProperties = new Dictionary<string, (Type From, Type To)>
             {
-                OriginalType = typeof(RegistrationIndexPage),
-                DerivedType = typeof(NuDepotRegistrationIndexPage),
-
-                ModifiedProperties = new Dictionary<string, (Type From, Type To)>
                 {
-                    {
-                        "ItemsOrNull",
-                        (
-                            From: typeof(IReadOnlyList<RegistrationIndexPageItem>),
-                            To: typeof(IReadOnlyList<NuDepotRegistrationIndexPageItem>)
-                        )
-                    },
-                }
+                    "ItemsOrNull",
+                    (
+                        From: typeof(IReadOnlyList<RegistrationIndexPageItem>),
+                        To: typeof(IReadOnlyList<NuDepotRegistrationIndexPageItem>)
+                    )
+                },
             }
-        };
+        },
 
-        yield return new object[]
+        new ExtendedModelData
         {
-            new ExtendedModelData
+            OriginalType = typeof(RegistrationIndexPageItem),
+            DerivedType = typeof(NuDepotRegistrationIndexPageItem),
+
+            ModifiedProperties = new Dictionary<string, (Type From, Type To)>
             {
-                OriginalType = typeof(RegistrationIndexPageItem),
-                DerivedType = typeof(NuDepotRegistrationIndexPageItem),
-
-                ModifiedProperties = new Dictionary<string, (Type From, Type To)>
                 {
-                    {
-                        "PackageMetadata", ( From: typeof(Models.PackageMetadata), To: typeof(NuDepotPackageMetadata) )
-                    },
-                }
+                    "PackageMetadata", ( From: typeof(Models.PackageMetadata), To: typeof(NuDepotPackageMetadata) )
+                },
             }
-        };
+        },
 
-        yield return new object[]
+        new ExtendedModelData
         {
-            new ExtendedModelData
-            {
-                OriginalType = typeof(Models.PackageMetadata),
-                DerivedType = typeof(NuDepotPackageMetadata),
+            OriginalType = typeof(Models.PackageMetadata),
+            DerivedType = typeof(NuDepotPackageMetadata),
 
-                AddedProperties = new Dictionary<string, Type>
-                {
-                    { "Downloads", typeof(long) },
-                    { "HasReadme", typeof(bool) },
-                    { "PackageTypes", typeof(IReadOnlyList<string>) },
-                    { "ReleaseNotes", typeof(string) },
-                    { "RepositoryUrl", typeof(string) },
-                    { "RepositoryType", typeof(string) },
-                }
+            AddedProperties = new Dictionary<string, Type>
+            {
+                { "Downloads", typeof(long) },
+                { "HasReadme", typeof(bool) },
+                { "PackageTypes", typeof(IReadOnlyList<string>) },
+                { "ReleaseNotes", typeof(string) },
+                { "RepositoryUrl", typeof(string) },
+                { "RepositoryType", typeof(string) },
             }
-        };
-    }
+        },
+    ];
 
     [Theory]
-    [MemberData(nameof(ExtendedModelsData))]
+    [MemberData(nameof(ExtendedModelsData), DisableDiscoveryEnumeration = true)]
     public void ValidateExtendedModels(ExtendedModelData data)
     {
         IReadOnlyDictionary<string, PropertyInfo> originalProperties = data
@@ -113,8 +101,8 @@ public class ModelTests
         // Check that all properties on the original model are present on the derived model.
         IEnumerable<string> missingProperties = originalProperties.Keys.Where(name => !derivedProperties.ContainsKey(name));
 
-        Assert.True(
-            !missingProperties.Any(),
+        Assert.False(
+            missingProperties.Any(),
             $"The following properties are missing from the derived type: {string.Join(',', missingProperties)}");
 
         // Check that all properties on the derived model are as expected compared to the original model.
@@ -123,8 +111,8 @@ public class ModelTests
             // If the property was added, check that it is not on the original type.
             if (data.AddedProperties.TryGetValue(derivedProperty.Name, out Type? addedType))
             {
-                Assert.True(
-                    !originalProperties.ContainsKey(derivedProperty.Name),
+                Assert.False(
+                    originalProperties.ContainsKey(derivedProperty.Name),
                     $"Added property '{derivedProperty.Name}' exists on the original type {data.OriginalType}");
                 Assert.True(
                     addedType == derivedProperty.PropertyType,
@@ -197,7 +185,7 @@ public class ModelTests
         }
     }
 
-    private IList<CustomAttributeTypedArgument>? GetAttributeArgs<TAttribute>(PropertyInfo property)
+    private static IList<CustomAttributeTypedArgument>? GetAttributeArgs<TAttribute>(PropertyInfo property)
     {
         return property
             .CustomAttributes

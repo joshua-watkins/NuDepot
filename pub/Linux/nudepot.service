@@ -13,6 +13,11 @@ ExecStart=/usr/share/nudepot/NuDepot
 ConfigurationDirectory=nudepot
 StateDirectory=nudepot
 
+# The data holds the API keys the service makes, data protection's keys, and private packages, so other users of the
+# machine may not read it, or the files NuDepot creates.
+StateDirectoryMode=0750
+UMask=0027
+
 # Uncomment this to let NuDepot listen on ports below 1024, like 443.
 #AmbientCapabilities=CAP_NET_BIND_SERVICE
 

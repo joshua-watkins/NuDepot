@@ -12,22 +12,15 @@ namespace NuDepot.Feed.Tests;
 /// <summary>
 /// A feed that mirrors several feeds: a private feed, and a public one asked after it.
 /// </summary>
-public class MirrorChainIntegrationTests : IDisposable
+public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDisposable
 {
-    private ITestOutputHelper Output { get; }
-    private NuDepotTestApplication Private { get; }
-    private NuDepotTestApplication Public { get; }
+    private ITestOutputHelper Output { get; } = output;
+    private NuDepotTestApplication Private { get; } = new(output);
+    private NuDepotTestApplication Public { get; } = new(output);
     private List<IDisposable> Disposables { get; } = [];
 
     // The upstream feeds of the last mirror CreateMirror created.
     private HostRoutingHandler? Routing { get; set; }
-
-    public MirrorChainIntegrationTests(ITestOutputHelper output)
-    {
-        Output = output;
-        Private = new NuDepotTestApplication(output);
-        Public = new NuDepotTestApplication(output);
-    }
 
     [Fact]
     public async Task TheFirstMirrorWithAPackageProvidesAllItsVersions()

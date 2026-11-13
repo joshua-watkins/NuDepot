@@ -16,7 +16,7 @@ namespace NuDepot.Feed.Tests;
 public class ConsoleCollection;
 
 [Collection(nameof(ConsoleCollection))]
-public class NuDepotCommandsTests(ITestOutputHelper output) : IDisposable
+public sealed class NuDepotCommandsTests(ITestOutputHelper output) : IDisposable
 {
     private TextWriter OriginalOut { get; } = Console.Out;
     private TextWriter OriginalError { get; } = Console.Error;

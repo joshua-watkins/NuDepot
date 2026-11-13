@@ -14,7 +14,7 @@ namespace NuDepot.Feed.Tests;
 /// Pushing, unlisting and relisting packages and symbols, as NuGet clients do. The feed has no API keys, so anyone
 /// may push and unlist.
 /// </summary>
-public class PackagePublishIntegrationTests(ITestOutputHelper output) : IDisposable
+public sealed class PackagePublishIntegrationTests(ITestOutputHelper output) : IDisposable
 {
     private NuDepotTestApplication App { get; } = new(output, configuration: new Dictionary<string, string>
     {

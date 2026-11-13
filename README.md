@@ -11,11 +11,11 @@ browsing packages. Releases are self-contained, so you don't need to install .NE
    - Windows: run `NuDepot-x64.msi` (or `NuDepot-arm64.msi`). See [Install on Windows](docs/installation/windows.md).
    - Linux: extract the archive and run `sudo sh install.sh`. See [Install on Linux](docs/installation/linux.md).
 3. Browse <http://localhost:3333/> to see the gallery.
-4. Push a package with the `ReadWrite` key from `appsettings.json` in the settings folder (`C:\ProgramData\NuDepot`
-   or `/etc/nudepot`): `dotnet nuget push -s http://localhost:3333/v3/index.json -k <key> package.1.0.0.nupkg`
+4. Push a package:
+   `dotnet nuget push -s http://localhost:3333/v3/index.json --allow-insecure-connections package.1.0.0.nupkg`
 
-NuDepot listens on `http://localhost:3333`, ready for a reverse proxy that serves HTTPS. It starts with example
-`ReadWrite` and `Admin` API keys, which everyone who installs it has: replace them before you share it. See
+NuDepot listens on `http://localhost:3333`, ready for a reverse proxy that serves HTTPS. It starts without API keys,
+so anyone who can reach it may push: set your own random keys in `appsettings.json` before you share it. See
 [Serve NuDepot over HTTPS](docs/installation/https.md) and [Require an API key](docs/configuration.md#require-an-api-key).
 
 ## Features

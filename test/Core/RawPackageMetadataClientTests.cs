@@ -17,14 +17,14 @@ public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixt
         Assert.NotNull(result);
         Assert.Equal(2, result.Pages.Count);
 
-        Assert.True(result.Pages[0].Count == 1);
-        Assert.True(result.Pages[0].ItemsOrNull!.Count == 1);
+        Assert.Equal(1, result.Pages[0].Count);
+        Assert.Single(result.Pages[0].ItemsOrNull!);
         Assert.Equal("1.0.0", result.Pages[0].Lower);
         Assert.Equal("1.0.0", result.Pages[0].Upper);
         Assert.StartsWith(TestData.RegistrationIndexInlinedItemsUrl, result.Pages[0].RegistrationPageUrl);
 
-        Assert.True(result.Pages[1].Count == 2);
-        Assert.True(result.Pages[1].ItemsOrNull!.Count == 2);
+        Assert.Equal(2, result.Pages[1].Count);
+        Assert.Equal(2, result.Pages[1].ItemsOrNull!.Count);
         Assert.Equal("2.0.0", result.Pages[1].Lower);
         Assert.Equal("3.0.0", result.Pages[1].Upper);
         Assert.StartsWith(TestData.RegistrationIndexInlinedItemsUrl, result.Pages[1].RegistrationPageUrl);
@@ -38,12 +38,12 @@ public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixt
         Assert.NotNull(result);
         Assert.Equal(2, result.Pages.Count);
 
-        Assert.True(result.Pages[0].Count == 1);
+        Assert.Equal(1, result.Pages[0].Count);
         Assert.Null(result.Pages[0].ItemsOrNull);
         Assert.Equal("1.0.0", result.Pages[0].Lower);
         Assert.Equal("1.0.0", result.Pages[0].Upper);
 
-        Assert.True(result.Pages[1].Count == 2);
+        Assert.Equal(2, result.Pages[1].Count);
         Assert.Null(result.Pages[1].ItemsOrNull);
         Assert.Equal("2.0.0", result.Pages[1].Lower);
         Assert.Equal("3.0.0", result.Pages[1].Upper);

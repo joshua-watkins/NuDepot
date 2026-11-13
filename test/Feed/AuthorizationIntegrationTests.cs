@@ -16,7 +16,7 @@ namespace NuDepot.Feed.Tests;
 /// <summary>
 /// Tests what the feed's API keys, one for each role, and requests without one, may do on the feed.
 /// </summary>
-public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposable
+public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposable
 {
     private const string AdminKey = "admin-key";
     private const string ReadWriteKey = "read-write-key";
@@ -127,7 +127,7 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
     };
 
     [Theory]
-    [MemberData(nameof(AnonymousRoles))]
+    [MemberData(nameof(AnonymousRoles), DisableDiscoveryEnumeration = true)]
     public void KeysDecideWhatAnonymousRequestsMayDo(Dictionary<string, string> configuration, FeedRole expected)
     {
         NuDepotTestApplication app = CreateApp(configuration);
@@ -269,7 +269,7 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
     };
 
     [Theory]
-    [MemberData(nameof(AnonymousRolesWithUsers))]
+    [MemberData(nameof(AnonymousRolesWithUsers), DisableDiscoveryEnumeration = true)]
     public void UsersMakeAnonymousRequestsReadOnly(Dictionary<string, string> configuration, FeedRole expected)
     {
         NuDepotTestApplication app = new(Output, configuration: configuration, users: true);
@@ -347,7 +347,7 @@ public class AuthorizationIntegrationTests(ITestOutputHelper output) : IDisposab
         "relist" => new HttpRequestMessage(HttpMethod.Post, "api/v2/package/Seed.Package/1.0.0"),
         "deprecate" => new HttpRequestMessage(HttpMethod.Put, "api/package/Seed.Package/1.0.0/deprecation")
         {
-            Content = JsonContent.Create(new { reasons = new[] { "Legacy" } }),
+            Content = JsonContent.Create(new { reasons = (string[])["Legacy"] }),
         },
         "vulnerability" => new HttpRequestMessage(HttpMethod.Put, "api/vulnerabilities")
         {

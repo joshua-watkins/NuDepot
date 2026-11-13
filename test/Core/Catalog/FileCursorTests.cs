@@ -4,7 +4,7 @@ using Xunit;
 
 namespace NuDepot.Core.Tests.Catalog;
 
-public class FileCursorTests : IDisposable
+public sealed class FileCursorTests : IDisposable
 {
     private string Path { get; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"cursor-{Guid.NewGuid():N}.json");
     private FileCursor Target { get; }

@@ -83,19 +83,19 @@ public class PackageDatabaseTests
             }
         }
 
-        public static IEnumerable<object[]> ReturnsPackagesData()
+        public static TheoryData<string, bool, bool> ReturnsPackagesData => new()
         {
             // A package that doesn't exist should never be returned
-            yield return new object[] { "Fake.Package", true, false };
+            { "Fake.Package", true, false },
 
             // A listed package should be returned regardless of the "includeUnlisted" parameter
-            yield return new object[] { "Package", false, true };
-            yield return new object[] { "Package", true, true };
+            { "Package", false, true },
+            { "Package", true, true },
 
             // Unlisted packages should only be returned if "includeUnlisted" is true
-            yield return new object[] { "Unlisted.Package", false, false };
-            yield return new object[] { "Unlisted.Package", true, true };
-        }
+            { "Unlisted.Package", false, false },
+            { "Unlisted.Package", true, true },
+        };
     }
 
     public class FindOrNullAsync : FactsBase
@@ -116,22 +116,22 @@ public class PackageDatabaseTests
             Assert.Equal(exists ? "1.0.0" : null, package?.NormalizedVersionString);
         }
 
-        public static IEnumerable<object[]> ReturnsPackageData()
+        public static TheoryData<string, string, bool, bool> ReturnsPackageData => new()
         {
             // A package that doesn't exist should never be returned
-            yield return new object[] { "Fake.Package", "1.0.0", true, false };
+            { "Fake.Package", "1.0.0", true, false },
 
             // A listed package should be returned regardless of the "includeUnlisted" parameter
-            yield return new object[] { "Package", "1.0.0", false, true };
-            yield return new object[] { "Package", "1.0.0", true, true };
+            { "Package", "1.0.0", false, true },
+            { "Package", "1.0.0", true, true },
 
             // The inputted package version should be normalized
-            yield return new object[] { "Package", "1.0.0.0", false, true };
+            { "Package", "1.0.0.0", false, true },
 
             // Unlisted packages should only be returned if "includeUnlisted" is true
-            yield return new object[] { "Unlisted.Package", "1.0.0", false, false };
-            yield return new object[] { "Unlisted.Package", "1.0.0", true, true };
-        }
+            { "Unlisted.Package", "1.0.0", false, false },
+            { "Unlisted.Package", "1.0.0", true, true },
+        };
     }
 
     public class UnlistPackageAsync : FactsBase
@@ -285,6 +285,7 @@ public class PackageDatabaseTests
         {
             Context.Dispose();
             KeepAlive.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         protected NuDepotContext CreateContext()
