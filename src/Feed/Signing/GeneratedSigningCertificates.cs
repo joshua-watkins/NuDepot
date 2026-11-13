@@ -48,7 +48,7 @@ internal sealed record SigningCertificateRotation(string Fingerprint, DateTimeOf
 /// <param name="time">The current time.</param>
 /// <param name="keySize">The size of the certificates' keys.</param>
 /// <param name="logger">The logger.</param>
-internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, IDataProtectionProvider dataProtection, TimeProvider time, GeneratedCertificateKeySize keySize, ILogger<GeneratedSigningCertificates> logger) : ISigningCertificateSource, IDisposable
+internal sealed partial class GeneratedSigningCertificates(IServiceScopeFactory scopes, IDataProtectionProvider dataProtection, TimeProvider time, GeneratedCertificateKeySize keySize, ILogger<GeneratedSigningCertificates> logger) : ISigningCertificateSource, IDisposable
 {
     private const string ProtectorPurpose = "NuDepot.Feed.Signing.GeneratedSigningCertificates";
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMinutes(1);
@@ -160,7 +160,7 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
             await transaction.CommitAsync(cancellationToken);
 
             foreach (string fingerprint in replaced)
-                Logger.LogWarning("Revoked the repository signing certificate {Fingerprint}", fingerprint);
+                Log.Revoked(Logger, fingerprint);
             LogGenerated(row);
 
             Signer? previous = Current;
@@ -267,12 +267,7 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
     }
 
     private void LogGenerated(SigningCertificate row)
-        => Logger.LogWarning(
-            "Generated the repository signing certificate for {Year}, with the fingerprint {Fingerprint}. It expires at {ExpiresAt:u}. "
-                + "NuGet clients don't trust generated certificates, so they warn about the feed's packages",
-            row.Year,
-            row.Fingerprint,
-            new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero));
+        => Log.Generated(Logger, row.Year, row.Fingerprint, new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero));
 
     private X509Certificate2 Load(SigningCertificate row)
         => TryLoad(row) ?? throw new InvalidOperationException($"The generated signing certificate {row.Fingerprint} can't be decrypted.");
@@ -286,11 +281,7 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
         }
         catch (CryptographicException e)
         {
-            Logger.LogWarning(
-                e,
-                "The generated signing certificate {Fingerprint} can't be decrypted, because ASP.NET Core data protection's keys changed. "
-                    + "A new certificate replaces it, and packages are re-signed with that when they're downloaded",
-                row.Fingerprint);
+            Log.NotDecrypted(Logger, e, row.Fingerprint);
             return null;
         }
     }
@@ -303,4 +294,16 @@ internal sealed class GeneratedSigningCertificates(IServiceScopeFactory scopes, 
     /// <param name="Certificate">The certificate, with its private key.</param>
     /// <param name="CheckedAt">When the database was last checked for a newer certificate.</param>
     private sealed record Signer(int Year, string Fingerprint, X509Certificate2 Certificate, DateTimeOffset CheckedAt);
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Revoked the repository signing certificate {Fingerprint}")]
+        public static partial void Revoked(ILogger logger, string fingerprint);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Generated the repository signing certificate for {Year}, with the fingerprint {Fingerprint}. It expires at {ExpiresAt:u}. NuGet clients don't trust generated certificates, so they warn about the feed's packages")]
+        public static partial void Generated(ILogger logger, int year, string fingerprint, DateTimeOffset expiresAt);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "The generated signing certificate {Fingerprint} can't be decrypted, because ASP.NET Core data protection's keys changed. A new certificate replaces it, and packages are re-signed with that when they're downloaded")]
+        public static partial void NotDecrypted(ILogger logger, Exception exception, string fingerprint);
+    }
 }

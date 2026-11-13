@@ -164,7 +164,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         user.CreatedAt = now;
         user.Passkeys.Add(passkey);
 
-        Logger.LogInformation("Created user {UserName} with the {Role} role", user.UserName, user.Role);
+        Log.UserCreated(Logger, user.UserName, user.Role);
     }
 
     // Passkey ceremonies
@@ -474,9 +474,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .Where(s => s.Key == sessionKey)
             .ExecuteDeleteAsync(cancellationToken);
 
-        Logger.LogWarning(
-            "A sign-in cookie for {UserName} was used after it was replaced, so it was copied. The session was revoked",
-            session.User.UserName);
+        Log.CopiedSessionRevoked(Logger, session.User.UserName);
 
         return SessionValidation.SignedOut;
     }
@@ -581,7 +579,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.Role, role), cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        Logger.LogInformation("Changed {UserName}'s role from {OldRole} to {Role}", user.UserName, user.Role, role);
+        Log.RoleChanged(Logger, user.UserName, user.Role, role);
         return UserChangeResult.Changed;
     }
 
@@ -604,7 +602,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         await Context.Users.Where(u => u.Key == userKey).ExecuteDeleteAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        Logger.LogWarning("Deleted the user {UserName}", user.UserName);
+        Log.UserDeleted(Logger, user.UserName);
         return UserChangeResult.Changed;
     }
 
@@ -646,6 +644,21 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
 
     [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9._@-]{0,63}$")]
     private static partial Regex UserNamePattern();
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Created user {UserName} with the {Role} role")]
+        public static partial void UserCreated(ILogger logger, string userName, FeedRole role);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "A sign-in cookie for {UserName} was used after it was replaced, so it was copied. The session was revoked")]
+        public static partial void CopiedSessionRevoked(ILogger logger, string userName);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Changed {UserName}'s role from {OldRole} to {Role}")]
+        public static partial void RoleChanged(ILogger logger, string userName, FeedRole oldRole, FeedRole role);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Deleted the user {UserName}")]
+        public static partial void UserDeleted(ILogger logger, string userName);
+    }
 }
 
 /// <summary>

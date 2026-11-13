@@ -8,7 +8,7 @@ namespace NuDepot.Gallery;
 /// </summary>
 /// <param name="feed">The feed the gallery shows.</param>
 /// <param name="logger">The logger.</param>
-public sealed class Visitor(FeedConnection feed, ILogger<Visitor> logger)
+public sealed partial class Visitor(FeedConnection feed, ILogger<Visitor> logger)
 {
     private FeedConnection Feed { get; } = feed;
     private ILogger<Visitor> Logger { get; } = logger;
@@ -89,11 +89,17 @@ public sealed class Visitor(FeedConnection feed, ILogger<Visitor> logger)
         }
         catch (Exception e) when (e is HttpRequestException or System.Text.Json.JsonException)
         {
-            Logger.LogWarning(e, "Could not ask the feed what the signed-in user may do; they may only browse");
+            Log.PermissionsUnknown(Logger, e);
         }
     }
 
     private bool Can(string permission) => Permissions.Contains(permission);
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Could not ask the feed what the signed-in user may do; they may only browse")]
+        public static partial void PermissionsUnknown(ILogger logger, Exception exception);
+    }
 }
 
 /// <summary>

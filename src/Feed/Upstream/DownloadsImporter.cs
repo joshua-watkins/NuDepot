@@ -10,7 +10,7 @@ namespace NuDepot.Feed.Upstream;
 /// <param name="context">The package database.</param>
 /// <param name="downloadsSource">Where the download counts come from.</param>
 /// <param name="logger">The logger.</param>
-public class DownloadsImporter(NuDepotContext context, IPackageDownloadsSource downloadsSource, ILogger<DownloadsImporter> logger)
+public partial class DownloadsImporter(NuDepotContext context, IPackageDownloadsSource downloadsSource, ILogger<DownloadsImporter> logger)
 {
     private const int BatchSize = 200;
 
@@ -31,7 +31,7 @@ public class DownloadsImporter(NuDepotContext context, IPackageDownloadsSource d
 
         for (int batch = 0; batch < batches; batch++)
         {
-            Logger.LogInformation("Importing batch {Batch}...", batch);
+            Log.Importing(Logger, batch);
 
             var packageBatch = await Context.Packages
                 .OrderBy(p => p.Key)
@@ -51,7 +51,16 @@ public class DownloadsImporter(NuDepotContext context, IPackageDownloadsSource d
                     .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.Downloads, downloads), cancellationToken);
             }
 
-            Logger.LogInformation("Imported batch {Batch}", batch);
+            Log.Imported(Logger, batch);
         }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Importing batch {Batch}...")]
+        public static partial void Importing(ILogger logger, int batch);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Imported batch {Batch}")]
+        public static partial void Imported(ILogger logger, int batch);
     }
 }

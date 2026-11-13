@@ -16,7 +16,7 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="packages">The package database.</param>
 /// <param name="storage">Where symbols are stored.</param>
 /// <param name="logger">The logger.</param>
-public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageService storage, ILogger<SymbolIndexingService> logger) : ISymbolIndexingService
+public partial class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageService storage, ILogger<SymbolIndexingService> logger) : ISymbolIndexingService
 {
     private static readonly HashSet<string> ValidSymbolPackageContentExtensions =
     [
@@ -54,7 +54,7 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            Logger.LogWarning(e, "The pushed symbol package isn't valid");
+            Log.InvalidSymbolPackage(Logger, e);
             return SymbolIndexingResult.InvalidSymbolPackage;
         }
 
@@ -68,12 +68,7 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
         {
             if (!await Storage.SavePortablePdbContentAsync(pdb.Filename, pdb.Key, pdb.Content, cancellationToken))
             {
-                Logger.LogWarning(
-                    "The symbol package of {PackageId} {PackageVersion} has {Filename} with the key {Key}, but the feed has a different PDB with that key",
-                    packageId,
-                    packageVersion,
-                    pdb.Filename,
-                    pdb.Key);
+                Log.SymbolsConflict(Logger, packageId, packageVersion, pdb.Filename, pdb.Key);
                 return SymbolIndexingResult.SymbolsConflict;
             }
         }
@@ -178,5 +173,14 @@ public class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageServ
                 pdb.Dispose();
             }
         }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "The pushed symbol package isn't valid")]
+        public static partial void InvalidSymbolPackage(ILogger logger, Exception exception);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "The symbol package of {PackageId} {PackageVersion} has {Filename} with the key {Key}, but the feed has a different PDB with that key")]
+        public static partial void SymbolsConflict(ILogger logger, string packageId, NuGetVersion packageVersion, string filename, string key);
     }
 }

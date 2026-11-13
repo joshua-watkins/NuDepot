@@ -31,7 +31,7 @@ namespace NuDepot.Feed.Signing;
 /// <param name="time">The current time, which signatures expire by.</param>
 /// <param name="locks">The feed's package locks, and when mirrored packages were last downloaded again.</param>
 /// <param name="logger">The logger.</param>
-public class PackageResigner(IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, TimeProvider time, PackageLocks locks, ILogger<PackageResigner> logger)
+public partial class PackageResigner(IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, TimeProvider time, PackageLocks locks, ILogger<PackageResigner> logger)
 {
     // A mirrored package whose upstream copy is also expired is only downloaded again after this long.
     private static readonly TimeSpan UpstreamRetryInterval = TimeSpan.FromHours(1);
@@ -163,7 +163,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         if (replaced == null)
             return content;
 
-        Logger.LogInformation("Re-signed package {PackageId} {PackageVersion} with the certificate {Fingerprint}", id, version, result.Fingerprint);
+        Log.Resigned(Logger, id, version, result.Fingerprint);
         return replaced;
     }
 
@@ -176,7 +176,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            Logger.LogWarning(e, "Failed to download package {PackageId} {PackageVersion} from upstream to refresh its expired signature", id, version);
+            Log.RefreshDownloadFailed(Logger, e, id, version);
             return content;
         }
 
@@ -186,7 +186,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         RepositorySignatureDetails? signature = await Signing.GetRepositorySignatureAsync(fresh, cancellationToken);
         if (signature == null || string.Equals(signature.Fingerprint, fingerprint, StringComparison.OrdinalIgnoreCase))
         {
-            Logger.LogInformation("Upstream hasn't re-signed package {PackageId} {PackageVersion} yet. It's served with its expired signature", id, version);
+            Log.NotResignedUpstream(Logger, id, version);
             fresh.Dispose();
             return content;
         }
@@ -194,7 +194,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         // Only the signature may change: the package's content hash leaves the signature out.
         if (ContentHash(content) != ContentHash(fresh))
         {
-            Logger.LogWarning("Upstream's copy of package {PackageId} {PackageVersion} has different content, so it isn't used", id, version);
+            Log.UpstreamContentDiffers(Logger, id, version);
             fresh.Dispose();
             return content;
         }
@@ -203,7 +203,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         if (replaced == null)
             return content;
 
-        Logger.LogInformation("Refreshed package {PackageId} {PackageVersion} from upstream, which re-signed it with the certificate {Fingerprint}", id, version, signature.Fingerprint);
+        Log.Refreshed(Logger, id, version, signature.Fingerprint);
         return replaced;
     }
 
@@ -224,7 +224,7 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
         catch (Exception e) when (e is not OperationCanceledException)
         {
             // Like when the storage is read only. Serve the package as it is.
-            Logger.LogWarning(e, "Failed to store the new copy of package {PackageId} {PackageVersion}. It's served as it was", id, version);
+            Log.ReplaceFailed(Logger, e, id, version);
             replacement.Dispose();
             content.Position = 0;
             return null;
@@ -276,4 +276,25 @@ public class PackageResigner(IRepositorySigningService signing, NuDepotContext c
     /// <param name="Fingerprint">The fingerprint of the certificate that made it.</param>
     /// <param name="ExpiresAt">When it stops being valid, or null if it's timestamped.</param>
     private sealed record SignatureState(bool IsOurs, bool IsMirrored, string Fingerprint, DateTime? ExpiresAt);
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Re-signed package {PackageId} {PackageVersion} with the certificate {Fingerprint}")]
+        public static partial void Resigned(ILogger logger, string packageId, NuGetVersion packageVersion, string? fingerprint);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to download package {PackageId} {PackageVersion} from upstream to refresh its expired signature")]
+        public static partial void RefreshDownloadFailed(ILogger logger, Exception exception, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Upstream hasn't re-signed package {PackageId} {PackageVersion} yet. It's served with its expired signature")]
+        public static partial void NotResignedUpstream(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Upstream's copy of package {PackageId} {PackageVersion} has different content, so it isn't used")]
+        public static partial void UpstreamContentDiffers(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Refreshed package {PackageId} {PackageVersion} from upstream, which re-signed it with the certificate {Fingerprint}")]
+        public static partial void Refreshed(ILogger logger, string packageId, NuGetVersion packageVersion, string fingerprint);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to store the new copy of package {PackageId} {PackageVersion}. It's served as it was")]
+        public static partial void ReplaceFailed(ILogger logger, Exception exception, string packageId, NuGetVersion packageVersion);
+    }
 }

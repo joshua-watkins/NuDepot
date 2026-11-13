@@ -9,7 +9,7 @@ namespace NuDepot.Feed.Storage;
 /// </summary>
 /// <param name="storage">Where files are stored.</param>
 /// <param name="logger">The logger.</param>
-public class PackageStorageService(IStorageService storage, ILogger<PackageStorageService> logger) : IPackageStorageService
+public partial class PackageStorageService(IStorageService storage, ILogger<PackageStorageService> logger) : IPackageStorageService
 {
     private const string PackagesPathPrefix = "packages";
 
@@ -40,42 +40,26 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
         string iconPath = IconPath(lowercasedId, lowercasedNormalizedVersion);
         string licensePath = LicensePath(lowercasedId, lowercasedNormalizedVersion, package.LicenseIsMarkDown);
 
-        Logger.LogInformation(
-            "Storing package {PackageId} {PackageVersion} at {Path}...",
-            lowercasedId,
-            lowercasedNormalizedVersion,
-            packagePath);
+        Log.StoringPackage(Logger, lowercasedId, lowercasedNormalizedVersion, packagePath);
 
         // Store the package.
         StoragePutResult result = await Storage.PutAsync(packagePath, packageStream, PackageContentType, cancellationToken);
         if (result == StoragePutResult.Conflict)
         {
             // TODO: This should be returned gracefully with an enum.
-            Logger.LogInformation(
-                "Could not store package {PackageId} {PackageVersion} at {Path} due to conflict",
-                lowercasedId,
-                lowercasedNormalizedVersion,
-                packagePath);
+            Log.PackageConflict(Logger, lowercasedId, lowercasedNormalizedVersion, packagePath);
 
             throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} due to conflict");
         }
 
         // Store the package's nuspec.
-        Logger.LogInformation(
-            "Storing package {PackageId} {PackageVersion} nuspec at {Path}...",
-            lowercasedId,
-            lowercasedNormalizedVersion,
-            nuspecPath);
+        Log.StoringNuspec(Logger, lowercasedId, lowercasedNormalizedVersion, nuspecPath);
 
         result = await Storage.PutAsync(nuspecPath, nuspecStream, NuspecContentType, cancellationToken);
         if (result == StoragePutResult.Conflict)
         {
             // TODO: This should be returned gracefully with an enum.
-            Logger.LogInformation(
-                "Could not store package {PackageId} {PackageVersion} nuspec at {Path} due to conflict",
-                lowercasedId,
-                lowercasedNormalizedVersion,
-                nuspecPath);
+            Log.NuspecConflict(Logger, lowercasedId, lowercasedNormalizedVersion, nuspecPath);
 
             throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} nuspec due to conflict");
         }
@@ -83,21 +67,13 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
         // Store the package's readme, if one exists.
         if (readmeStream != null)
         {
-            Logger.LogInformation(
-                "Storing package {PackageId} {PackageVersion} readme at {Path}...",
-                lowercasedId,
-                lowercasedNormalizedVersion,
-                readmePath);
+            Log.StoringReadme(Logger, lowercasedId, lowercasedNormalizedVersion, readmePath);
 
             result = await Storage.PutAsync(readmePath, readmeStream, ReadmeContentType, cancellationToken);
             if (result == StoragePutResult.Conflict)
             {
                 // TODO: This should be returned gracefully with an enum.
-                Logger.LogInformation(
-                    "Could not store package {PackageId} {PackageVersion} readme at {Path} due to conflict",
-                    lowercasedId,
-                    lowercasedNormalizedVersion,
-                    readmePath);
+                Log.ReadmeConflict(Logger, lowercasedId, lowercasedNormalizedVersion, readmePath);
 
                 throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} readme due to conflict");
             }
@@ -106,21 +82,13 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
         // Store the package's icon, if one exists.
         if (iconStream != null)
         {
-            Logger.LogInformation(
-                "Storing package {PackageId} {PackageVersion} icon at {Path}...",
-                lowercasedId,
-                lowercasedNormalizedVersion,
-                iconPath);
+            Log.StoringIcon(Logger, lowercasedId, lowercasedNormalizedVersion, iconPath);
 
             result = await Storage.PutAsync(iconPath, iconStream, IconContentType, cancellationToken);
             if (result == StoragePutResult.Conflict)
             {
                 // TODO: This should be returned gracefully with an enum.
-                Logger.LogInformation(
-                    "Could not store package {PackageId} {PackageVersion} icon at {Path} due to conflict",
-                    lowercasedId,
-                    lowercasedNormalizedVersion,
-                    iconPath);
+                Log.IconConflict(Logger, lowercasedId, lowercasedNormalizedVersion, iconPath);
 
                 throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} icon");
             }
@@ -129,11 +97,7 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
         // Store the package's license, if one exists.
         if (licenseStream != null)
         {
-            Logger.LogInformation(
-                "Storing package {PackageId} {PackageVersion} license at {Path}...",
-                lowercasedId,
-                lowercasedNormalizedVersion,
-                licensePath);
+            Log.StoringLicense(Logger, lowercasedId, lowercasedNormalizedVersion, licensePath);
 
             if (package.LicenseIsMarkDown)
                 result = await Storage.PutAsync(licensePath, licenseStream, LicenseMarkDownContentType, cancellationToken);
@@ -142,20 +106,13 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
             if (result == StoragePutResult.Conflict)
             {
                 // TODO: This should be returned gracefully with an enum.
-                Logger.LogInformation(
-                    "Could not store package {PackageId} {PackageVersion} license at {Path} due to conflict",
-                    lowercasedId,
-                    lowercasedNormalizedVersion,
-                    licensePath);
+                Log.LicenseConflict(Logger, lowercasedId, lowercasedNormalizedVersion, licensePath);
 
                 throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} license");
             }
         }
 
-        Logger.LogInformation(
-            "Finished storing package {PackageId} {PackageVersion}",
-            lowercasedId,
-            lowercasedNormalizedVersion);
+        Log.FinishedStoring(Logger, lowercasedId, lowercasedNormalizedVersion);
     }
 
     /// <inheritdoc />
@@ -167,7 +124,7 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
             .ToLowerInvariant();
         string packagePath = PackagePath(lowercasedId, lowercasedNormalizedVersion);
 
-        Logger.LogInformation("Replacing package {PackageId} {PackageVersion} at {Path}...", lowercasedId, lowercasedNormalizedVersion, packagePath);
+        Log.ReplacingPackage(Logger, lowercasedId, lowercasedNormalizedVersion, packagePath);
         await Storage.ReplaceAsync(packagePath, packageStream, PackageContentType, cancellationToken);
     }
 
@@ -246,9 +203,7 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
             // The "packages" prefix was lowercased, which was a breaking change
             // on filesystems that are case sensitive. Handle this case to help
             // users migrate to the latest version of NuDepot.
-            Logger.LogError(
-                $"Unable to find the '{PackagesPathPrefix}' folder. " +
-                "If you've recently upgraded NuDepot, please make sure this folder starts with a lowercased letter.");
+            Log.PackagesFolderMissing(Logger);
             throw;
         }
     }
@@ -264,9 +219,7 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
             // The "packages" prefix was lowercased, which was a breaking change
             // on filesystems that are case sensitive. Handle this case to help
             // users migrate to the latest version of NuDepot.
-            Logger.LogError(
-                $"Unable to find the '{PackagesPathPrefix}' folder. " +
-                "If you've recently upgraded NuDepot, please make sure this folder starts with a lowercased letter.");
+            Log.PackagesFolderMissing(Logger);
             throw;
         }
     }
@@ -314,4 +267,45 @@ public class PackageStorageService(IStorageService storage, ILogger<PackageStora
         return path;
     }
 
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Storing package {PackageId} {PackageVersion} at {Path}...")]
+        public static partial void StoringPackage(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Could not store package {PackageId} {PackageVersion} at {Path} due to conflict")]
+        public static partial void PackageConflict(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Storing package {PackageId} {PackageVersion} nuspec at {Path}...")]
+        public static partial void StoringNuspec(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Could not store package {PackageId} {PackageVersion} nuspec at {Path} due to conflict")]
+        public static partial void NuspecConflict(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Storing package {PackageId} {PackageVersion} readme at {Path}...")]
+        public static partial void StoringReadme(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Could not store package {PackageId} {PackageVersion} readme at {Path} due to conflict")]
+        public static partial void ReadmeConflict(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Storing package {PackageId} {PackageVersion} icon at {Path}...")]
+        public static partial void StoringIcon(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Could not store package {PackageId} {PackageVersion} icon at {Path} due to conflict")]
+        public static partial void IconConflict(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Storing package {PackageId} {PackageVersion} license at {Path}...")]
+        public static partial void StoringLicense(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Could not store package {PackageId} {PackageVersion} license at {Path} due to conflict")]
+        public static partial void LicenseConflict(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Finished storing package {PackageId} {PackageVersion}")]
+        public static partial void FinishedStoring(ILogger logger, string packageId, string packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Replacing package {PackageId} {PackageVersion} at {Path}...")]
+        public static partial void ReplacingPackage(ILogger logger, string packageId, string packageVersion, string path);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = $"Unable to find the '{PackagesPathPrefix}' folder. If you've recently upgraded NuDepot, please make sure this folder starts with a lowercased letter.")]
+        public static partial void PackagesFolderMissing(ILogger logger);
+    }
 }

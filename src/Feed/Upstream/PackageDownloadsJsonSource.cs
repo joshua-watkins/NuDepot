@@ -11,7 +11,7 @@ namespace NuDepot.Feed.Upstream;
 /// </summary>
 /// <param name="httpClient">The HTTP client used to download the file.</param>
 /// <param name="logger">The logger.</param>
-public class PackageDownloadsJsonSource(HttpClient httpClient, ILogger<PackageDownloadsJsonSource> logger) : IPackageDownloadsSource
+public partial class PackageDownloadsJsonSource(HttpClient httpClient, ILogger<PackageDownloadsJsonSource> logger) : IPackageDownloadsSource
 {
     /// <summary>
     /// The URL of nuget.org's download counts file.
@@ -24,13 +24,13 @@ public class PackageDownloadsJsonSource(HttpClient httpClient, ILogger<PackageDo
     /// <inheritdoc />
     public async Task<Dictionary<string, Dictionary<string, long>>> GetPackageDownloadsAsync()
     {
-        Logger.LogInformation("Fetching package downloads...");
+        Log.Fetching(Logger);
 
         Dictionary<string, Dictionary<string, long>> results = [];
 
         using (Stream downloadsStream = await GetDownloadsStreamAsync())
         {
-            Logger.LogInformation("Parsing package downloads...");
+            Log.Parsing(Logger);
 
             // The document is an array of records like ["Package.Id", ["1.0.0", 123], ["2.0.0", 456]].
             // Read one record at a time, as the whole document is too large to keep in memory.
@@ -39,10 +39,10 @@ public class PackageDownloadsJsonSource(HttpClient httpClient, ILogger<PackageDo
             await foreach (JsonElement record in records)
             {
                 if (!TryAddRecord(record, results))
-                    Logger.LogError("Invalid entry in downloads.v1.json: {Entry}", record.GetRawText());
+                    Log.InvalidEntry(Logger, record);
             }
 
-            Logger.LogInformation("Parsed package downloads");
+            Log.Parsed(Logger);
         }
 
         return results;
@@ -84,7 +84,7 @@ public class PackageDownloadsJsonSource(HttpClient httpClient, ILogger<PackageDo
 
     private async Task<Stream> GetDownloadsStreamAsync()
     {
-        Logger.LogInformation("Downloading downloads.v1.json...");
+        Log.Downloading(Logger);
 
         FileStream fileStream = File.Open(Path.GetTempFileName(), FileMode.Create);
         HttpResponseMessage response = await HttpClient.GetAsync(PackageDownloadsV1Url, HttpCompletionOption.ResponseHeadersRead);
@@ -98,8 +98,36 @@ public class PackageDownloadsJsonSource(HttpClient httpClient, ILogger<PackageDo
 
         fileStream.Seek(0, SeekOrigin.Begin);
 
-        Logger.LogInformation("Downloaded downloads.v1.json");
+        Log.Downloaded(Logger);
 
         return fileStream;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Fetching package downloads...")]
+        public static partial void Fetching(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Parsing package downloads...")]
+        public static partial void Parsing(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "Invalid entry in downloads.v1.json: {Entry}")]
+        private static partial void InvalidEntry(ILogger logger, string entry);
+
+        // The entry's text is only made if errors are logged.
+        public static void InvalidEntry(ILogger logger, JsonElement entry)
+        {
+            if (logger.IsEnabled(LogLevel.Error))
+                InvalidEntry(logger, entry.GetRawText());
+        }
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Parsed package downloads")]
+        public static partial void Parsed(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Downloading downloads.v1.json...")]
+        public static partial void Downloading(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Downloaded downloads.v1.json")]
+        public static partial void Downloaded(ILogger logger);
     }
 }

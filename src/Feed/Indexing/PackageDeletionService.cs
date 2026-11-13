@@ -17,7 +17,7 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="locks">The packages' locks, so a version isn't deleted while it's pushed.</param>
 /// <param name="options">The feed's options.</param>
 /// <param name="logger">The logger.</param>
-public class PackageDeletionService(IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, ILogger<PackageDeletionService> logger) : IPackageDeletionService
+public partial class PackageDeletionService(IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, ILogger<PackageDeletionService> logger) : IPackageDeletionService
 {
     private IPackageDatabase Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;
@@ -39,16 +39,16 @@ public class PackageDeletionService(IPackageDatabase packages, IPackageStorageSe
 
     private async Task<bool> TryUnlistPackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        Logger.LogInformation("Unlisting package {PackageId} {PackageVersion}...", id, version);
+        Log.Unlisting(Logger, id, version);
 
         if (!await Packages.UnlistPackageAsync(id, version, cancellationToken))
         {
-            Logger.LogWarning("Could not find package {PackageId} {PackageVersion}", id, version);
+            Log.NotFound(Logger, id, version);
 
             return false;
         }
 
-        Logger.LogInformation("Unlisted package {PackageId} {PackageVersion}", id, version);
+        Log.Unlisted(Logger, id, version);
 
         await AddToCatalogAsync(id, version, cancellationToken);
 
@@ -58,11 +58,11 @@ public class PackageDeletionService(IPackageDatabase packages, IPackageStorageSe
     /// <inheritdoc />
     public async Task<bool> TryRelistPackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        Logger.LogInformation("Relisting package {PackageId} {PackageVersion}...", id, version);
+        Log.Relisting(Logger, id, version);
 
         if (!await Packages.RelistPackageAsync(id, version, cancellationToken))
         {
-            Logger.LogWarning("Could not find package {PackageId} {PackageVersion}", id, version);
+            Log.NotFound(Logger, id, version);
 
             return false;
         }
@@ -97,10 +97,7 @@ public class PackageDeletionService(IPackageDatabase packages, IPackageStorageSe
 
     private async Task<bool> HardDeletePackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        Logger.LogInformation(
-            "Hard deleting package {PackageId} {PackageVersion} from the database...",
-            id,
-            version);
+        Log.HardDeletingFromDatabase(Logger, id, version);
 
         bool found = await Packages.HardDeletePackageAsync(id, version, cancellationToken);
         if (found)
@@ -109,25 +106,44 @@ public class PackageDeletionService(IPackageDatabase packages, IPackageStorageSe
         }
         else
         {
-            Logger.LogWarning(
-                "Could not find package {PackageId} {PackageVersion} in the database",
-                id,
-                version);
+            Log.NotFoundInDatabase(Logger, id, version);
         }
 
         // Delete the package from storage. This is necessary even if the package isn't
         // in the database to ensure that the storage is consistent with the database.
-        Logger.LogInformation("Hard deleting package {PackageId} {PackageVersion} from storage...",
-            id,
-            version);
+        Log.HardDeletingFromStorage(Logger, id, version);
 
         await Storage.DeleteAsync(id, version, cancellationToken);
 
-        Logger.LogInformation(
-            "Hard deleted package {PackageId} {PackageVersion} from storage",
-            id,
-            version);
+        Log.HardDeletedFromStorage(Logger, id, version);
 
         return found;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Unlisting package {PackageId} {PackageVersion}...")]
+        public static partial void Unlisting(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Could not find package {PackageId} {PackageVersion}")]
+        public static partial void NotFound(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Unlisted package {PackageId} {PackageVersion}")]
+        public static partial void Unlisted(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Relisting package {PackageId} {PackageVersion}...")]
+        public static partial void Relisting(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Hard deleting package {PackageId} {PackageVersion} from the database...")]
+        public static partial void HardDeletingFromDatabase(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Could not find package {PackageId} {PackageVersion} in the database")]
+        public static partial void NotFoundInDatabase(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Hard deleting package {PackageId} {PackageVersion} from storage...")]
+        public static partial void HardDeletingFromStorage(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Hard deleted package {PackageId} {PackageVersion} from storage")]
+        public static partial void HardDeletedFromStorage(ILogger logger, string packageId, NuGetVersion packageVersion);
     }
 }

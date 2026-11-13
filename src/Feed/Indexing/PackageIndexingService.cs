@@ -25,7 +25,7 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="locks">The packages' locks, so a version is pushed once at a time.</param>
 /// <param name="options">The feed's options.</param>
 /// <param name="logger">The logger.</param>
-public class PackageIndexingService(IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, ILogger<PackageIndexingService> logger) : IPackageIndexingService
+public partial class PackageIndexingService(IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, ILogger<PackageIndexingService> logger) : IPackageIndexingService
 {
     private IPackageDatabase Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;
@@ -63,12 +63,7 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
         Package package = contents.Package;
         if (!string.Equals(package.Id, id, StringComparison.OrdinalIgnoreCase) || package.Version != version)
         {
-            Logger.LogWarning(
-                "A mirror was asked for package {PackageId} {PackageVersion}, but sent {MirroredId} {MirroredVersion}, so it isn't added",
-                id,
-                version,
-                package.Id,
-                package.NormalizedVersionString);
+            Log.MirrorSentAnotherPackage(Logger, id, version, package.Id, package.NormalizedVersionString);
             return PackageIndexingResult.InvalidPackage;
         }
 
@@ -112,10 +107,7 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
             await Storage.DeleteAsync(package.Id, package.Version, cancellationToken);
         }
 
-        Logger.LogInformation(
-            "Validated package {PackageId} {PackageVersion}, persisting content to storage...",
-            package.Id,
-            package.NormalizedVersionString);
+        Log.Validated(Logger, package.Id, package.NormalizedVersionString);
 
         RepositorySigningResult signing = Signing.IsEnabled
             ? await Signing.SignAsync(packageStream, Url.GetServiceIndexUrl(), cancellationToken)
@@ -149,21 +141,14 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
             }
             catch (Exception e)
             {
-                Logger.LogError(
-                    e,
-                    "Failed to persist package {PackageId} {PackageVersion} content to storage",
-                    package.Id,
-                    package.NormalizedVersionString);
+                Log.StorageFailed(Logger, e, package.Id, package.NormalizedVersionString);
 
                 await DeleteOrphanedContentAsync(package);
                 throw;
             }
         }
 
-        Logger.LogInformation(
-            "Persisted package {Id} {Version} content to storage, saving metadata to database...",
-            package.Id,
-            package.NormalizedVersionString);
+        Log.Stored(Logger, package.Id, package.NormalizedVersionString);
 
         PackageAddResult result;
         try
@@ -179,34 +164,25 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
         if (result == PackageAddResult.PackageAlreadyExists)
         {
             // Another process added it. Its files are the same as these, or this push's files lost to its.
-            Logger.LogWarning(
-                "Package {Id} {Version} metadata already exists in database",
-                package.Id,
-                package.NormalizedVersionString);
+            Log.AlreadyExists(Logger, package.Id, package.NormalizedVersionString);
 
             return PackageIndexingResult.PackageAlreadyExists;
         }
 
         if (result != PackageAddResult.Success)
         {
-            Logger.LogError($"Unknown {nameof(PackageAddResult)} value: {{PackageAddResult}}", result);
+            Log.UnknownAddResult(Logger, result);
 
             throw new InvalidOperationException($"Unknown {nameof(PackageAddResult)} value: {result}");
         }
 
         await Catalog.AddPackageDetailsAsync([package], cancellationToken);
 
-        Logger.LogInformation(
-            "Successfully persisted package {Id} {Version} metadata to database. Indexing in search...",
-            package.Id,
-            package.NormalizedVersionString);
+        Log.SavedToDatabase(Logger, package.Id, package.NormalizedVersionString);
 
         await Search.IndexAsync(package, cancellationToken);
 
-        Logger.LogInformation(
-            "Successfully indexed package {Id} {Version} in search",
-            package.Id,
-            package.NormalizedVersionString);
+        Log.Indexed(Logger, package.Id, package.NormalizedVersionString);
 
         return PackageIndexingResult.Success;
     }
@@ -247,7 +223,7 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            Logger.LogError(e, "Uploaded package is invalid");
+            Log.InvalidPackage(Logger, e);
 
             contents?.Dispose();
             return null;
@@ -274,11 +250,7 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
         }
         catch (Exception e)
         {
-            Logger.LogWarning(
-                e,
-                "Failed to delete the stored content of package {PackageId} {PackageVersion} after its push failed",
-                package.Id,
-                package.NormalizedVersionString);
+            Log.OrphanedContentNotDeleted(Logger, e, package.Id, package.NormalizedVersionString);
         }
     }
 
@@ -298,5 +270,38 @@ public class PackageIndexingService(IPackageDatabase packages, IPackageStorageSe
             Icon?.Dispose();
             License?.Dispose();
         }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "A mirror was asked for package {PackageId} {PackageVersion}, but sent {MirroredId} {MirroredVersion}, so it isn't added")]
+        public static partial void MirrorSentAnotherPackage(ILogger logger, string packageId, NuGetVersion packageVersion, string mirroredId, string mirroredVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Validated package {PackageId} {PackageVersion}, persisting content to storage...")]
+        public static partial void Validated(ILogger logger, string packageId, string packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "Failed to persist package {PackageId} {PackageVersion} content to storage")]
+        public static partial void StorageFailed(ILogger logger, Exception exception, string packageId, string packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Persisted package {Id} {Version} content to storage, saving metadata to database...")]
+        public static partial void Stored(ILogger logger, string id, string version);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Package {Id} {Version} metadata already exists in database")]
+        public static partial void AlreadyExists(ILogger logger, string id, string version);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = $"Unknown {nameof(PackageAddResult)} value: {{PackageAddResult}}")]
+        public static partial void UnknownAddResult(ILogger logger, PackageAddResult packageAddResult);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Successfully persisted package {Id} {Version} metadata to database. Indexing in search...")]
+        public static partial void SavedToDatabase(ILogger logger, string id, string version);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Successfully indexed package {Id} {Version} in search")]
+        public static partial void Indexed(ILogger logger, string id, string version);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "Uploaded package is invalid")]
+        public static partial void InvalidPackage(ILogger logger, Exception exception);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to delete the stored content of package {PackageId} {PackageVersion} after its push failed")]
+        public static partial void OrphanedContentNotDeleted(ILogger logger, Exception exception, string packageId, string packageVersion);
     }
 }

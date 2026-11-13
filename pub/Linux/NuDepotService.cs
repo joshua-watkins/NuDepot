@@ -12,7 +12,7 @@ namespace NuDepot;
 /// certificate's, are relative to it. Settings are optional:
 /// the options have defaults, which setup.ini (the installer's choices) and then appsettings.json override.
 /// </summary>
-internal static class NuDepotService
+internal static partial class NuDepotService
 {
     /// <summary>
     /// The environment variable that holds the settings folder, if it isn't the service's usual one.
@@ -102,9 +102,7 @@ internal static class NuDepotService
             .GetChildren();
         foreach (IConfigurationSection key in keys.Where(key => key.Value != null && ExampleApiKeys.Contains(key.Value)))
         {
-            app.Logger.LogWarning(
-                "The {Role} API key is still the example from appsettings.json, which everyone who installs NuDepot has. Replace it with a random key of your own.",
-                key.Key);
+            Log.ExampleApiKey(app.Logger, key.Key);
         }
     }
 
@@ -169,4 +167,10 @@ internal static class NuDepotService
             .GetSection("Kestrel:Endpoints")
             .GetChildren()
             .Any();
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "The {Role} API key is still the example from appsettings.json, which everyone who installs NuDepot has. Replace it with a random key of your own.")]
+        public static partial void ExampleApiKey(ILogger logger, string role);
+    }
 }

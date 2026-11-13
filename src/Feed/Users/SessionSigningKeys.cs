@@ -20,7 +20,7 @@ namespace NuDepot.Feed.Users;
 /// <param name="dataProtection">Encrypts the keys' private keys.</param>
 /// <param name="time">The current time.</param>
 /// <param name="logger">The logger.</param>
-internal sealed class SessionSigningKeys(IServiceScopeFactory scopes, IDataProtectionProvider dataProtection, TimeProvider time, ILogger<SessionSigningKeys> logger) : IDisposable
+internal sealed partial class SessionSigningKeys(IServiceScopeFactory scopes, IDataProtectionProvider dataProtection, TimeProvider time, ILogger<SessionSigningKeys> logger) : IDisposable
 {
     private const string ProtectorPurpose = "NuDepot.Feed.Users.SessionSigningKeys";
 
@@ -110,9 +110,9 @@ internal sealed class SessionSigningKeys(IServiceScopeFactory scopes, IDataProte
             keys.Add(TryLoad(row)!);
 
             if (rows.Count > 0)
-                Logger.LogWarning("None of the keys that sign sign-in cookies could be decrypted, so a new one was made, and users have to sign in again");
+                Log.KeysReplaced(Logger);
             else
-                Logger.LogInformation("Made the key that signs sign-in cookies");
+                Log.KeyMade(Logger);
         }
 
         return new LoadedKeys(keys[0], keys);
@@ -139,12 +139,24 @@ internal sealed class SessionSigningKeys(IServiceScopeFactory scopes, IDataProte
         }
         catch (CryptographicException e)
         {
-            Logger.LogWarning(e, "The key {KeyId} that signs sign-in cookies can't be decrypted", row.KeyId);
+            Log.KeyNotDecrypted(Logger, e, row.KeyId);
             return null;
         }
     }
 
     private sealed record LoadedKeys(ECDsaSecurityKey SigningKey, IReadOnlyList<SecurityKey> ValidationKeys);
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "None of the keys that sign sign-in cookies could be decrypted, so a new one was made, and users have to sign in again")]
+        public static partial void KeysReplaced(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Made the key that signs sign-in cookies")]
+        public static partial void KeyMade(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "The key {KeyId} that signs sign-in cookies can't be decrypted")]
+        public static partial void KeyNotDecrypted(ILogger logger, Exception exception, string keyId);
+    }
 }
 
 /// <summary>

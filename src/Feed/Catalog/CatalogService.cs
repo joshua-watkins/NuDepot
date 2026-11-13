@@ -11,7 +11,7 @@ using System.Text.Json;
 namespace NuDepot.Feed.Catalog;
 
 /// <inheritdoc />
-public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageStorageService storage, SystemTime time, ILogger<CatalogService> logger) : ICatalogService
+public partial class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageStorageService storage, SystemTime time, ILogger<CatalogService> logger) : ICatalogService
 {
     /// <summary>
     /// The most catalog items in a page, the same as nuget.org.
@@ -243,7 +243,7 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
         if (packages.Count == 0)
             return;
 
-        Logger.LogInformation("Adding {PackageCount} existing packages to the catalog...", packages.Count);
+        Log.AddingExisting(Logger, packages.Count);
 
         // Packages indexed before the catalog existed don't have the hash the catalog requires.
         foreach (Package? package in packages.Where(p => p.PackageHash == null))
@@ -263,17 +263,13 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
             }
             catch (Exception e)
             {
-                Logger.LogWarning(
-                    e,
-                    "Could not hash package {PackageId} {PackageVersion}; its catalog entry won't have a hash",
-                    package.Id,
-                    package.NormalizedVersionString);
+                Log.HashFailed(Logger, e, package.Id, package.NormalizedVersionString);
             }
         }
 
         await AddPackageDetailsAsync(packages, cancellationToken);
 
-        Logger.LogInformation("Added {PackageCount} existing packages to the catalog", packages.Count);
+        Log.AddedExisting(Logger, packages.Count);
     }
 
     private async Task CommitAsync(IReadOnlyList<CatalogEntry> entries, CancellationToken cancellationToken)
@@ -309,4 +305,16 @@ public class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageS
 
     private static DateTimeOffset ToUtc(DateTime value)
         => new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Adding {PackageCount} existing packages to the catalog...")]
+        public static partial void AddingExisting(ILogger logger, int packageCount);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Could not hash package {PackageId} {PackageVersion}; its catalog entry won't have a hash")]
+        public static partial void HashFailed(ILogger logger, Exception exception, string packageId, string packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Added {PackageCount} existing packages to the catalog")]
+        public static partial void AddedExisting(ILogger logger, int packageCount);
+    }
 }

@@ -11,7 +11,7 @@ namespace NuDepot.Gallery;
 /// <summary>
 /// The website's pages: each endpoint loads a slice's model, then renders the slice.
 /// </summary>
-internal static class WebsiteEndpoints
+internal static partial class WebsiteEndpoints
 {
     private const string LoggerCategory = "NuDepot.Gallery";
 
@@ -172,9 +172,7 @@ internal static class WebsiteEndpoints
                 serviceIndexUrl = "(not configured)";
             }
 
-            loggerFactory
-                .CreateLogger(LoggerCategory)
-                .LogError(e, "Could not read the NuGet feed at {ServiceIndexUrl}", serviceIndexUrl);
+            Log.FeedUnreadable(loggerFactory.CreateLogger(LoggerCategory), e, serviceIndexUrl);
 
             FeedErrorModel model = new(request.PathBase.Value ?? string.Empty, serviceIndexUrl);
 
@@ -182,5 +180,11 @@ internal static class WebsiteEndpoints
         }
 
         return render();
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Error, Message = "Could not read the NuGet feed at {ServiceIndexUrl}")]
+        public static partial void FeedUnreadable(ILogger logger, Exception exception, string serviceIndexUrl);
     }
 }

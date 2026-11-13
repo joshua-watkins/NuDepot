@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Builder;
 /// <summary>
 /// Uses the NuGet feed in an application's request pipeline.
 /// </summary>
-public static class FeedApplicationBuilderExtensions
+public static partial class FeedApplicationBuilderExtensions
 {
     /// <summary>
     /// Uses the NuGet feed, like <c>app.UseNuDepot().UseFeed()</c>, with its API keys, one for each role. For users
@@ -90,10 +90,7 @@ public static class FeedApplicationBuilderExtensions
         FeedAccess access = services.GetRequiredService<FeedAccess>();
 
         if (access.AnonymousRole == FeedRole.ReadWrite)
-        {
-            logger.LogWarning(
-                "The feed has no ReadWrite API key and no users, so anyone who can reach it may push and unlist packages. Set API keys, or turn on users, unless the feed is meant to be open.");
-        }
+            Log.OpenFeed(logger);
 
         ApiKeyOptions apiKeys = services
             .GetRequiredService<IOptions<FeedOptions>>()
@@ -101,16 +98,19 @@ public static class FeedApplicationBuilderExtensions
             .Authorization
             .ApiKeys;
         foreach ((FeedRole role, string key) in FeedAccess.GetApiKeys(apiKeys).Where(apiKey => apiKey.Key.Length < MinimumApiKeyLength))
-        {
-            logger.LogWarning(
-                "The {Role} API key has only {Length} characters, so it could be guessed. Use a random key of at least {Minimum}.",
-                role,
-                key.Length,
-                MinimumApiKeyLength);
-        }
+            Log.ShortApiKey(logger, role, key.Length, MinimumApiKeyLength);
     }
 
     private const string LoggerCategory = "NuDepot.Feed";
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "The feed has no ReadWrite API key and no users, so anyone who can reach it may push and unlist packages. Set API keys, or turn on users, unless the feed is meant to be open.")]
+        public static partial void OpenFeed(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "The {Role} API key has only {Length} characters, so it could be guessed. Use a random key of at least {Minimum}.")]
+        public static partial void ShortApiKey(ILogger logger, FeedRole role, int length, int minimum);
+    }
 
     /// <summary>
     /// Maps the endpoints the gallery uses for the feed's users: signing up and signing in with passkeys, and

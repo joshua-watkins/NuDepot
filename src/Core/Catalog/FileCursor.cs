@@ -8,7 +8,7 @@ namespace NuDepot.Core.Catalog;
 /// a JSON object.
 /// Based off: https://github.com/NuGet/NuGet.Services.Metadata/blob/3a468fe534a03dcced897eb5992209fdd3c4b6c9/src/NuGet.Protocol.Catalog/FileCursor.cs
 /// </summary>
-public class FileCursor(string path, ILogger<FileCursor> logger) : ICursor
+public partial class FileCursor(string path, ILogger<FileCursor> logger) : ICursor
 {
     private const string ValueProperty = "value";
 
@@ -25,7 +25,7 @@ public class FileCursor(string path, ILogger<FileCursor> logger) : ICursor
             DateTimeOffset value = document.RootElement
                 .GetProperty(ValueProperty)
                 .GetDateTimeOffset();
-            Logger.LogDebug("Read cursor value {cursor:O} from {path}.", value, Path);
+            Log.Read(Logger, value, Path);
             return value;
         }
         catch (Exception e) when (e is FileNotFoundException || e is JsonException || e is KeyNotFoundException || e is FormatException || e is InvalidOperationException)
@@ -45,7 +45,16 @@ public class FileCursor(string path, ILogger<FileCursor> logger) : ICursor
             writer.WriteEndObject();
         }
 
-        Logger.LogDebug("Wrote cursor value {cursor:O} to {path}.", value, Path);
+        Log.Wrote(Logger, value, Path);
         return Task.CompletedTask;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Read cursor value {cursor:O} from {path}.")]
+        public static partial void Read(ILogger logger, DateTimeOffset cursor, string path);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Wrote cursor value {cursor:O} to {path}.")]
+        public static partial void Wrote(ILogger logger, DateTimeOffset cursor, string path);
     }
 }

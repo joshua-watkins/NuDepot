@@ -15,7 +15,7 @@ namespace NuDepot.Feed.Upstream.Clients;
 /// <see cref="MirroringOptions.UnreachableMirrorMinutes"/>, and meanwhile requests skip it or stop at it, as its
 /// <see cref="MirrorOptions.WhenUnreachable"/> says. Without mirroring, nothing is found.
 /// </summary>
-internal sealed class MirrorChain : IUpstreamClient
+internal sealed partial class MirrorChain : IUpstreamClient
 {
     /// <summary>
     /// A mirror, for the administration page.
@@ -192,17 +192,11 @@ internal sealed class MirrorChain : IUpstreamClient
 
         if (mirror.WhenUnreachable == UnreachableMirrorBehavior.Stop)
         {
-            Logger.LogWarning(
-                "Mirror {Mirror} can't be reached, so it won't be asked for {Minutes} minutes. Meanwhile, requests stop at it: packages the feed doesn't have can't be restored.",
-                mirror.Name,
-                UnreachableTime.TotalMinutes);
+            Log.UnreachableStops(Logger, mirror.Name, UnreachableTime.TotalMinutes);
         }
         else
         {
-            Logger.LogWarning(
-                "Mirror {Mirror} can't be reached, so it won't be asked for {Minutes} minutes. Meanwhile, requests skip it, and the mirrors after it are asked instead.",
-                mirror.Name,
-                UnreachableTime.TotalMinutes);
+            Log.UnreachableSkipped(Logger, mirror.Name, UnreachableTime.TotalMinutes);
         }
     }
 
@@ -227,5 +221,14 @@ internal sealed class MirrorChain : IUpstreamClient
         /// <returns>Whether it was being asked until now, rather than another request having already stopped it.</returns>
         public bool MarkUnreachable(DateTimeOffset now, TimeSpan time)
             => Interlocked.Exchange(ref unreachableUntilTicks, (now + time).UtcTicks) <= now.UtcTicks;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Mirror {Mirror} can't be reached, so it won't be asked for {Minutes} minutes. Meanwhile, requests stop at it: packages the feed doesn't have can't be restored.")]
+        public static partial void UnreachableStops(ILogger logger, string mirror, double minutes);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Mirror {Mirror} can't be reached, so it won't be asked for {Minutes} minutes. Meanwhile, requests skip it, and the mirrors after it are asked instead.")]
+        public static partial void UnreachableSkipped(ILogger logger, string mirror, double minutes);
     }
 }

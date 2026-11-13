@@ -13,7 +13,7 @@ namespace NuDepot.Feed;
 /// <param name="upstream">The upstream feed.</param>
 /// <param name="indexer">Adds packages from the upstream feed.</param>
 /// <param name="logger">The logger.</param>
-public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPackageIndexingService indexer, ILogger<PackageService> logger) : IPackageService
+public partial class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPackageIndexingService indexer, ILogger<PackageService> logger) : IPackageService
 {
     private IPackageDatabase Db { get; } = db;
     private IUpstreamClient Upstream { get; } = upstream;
@@ -103,48 +103,49 @@ public class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPack
         if (await Db.HasPushedVersionsAsync(id, cancellationToken))
             return false;
 
-        Logger.LogInformation(
-            "Package {PackageId} {PackageVersion} does not exist locally. Checking upstream feed...",
-            id,
-            version);
+        Log.CheckingUpstream(Logger, id, version);
 
         try
         {
             using Stream? packageStream = await Upstream.DownloadPackageOrNullAsync(id, version, cancellationToken);
             if (packageStream == null)
             {
-                Logger.LogWarning(
-                    "Upstream feed does not have package {PackageId} {PackageVersion}",
-                    id,
-                    version);
+                Log.NotUpstream(Logger, id, version);
                 return false;
             }
 
-            Logger.LogInformation(
-                "Downloaded package {PackageId} {PackageVersion}, indexing...",
-                id,
-                version);
+            Log.Downloaded(Logger, id, version);
 
             PackageIndexingResult result = await Indexer.MirrorAsync(packageStream, id, version, cancellationToken);
 
-            Logger.LogInformation(
-                "Finished indexing package {PackageId} {PackageVersion} from upstream feed with result {Result}",
-                id,
-                version,
-                result);
+            Log.Indexed(Logger, id, version, result);
 
             // Another download may have mirrored it while this one waited.
             return result is PackageIndexingResult.Success or PackageIndexingResult.PackageAlreadyExists;
         }
         catch (Exception e) when (!(e is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
-            Logger.LogError(
-                e,
-                "Failed to index package {PackageId} {PackageVersion} from upstream",
-                id,
-                version);
+            Log.MirrorFailed(Logger, e, id, version);
 
             return false;
         }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Package {PackageId} {PackageVersion} does not exist locally. Checking upstream feed...")]
+        public static partial void CheckingUpstream(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Upstream feed does not have package {PackageId} {PackageVersion}")]
+        public static partial void NotUpstream(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Downloaded package {PackageId} {PackageVersion}, indexing...")]
+        public static partial void Downloaded(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Finished indexing package {PackageId} {PackageVersion} from upstream feed with result {Result}")]
+        public static partial void Indexed(ILogger logger, string packageId, NuGetVersion packageVersion, PackageIndexingResult result);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "Failed to index package {PackageId} {PackageVersion} from upstream")]
+        public static partial void MirrorFailed(ILogger logger, Exception exception, string packageId, NuGetVersion packageVersion);
     }
 }

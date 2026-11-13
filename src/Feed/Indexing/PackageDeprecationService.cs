@@ -7,7 +7,7 @@ using NuGet.Versioning;
 namespace NuDepot.Feed.Indexing;
 
 /// <inheritdoc />
-public class PackageDeprecationService(IPackageDatabase packages, ICatalogService catalog, ILogger<PackageDeprecationService> logger) : IPackageDeprecationService
+public partial class PackageDeprecationService(IPackageDatabase packages, ICatalogService catalog, ILogger<PackageDeprecationService> logger) : IPackageDeprecationService
 {
     private IPackageDatabase Packages { get; } = packages;
     private ICatalogService Catalog { get; } = catalog;
@@ -16,7 +16,7 @@ public class PackageDeprecationService(IPackageDatabase packages, ICatalogServic
     /// <inheritdoc />
     public Task<bool> DeprecateAsync(string id, NuGetVersion version, IReadOnlyList<string> reasons, string? message, string? alternatePackageId, string? alternatePackageVersionRange, CancellationToken cancellationToken)
     {
-        Logger.LogInformation("Deprecating package {PackageId} {PackageVersion}...", id, version);
+        Log.Deprecating(Logger, id, version);
 
         string[] reasonArray = [.. reasons];
         string? range = alternatePackageId == null ? null : alternatePackageVersionRange;
@@ -31,7 +31,7 @@ public class PackageDeprecationService(IPackageDatabase packages, ICatalogServic
     /// <inheritdoc />
     public Task<bool> UndeprecateAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
-        Logger.LogInformation("Undeprecating package {PackageId} {PackageVersion}...", id, version);
+        Log.Undeprecating(Logger, id, version);
 
         return UpdateAsync(id, version, setters => setters
             .SetProperty(p => p.DeprecationReasons, (string[]?)null)
@@ -45,7 +45,7 @@ public class PackageDeprecationService(IPackageDatabase packages, ICatalogServic
     {
         if (!await Packages.UpdateAsync(id, version, setters, cancellationToken))
         {
-            Logger.LogWarning("Could not find package {PackageId} {PackageVersion}", id, version);
+            Log.NotFound(Logger, id, version);
             return false;
         }
 
@@ -54,5 +54,17 @@ public class PackageDeprecationService(IPackageDatabase packages, ICatalogServic
         await Catalog.AddPackageDetailsAsync([package], cancellationToken);
 
         return true;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Deprecating package {PackageId} {PackageVersion}...")]
+        public static partial void Deprecating(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Undeprecating package {PackageId} {PackageVersion}...")]
+        public static partial void Undeprecating(ILogger logger, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Could not find package {PackageId} {PackageVersion}")]
+        public static partial void NotFound(ILogger logger, string packageId, NuGetVersion packageVersion);
     }
 }

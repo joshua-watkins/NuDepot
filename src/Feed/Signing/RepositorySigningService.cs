@@ -15,7 +15,7 @@ namespace NuDepot.Feed.Signing;
 /// <param name="options">The signing options.</param>
 /// <param name="certificates">The configured certificate, or the generated ones.</param>
 /// <param name="logger">The logger.</param>
-public sealed class RepositorySigningService(IOptions<RepositorySigningOptions> options, ISigningCertificateSource certificates, ILogger<RepositorySigningService> logger) : IRepositorySigningService, IDisposable
+public sealed partial class RepositorySigningService(IOptions<RepositorySigningOptions> options, ISigningCertificateSource certificates, ILogger<RepositorySigningService> logger) : IRepositorySigningService, IDisposable
 {
     private RepositorySigningOptions Options { get; } = options.Value;
     private ISigningCertificateSource Certificates { get; } = certificates;
@@ -74,7 +74,7 @@ public sealed class RepositorySigningService(IOptions<RepositorySigningOptions> 
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            Logger.LogError(e, "Failed to repository sign the package. It will be stored without this server's signature");
+            Log.SigningFailed(Logger, e);
             return RepositorySigningResult.Unsigned;
         }
         finally
@@ -95,7 +95,7 @@ public sealed class RepositorySigningService(IOptions<RepositorySigningOptions> 
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            Logger.LogError(e, "Failed to re-sign the package. It's served with its existing signature");
+            Log.ResigningFailed(Logger, e);
             return RepositorySigningResult.Unsigned;
         }
         finally
@@ -155,7 +155,7 @@ public sealed class RepositorySigningService(IOptions<RepositorySigningOptions> 
         if (Uri.TryCreate(serviceIndexUrl, UriKind.Absolute, out serviceIndexUri) && serviceIndexUri.Scheme == Uri.UriSchemeHttps)
             return true;
 
-        Logger.LogWarning("Packages are only repository signed when they're pushed or downloaded over HTTPS. The service index URL is {ServiceIndexUrl}", serviceIndexUrl);
+        Log.NotHttps(Logger, serviceIndexUrl);
         serviceIndexUri = null;
         return false;
     }
@@ -225,4 +225,16 @@ public sealed class RepositorySigningService(IOptions<RepositorySigningOptions> 
     /// <param name="Request">The request.</param>
     /// <param name="Lock">Lets the request sign one package at a time.</param>
     private sealed record CachedRequest(RepositorySignPackageRequest Request, SemaphoreSlim Lock);
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Error, Message = "Failed to repository sign the package. It will be stored without this server's signature")]
+        public static partial void SigningFailed(ILogger logger, Exception exception);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "Failed to re-sign the package. It's served with its existing signature")]
+        public static partial void ResigningFailed(ILogger logger, Exception exception);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Packages are only repository signed when they're pushed or downloaded over HTTPS. The service index URL is {ServiceIndexUrl}")]
+        public static partial void NotHttps(ILogger logger, string serviceIndexUrl);
+    }
 }

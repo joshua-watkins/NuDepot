@@ -14,7 +14,7 @@ namespace NuDepot.Core.Catalog;
 /// <param name="leafProcessor">The leaf processor.</param>
 /// <param name="options">The options to configure catalog processing.</param>
 /// <param name="logger">The logger used for telemetry.</param>
-public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLeafProcessor leafProcessor, CatalogProcessorOptions options, ILogger<CatalogProcessor> logger)
+public partial class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLeafProcessor leafProcessor, CatalogProcessorOptions options, ILogger<CatalogProcessor> logger)
 {
     private ICatalogLeafProcessor LeafProcessor { get; } = leafProcessor;
     private ICatalogClient Client { get; } = client;
@@ -33,10 +33,7 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
     public async Task<bool> ProcessAsync(CancellationToken cancellationToken = default)
     {
         DateTimeOffset minCommitTimestamp = await GetMinCommitTimestamp(cancellationToken);
-        Logger.LogInformation(
-            "Using time bounds {min:O} (exclusive) to {max:O} (inclusive).",
-            minCommitTimestamp,
-            Options.MaxCommitTimestamp);
+        Log.TimeBounds(Logger, minCommitTimestamp, Options.MaxCommitTimestamp);
 
         return await ProcessIndexAsync(minCommitTimestamp, cancellationToken);
     }
@@ -48,10 +45,7 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
         List<CatalogPageItem> pageItems = index.GetPagesInBounds(
             minCommitTimestamp,
             Options.MaxCommitTimestamp);
-        Logger.LogInformation(
-            "{pages} pages were in the time bounds, out of {totalPages}.",
-            pageItems.Count,
-            index.Items.Count);
+        Log.PagesInBounds(Logger, pageItems.Count, index.Items.Count);
 
         bool success = true;
         for (int i = 0; i < pageItems.Count; i++)
@@ -59,10 +53,7 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
             success = await ProcessPageAsync(minCommitTimestamp, pageItems[i], cancellationToken);
             if (!success)
             {
-                Logger.LogWarning(
-                    "{unprocessedPages} out of {pages} pages were left incomplete due to a processing failure.",
-                    pageItems.Count - i,
-                    pageItems.Count);
+                Log.PagesIncomplete(Logger, pageItems.Count - i, pageItems.Count);
                 break;
             }
         }
@@ -78,11 +69,7 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
             minCommitTimestamp,
             Options.MaxCommitTimestamp,
             Options.ExcludeRedundantLeaves);
-        Logger.LogInformation(
-            "On page {page}, {leaves} out of {totalLeaves} were in the time bounds.",
-            pageItem.CatalogPageUrl,
-            leafItems.Count,
-            page.Items.Count);
+        Log.LeavesInBounds(Logger, pageItem.CatalogPageUrl, leafItems.Count, page.Items.Count);
 
         DateTimeOffset? newCursor = null;
         bool success = true;
@@ -98,10 +85,7 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
             success = await ProcessLeafAsync(leafItem, cancellationToken);
             if (!success)
             {
-                Logger.LogWarning(
-                    "{unprocessedLeaves} out of {leaves} leaves were left incomplete due to a processing failure.",
-                    leafItems.Count - i,
-                    leafItems.Count);
+                Log.LeavesIncomplete(Logger, leafItems.Count - i, leafItems.Count);
                 break;
             }
         }
@@ -134,22 +118,13 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
         }
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            Logger.LogError(
-                0,
-                exception,
-                "An exception was thrown while processing leaf {leafUrl}.",
-                leafItem.CatalogLeafUrl);
+            Log.LeafException(Logger, exception, leafItem.CatalogLeafUrl);
             success = false;
         }
 
         if (!success)
         {
-            Logger.LogWarning(
-                "Failed to process leaf {leafUrl} ({packageId} {packageVersion}, {leafType}).",
-                leafItem.CatalogLeafUrl,
-                leafItem.PackageId,
-                leafItem.PackageVersion,
-                leafItem.Type);
+            Log.LeafFailed(Logger, leafItem.CatalogLeafUrl, leafItem.PackageId, leafItem.PackageVersion, leafItem.Type);
         }
 
         return success;
@@ -166,5 +141,29 @@ public class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLea
             minCommitTimestamp = Options.MinCommitTimestamp;
 
         return minCommitTimestamp.Value;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Using time bounds {min:O} (exclusive) to {max:O} (inclusive).")]
+        public static partial void TimeBounds(ILogger logger, DateTimeOffset min, DateTimeOffset max);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{pages} pages were in the time bounds, out of {totalPages}.")]
+        public static partial void PagesInBounds(ILogger logger, int pages, int totalPages);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "{unprocessedPages} out of {pages} pages were left incomplete due to a processing failure.")]
+        public static partial void PagesIncomplete(ILogger logger, int unprocessedPages, int pages);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "On page {page}, {leaves} out of {totalLeaves} were in the time bounds.")]
+        public static partial void LeavesInBounds(ILogger logger, string page, int leaves, int totalLeaves);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "{unprocessedLeaves} out of {leaves} leaves were left incomplete due to a processing failure.")]
+        public static partial void LeavesIncomplete(ILogger logger, int unprocessedLeaves, int leaves);
+
+        [LoggerMessage(EventId = 0, Level = LogLevel.Error, Message = "An exception was thrown while processing leaf {leafUrl}.")]
+        public static partial void LeafException(ILogger logger, Exception exception, string leafUrl);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to process leaf {leafUrl} ({packageId} {packageVersion}, {leafType}).")]
+        public static partial void LeafFailed(ILogger logger, string leafUrl, string packageId, string packageVersion, string leafType);
     }
 }

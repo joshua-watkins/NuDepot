@@ -18,7 +18,7 @@ namespace NuDepot.Feed.Upstream.Clients;
 /// its headers.</param>
 /// <param name="downloadTimeout">The time a package's content may take to download, after its headers, or null
 /// for no limit.</param>
-public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logger, string name = "upstream", TimeSpan? requestTimeout = null, TimeSpan? downloadTimeout = null) : IUpstreamClient
+public partial class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logger, string name = "upstream", TimeSpan? requestTimeout = null, TimeSpan? downloadTimeout = null) : IUpstreamClient
 {
     private NuGetClient Client { get; } = client;
     private ILogger<V3UpstreamClient> Logger { get; } = logger;
@@ -58,12 +58,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
         }
         catch (Exception e) when (!cancellationToken.IsCancellationRequested)
         {
-            Logger.LogError(
-                e,
-                "Failed to download {PackageId} {PackageVersion} from mirror {Mirror}",
-                id,
-                version,
-                Name);
+            Log.DownloadFailed(Logger, e, id, version, Name);
             return (null, true);
         }
     }
@@ -91,7 +86,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
         }
         catch (Exception e) when (!cancellationToken.IsCancellationRequested)
         {
-            Logger.LogError(e, "Failed to get {PackageId}'s metadata from mirror {Mirror}", id, Name);
+            Log.MetadataFailed(Logger, e, id, Name);
             return null;
         }
     }
@@ -109,7 +104,7 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
         }
         catch (Exception e) when (!cancellationToken.IsCancellationRequested)
         {
-            Logger.LogError(e, "Failed to get {PackageId}'s versions from mirror {Mirror}", id, Name);
+            Log.VersionsFailed(Logger, e, id, Name);
             return null;
         }
     }
@@ -210,5 +205,17 @@ public class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logg
             VersionRange = d.Range,
             TargetFramework = group.TargetFramework,
         });
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Error, Message = "Failed to download {PackageId} {PackageVersion} from mirror {Mirror}")]
+        public static partial void DownloadFailed(ILogger logger, Exception exception, string packageId, NuGetVersion packageVersion, string mirror);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "Failed to get {PackageId}'s metadata from mirror {Mirror}")]
+        public static partial void MetadataFailed(ILogger logger, Exception exception, string packageId, string mirror);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "Failed to get {PackageId}'s versions from mirror {Mirror}")]
+        public static partial void VersionsFailed(ILogger logger, Exception exception, string packageId, string mirror);
     }
 }

@@ -14,7 +14,7 @@ namespace NuDepot.Feed.Endpoints;
 /// The Package Publish and Symbol Package Publish resources, used to push, delete and relist packages.
 /// See: https://docs.microsoft.com/en-us/nuget/api/package-publish-resource
 /// </summary>
-internal static class PackagePublishEndpoints
+internal static partial class PackagePublishEndpoints
 {
     private const string LoggerCategory = "NuDepot.Feed.Endpoints.PackagePublish";
 
@@ -46,9 +46,7 @@ internal static class PackagePublishEndpoints
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            loggerFactory
-                .CreateLogger(LoggerCategory)
-                .LogError(e, "Exception thrown during package upload");
+            Log.UploadFailed(loggerFactory.CreateLogger(LoggerCategory), e);
 
             return Results.StatusCode(StatusCodes.Status500InternalServerError);
         }
@@ -103,9 +101,7 @@ internal static class PackagePublishEndpoints
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            loggerFactory
-                .CreateLogger(LoggerCategory)
-                .LogError(e, "Exception thrown during symbol upload");
+            Log.SymbolUploadFailed(loggerFactory.CreateLogger(LoggerCategory), e);
 
             return Results.StatusCode(StatusCodes.Status500InternalServerError);
         }
@@ -123,5 +119,14 @@ internal static class PackagePublishEndpoints
 
         response.Headers.XContentTypeOptions = "nosniff";
         return Results.Stream(pdbStream, "application/octet-stream");
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Error, Message = "Exception thrown during package upload")]
+        public static partial void UploadFailed(ILogger logger, Exception exception);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "Exception thrown during symbol upload")]
+        public static partial void SymbolUploadFailed(ILogger logger, Exception exception);
     }
 }
