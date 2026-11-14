@@ -6,7 +6,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -40,18 +39,18 @@ public sealed class FeedLoggingTests(ITestOutputHelper output) : IDisposable
     {
         using HttpClient client = Client(AdminKey);
 
-        Assert.Equal(HttpStatusCode.Created, (await client.PutAsync("api/v2/package", Package("Logged.Package"))).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/v2/package/Logged.Package/1.0.0")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("api/v2/package/Logged.Package/1.0.0", null)).StatusCode);
-        Assert.True((await client.PutAsJsonAsync("api/package/Logged.Package/1.0.0/deprecation", new { reasons = (string[])["Legacy"] })).IsSuccessStatusCode);
-        Assert.True((await client.DeleteAsync("api/package/Logged.Package/1.0.0/deprecation")).IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await client.PutAsync("api/v2/package", Package("Logged.Package"), TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/v2/package/Logged.Package/1.0.0", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("api/v2/package/Logged.Package/1.0.0", null, TestContext.Current.CancellationToken)).StatusCode);
+        Assert.True((await client.PutAsJsonAsync("api/package/Logged.Package/1.0.0/deprecation", new { reasons = (string[])["Legacy"] }, cancellationToken: TestContext.Current.CancellationToken)).IsSuccessStatusCode);
+        Assert.True((await client.DeleteAsync("api/package/Logged.Package/1.0.0/deprecation", TestContext.Current.CancellationToken)).IsSuccessStatusCode);
         Assert.True((await client.PutAsJsonAsync("api/vulnerabilities", new
         {
             packageId = "Logged.Package",
             versions = "[1.0.0, 2.0.0)",
             url = "https://example.com/advisory",
             severity = 2,
-        })).IsSuccessStatusCode);
+        }, cancellationToken: TestContext.Current.CancellationToken)).IsSuccessStatusCode);
 
         IReadOnlyList<string> information = Logs.Messages(LogLevel.Information);
         foreach (string change in (string[])
@@ -75,8 +74,8 @@ public sealed class FeedLoggingTests(ITestOutputHelper output) : IDisposable
         using HttpClient credentials = App.CreateClient();
         credentials.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes("ReadWrite:guessed-key-2")));
 
-        await header.GetAsync("v3/index.json");
-        await credentials.GetAsync("v3/index.json");
+        await header.GetAsync("v3/index.json", TestContext.Current.CancellationToken);
+        await credentials.GetAsync("v3/index.json", TestContext.Current.CancellationToken);
 
         IReadOnlyList<string> warnings = Logs.Messages(LogLevel.Warning);
         Assert.Contains(warnings, m => m.EndsWith("sent an API key that isn't valid", StringComparison.Ordinal));
@@ -89,7 +88,7 @@ public sealed class FeedLoggingTests(ITestOutputHelper output) : IDisposable
     {
         using HttpClient client = Client(ReadOnlyKey);
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsync("api/v2/package", Package("Refused.Package"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsync("api/v2/package", Package("Refused.Package"), TestContext.Current.CancellationToken)).StatusCode);
 
         Assert.Contains(Logs.Messages(LogLevel.Warning), m =>
             m.StartsWith("The ReadOnly API key (", StringComparison.Ordinal) &&
@@ -102,7 +101,7 @@ public sealed class FeedLoggingTests(ITestOutputHelper output) : IDisposable
         using HttpClient client = App.CreateClient();
 
         // NuGet clients are asked for credentials before they send them.
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("v3/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("v3/index.json", TestContext.Current.CancellationToken)).StatusCode);
 
         Assert.DoesNotContain(Logs.Messages(LogLevel.Warning), m => m.Contains("refused", StringComparison.Ordinal));
     }
@@ -111,7 +110,7 @@ public sealed class FeedLoggingTests(ITestOutputHelper output) : IDisposable
     public async Task TheSettingsAreLoggedAtStartup()
     {
         using HttpClient client = App.CreateClient();
-        await client.GetAsync("health");
+        await client.GetAsync("health", TestContext.Current.CancellationToken);
 
         Assert.Contains(
             "Requests without a key or user may do what None may. Users: off. Repository signing: off. Mirrors: off. Read-only mode: off.",

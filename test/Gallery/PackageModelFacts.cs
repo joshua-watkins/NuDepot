@@ -307,7 +307,7 @@ public class PackageModelFacts
         {
             await streamWriter.WriteLineAsync("# My readme");
             await streamWriter.WriteLineAsync("Hello world!");
-            await streamWriter.FlushAsync();
+            await streamWriter.FlushAsync(TestContext.Current.CancellationToken);
         }
 
         readmeStream.Position = 0;

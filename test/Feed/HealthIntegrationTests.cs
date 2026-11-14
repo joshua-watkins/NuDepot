@@ -9,7 +9,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -35,10 +34,10 @@ public sealed class HealthIntegrationTests(ITestOutputHelper output) : IDisposab
         NuDepotTestApplication app = CreateApp();
         using HttpClient client = app.CreateClient();
 
-        using HttpResponseMessage response = await client.GetAsync(url);
+        using HttpResponseMessage response = await client.GetAsync(url, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+        Assert.Equal("Healthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -47,8 +46,8 @@ public sealed class HealthIntegrationTests(ITestOutputHelper output) : IDisposab
         NuDepotTestApplication app = CreateApp(new() { ["Authorization:ApiKeys:ReadOnly"] = "read-key" });
         using HttpClient client = app.CreateClient();
 
-        using HttpResponseMessage index = await client.GetAsync("v3/index.json");
-        using HttpResponseMessage health = await client.GetAsync("health");
+        using HttpResponseMessage index = await client.GetAsync("v3/index.json", TestContext.Current.CancellationToken);
+        using HttpResponseMessage health = await client.GetAsync("health", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, index.StatusCode);
         Assert.Equal(HttpStatusCode.OK, health.StatusCode);
@@ -62,10 +61,10 @@ public sealed class HealthIntegrationTests(ITestOutputHelper output) : IDisposab
         NuDepotTestApplication app = CreateApp(new() { ["Storage:Path"] = file });
         using HttpClient client = app.CreateClient();
 
-        using HttpResponseMessage response = await client.GetAsync("health");
+        using HttpResponseMessage response = await client.GetAsync("health", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        Assert.Equal("Unhealthy", await response.Content.ReadAsStringAsync());
+        Assert.Equal("Unhealthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         HealthReport report = await GetReportAsync(app);
         Assert.Equal(HealthStatus.Unhealthy, report.Entries[StorageHealthCheck.Name].Status);
         Assert.Equal(HealthStatus.Healthy, report.Entries[DatabaseHealthCheck.Name].Status);
@@ -82,8 +81,8 @@ public sealed class HealthIntegrationTests(ITestOutputHelper output) : IDisposab
         Disposables.Add(app);
         using HttpClient client = app.CreateClient();
 
-        using HttpResponseMessage health = await client.GetAsync("health");
-        using HttpResponseMessage index = await client.GetAsync("v3/index.json");
+        using HttpResponseMessage health = await client.GetAsync("health", TestContext.Current.CancellationToken);
+        using HttpResponseMessage index = await client.GetAsync("v3/index.json", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, health.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, index.StatusCode);
@@ -121,7 +120,7 @@ public sealed class HealthIntegrationTests(ITestOutputHelper output) : IDisposab
         HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext
         {
             Registration = new HealthCheckRegistration(SigningHealthCheck.Name, check, HealthStatus.Unhealthy, tags: null),
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, result.Status);
     }

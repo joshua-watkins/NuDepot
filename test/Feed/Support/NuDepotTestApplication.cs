@@ -9,7 +9,7 @@ using NuDepot.Core;
 using NuDepot.Core.Hosting;
 using NuDepot.Feed.Configuration;
 using System.Net;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NuDepot.Feed.Tests.Support;
 

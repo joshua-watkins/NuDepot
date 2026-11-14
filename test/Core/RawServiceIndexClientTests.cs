@@ -13,7 +13,7 @@ public class RawServiceIndexClientTests(ProtocolFixture fixture) : IClassFixture
     [Fact]
     public async Task GetsServiceIndex()
     {
-        ServiceIndexResponse result = await Target.GetAsync();
+        ServiceIndexResponse result = await Target.GetAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("3.0.0", result.Version);
         Assert.Equal(5, result.Resources.Count);

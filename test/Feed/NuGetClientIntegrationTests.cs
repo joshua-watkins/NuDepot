@@ -4,7 +4,6 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -61,7 +60,7 @@ public sealed class NuGetClientIntegrationTests : IDisposable
     [Fact]
     public async Task SearchReturnsResults()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         PackageSearchResource resource = await GetResourceAsync<PackageSearchResource>();
         SearchFilter searchFilter = new(includePrerelease: true);
@@ -109,7 +108,7 @@ public sealed class NuGetClientIntegrationTests : IDisposable
     [Fact]
     public async Task AutocompleteReturnsResults()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         AutoCompleteResource resource = await GetResourceAsync<AutoCompleteResource>();
         IEnumerable<string> results = await resource.IdStartsWith(
@@ -139,7 +138,7 @@ public sealed class NuGetClientIntegrationTests : IDisposable
     [Fact]
     public async Task VersionListReturnsResults()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         FindPackageByIdResource resource = await GetResourceAsync<FindPackageByIdResource>();
         IEnumerable<NuGetVersion> versions = await resource.GetAllVersionsAsync(
@@ -172,7 +171,7 @@ public sealed class NuGetClientIntegrationTests : IDisposable
     [InlineData("PackageDoesNotExists", "1.0.0", false)]
     public async Task PackageExistsWorks(string packageId, string packageVersion, bool exists)
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         NuGetVersion version = NuGetVersion.Parse(packageVersion);
         FindPackageByIdResource resource = await GetResourceAsync<FindPackageByIdResource>();
@@ -192,7 +191,7 @@ public sealed class NuGetClientIntegrationTests : IDisposable
     [InlineData("PackageDoesNotExists", "1.0.0", false)]
     public async Task PackageDownloadWorks(string packageId, string packageVersion, bool exists)
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         using MemoryStream packageStream = new();
 
@@ -215,7 +214,7 @@ public sealed class NuGetClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageMetadataReturnsOk()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         PackageMetadataResource resource = await GetResourceAsync<PackageMetadataResource>();
         IEnumerable<IPackageSearchMetadata> packages = await resource.GetMetadataAsync(

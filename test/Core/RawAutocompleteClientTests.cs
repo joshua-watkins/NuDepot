@@ -12,7 +12,7 @@ public class RawAutocompleteClientTests(ProtocolFixture fixture) : IClassFixture
     [Fact]
     public async Task GetDefaultAutocompleteResults()
     {
-        AutocompleteResponse response = await Target.AutocompleteAsync();
+        AutocompleteResponse response = await Target.AutocompleteAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(response);
         Assert.Equal(1, response.TotalHits);

@@ -7,7 +7,6 @@ using NuDepot.Core.ServiceIndex;
 using NuDepot.Feed.Tests.Support;
 using NuGet.Versioning;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -40,7 +39,7 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     public async Task ValidIndex()
     {
         IServiceIndexClient client = ClientFactory.CreateServiceIndexClient();
-        ServiceIndexResponse index = await client.GetAsync();
+        ServiceIndexResponse index = await client.GetAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("3.0.0", index.Version);
         Assert.Equal(17, index.Resources.Count);
@@ -62,10 +61,10 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [InlineData("DotnetTool", 0)]
     public async Task SearchFiltersByPackageType(string? packageType, int expectedResults)
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         ISearchClient client = ClientFactory.CreateSearchClient();
-        SearchResponse response = await client.SearchAsync(packageType: packageType);
+        SearchResponse response = await client.SearchAsync(packageType: packageType, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(expectedResults, response.Data.Count);
     }
@@ -73,10 +72,10 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageDetailsReturnsExtendedMetadata()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         IPackageDetailsClient client = ClientFactory.CreatePackageDetailsClient();
-        IReadOnlyList<NuDepotPackageMetadata> packages = await client.GetPackageMetadataAsync("TestData");
+        IReadOnlyList<NuDepotPackageMetadata> packages = await client.GetPackageMetadataAsync("TestData", TestContext.Current.CancellationToken);
 
         NuDepotPackageMetadata package = Assert.Single(packages);
 
@@ -91,7 +90,7 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     public async Task PackageDetailsReturnsEmpty()
     {
         IPackageDetailsClient client = ClientFactory.CreatePackageDetailsClient();
-        IReadOnlyList<NuDepotPackageMetadata> packages = await client.GetPackageMetadataAsync("PackageDoesNotExist");
+        IReadOnlyList<NuDepotPackageMetadata> packages = await client.GetPackageMetadataAsync("PackageDoesNotExist", TestContext.Current.CancellationToken);
 
         Assert.Empty(packages);
     }
@@ -100,7 +99,7 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     public async Task PackageDetailsReadmeReturnsNullIfMissing()
     {
         IPackageDetailsClient client = ClientFactory.CreatePackageDetailsClient();
-        Stream? readme = await client.GetPackageReadmeStreamOrNullAsync("PackageDoesNotExist", NuGetVersion.Parse("1.0.0"));
+        Stream? readme = await client.GetPackageReadmeStreamOrNullAsync("PackageDoesNotExist", NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken);
 
         Assert.Null(readme);
     }
@@ -108,10 +107,10 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageDetailsDependentsReturnsEmpty()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         IPackageDetailsClient client = ClientFactory.CreatePackageDetailsClient();
-        DependentsResponse dependents = await client.GetPackageDependentsAsync("TestData");
+        DependentsResponse dependents = await client.GetPackageDependentsAsync("TestData", TestContext.Current.CancellationToken);
 
         Assert.Empty(dependents.Data);
         Assert.Equal(0, dependents.TotalHits);
@@ -120,9 +119,9 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task SearchReturnsResults()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
-        IReadOnlyList<SearchResult> results = await Client.SearchAsync();
+        IReadOnlyList<SearchResult> results = await Client.SearchAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         SearchResult result = Assert.Single(results);
         string author = Assert.Single(result.Authors!);
@@ -141,7 +140,7 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task SearchReturnsEmpty()
     {
-        IReadOnlyList<SearchResult> results = await Client.SearchAsync("PackageDoesNotExist");
+        IReadOnlyList<SearchResult> results = await Client.SearchAsync("PackageDoesNotExist", TestContext.Current.CancellationToken);
 
         Assert.Empty(results);
     }
@@ -149,9 +148,9 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task AutocompleteReturnsResults()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
-        IReadOnlyList<string> results = await Client.AutocompleteAsync();
+        IReadOnlyList<string> results = await Client.AutocompleteAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         string result = Assert.Single(results);
 
@@ -161,7 +160,7 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task AutocompleteReturnsEmpty()
     {
-        IReadOnlyList<string> results = await Client.AutocompleteAsync("PackageDoesNotExist");
+        IReadOnlyList<string> results = await Client.AutocompleteAsync("PackageDoesNotExist", TestContext.Current.CancellationToken);
 
         Assert.Empty(results);
     }
@@ -169,10 +168,10 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task AutocompleteVersions()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         IAutocompleteClient client = ClientFactory.CreateAutocompleteClient();
-        AutocompleteResponse results = await client.ListPackageVersionsAsync("TestData");
+        AutocompleteResponse results = await client.ListPackageVersionsAsync("TestData", cancellationToken: TestContext.Current.CancellationToken);
 
         string result = Assert.Single(results.Data);
 
@@ -184,7 +183,7 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     public async Task AutocompleteVersionsReturnsEmpty()
     {
         IAutocompleteClient client = ClientFactory.CreateAutocompleteClient();
-        AutocompleteResponse results = await client.ListPackageVersionsAsync("PackageDoesNotExist");
+        AutocompleteResponse results = await client.ListPackageVersionsAsync("PackageDoesNotExist", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(results.Data);
         Assert.Equal(0, results.TotalHits);
@@ -193,9 +192,9 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task VersionListReturnsResults()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
-        IReadOnlyList<NuGetVersion> versions = await Client.ListPackageVersionsAsync("TestData");
+        IReadOnlyList<NuGetVersion> versions = await Client.ListPackageVersionsAsync("TestData", TestContext.Current.CancellationToken);
 
         NuGetVersion version = Assert.Single(versions);
 
@@ -205,7 +204,7 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task VersionListReturnsEmpty()
     {
-        IReadOnlyList<NuGetVersion> versions = await Client.ListPackageVersionsAsync("PackageDoesNotExist");
+        IReadOnlyList<NuGetVersion> versions = await Client.ListPackageVersionsAsync("PackageDoesNotExist", TestContext.Current.CancellationToken);
 
         Assert.Empty(versions);
     }
@@ -216,16 +215,16 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [InlineData("PackageDoesNotExists", "1.0.0", false)]
     public async Task PackageDownloadWorks(string packageId, string packageVersion, bool exists)
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         try
         {
             NuGetVersion version = NuGetVersion.Parse(packageVersion);
 
             using MemoryStream memoryStream = new();
-            using Stream packageStream = await Client.DownloadPackageAsync(packageId, version);
+            using Stream packageStream = await Client.DownloadPackageAsync(packageId, version, TestContext.Current.CancellationToken);
 
-            await packageStream.CopyToAsync(memoryStream);
+            await packageStream.CopyToAsync(memoryStream, TestContext.Current.CancellationToken);
             memoryStream.Position = 0;
 
             Assert.True(exists);
@@ -243,16 +242,16 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [InlineData("PackageDoesNotExists", "1.0.0", false)]
     public async Task ManifestDownloadWorks(string packageId, string packageVersion, bool exists)
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
         try
         {
             NuGetVersion version = NuGetVersion.Parse(packageVersion);
 
             using MemoryStream memoryStream = new();
-            using Stream packageStream = await Client.DownloadPackageManifestAsync(packageId, version);
+            using Stream packageStream = await Client.DownloadPackageManifestAsync(packageId, version, TestContext.Current.CancellationToken);
 
-            await packageStream.CopyToAsync(memoryStream);
+            await packageStream.CopyToAsync(memoryStream, TestContext.Current.CancellationToken);
             memoryStream.Position = 0;
 
             Assert.True(exists);
@@ -267,9 +266,9 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageMetadataReturnsOk()
     {
-        await App.AddPackageAsync(PackageStream);
+        await App.AddPackageAsync(PackageStream, cancellationToken: TestContext.Current.CancellationToken);
 
-        IReadOnlyList<PackageMetadata> packages = await Client.GetPackageMetadataAsync("TestData");
+        IReadOnlyList<PackageMetadata> packages = await Client.GetPackageMetadataAsync("TestData", TestContext.Current.CancellationToken);
 
         PackageMetadata package = Assert.Single(packages);
 
@@ -283,7 +282,7 @@ public sealed class NuDepotClientIntegrationTests : IDisposable
     [Fact]
     public async Task PackageMetadataReturnsEmty()
     {
-        IReadOnlyList<PackageMetadata> packages = await Client.GetPackageMetadataAsync("PackageDoesNotExist");
+        IReadOnlyList<PackageMetadata> packages = await Client.GetPackageMetadataAsync("PackageDoesNotExist", TestContext.Current.CancellationToken);
 
         Assert.Empty(packages);
     }

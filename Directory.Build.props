@@ -1,0 +1,12 @@
+<Project>
+
+	<!--
+		Assembly names come from the solution's name, like NuDepot.Feed. A project evaluated on its own, like a test
+		program that dotnet test runs or a project that dotnet ef reads, has no solution, so it gets the solution's
+		name from here.
+	-->
+	<PropertyGroup>
+		<SolutionName Condition="'$(SolutionName)' == '' Or '$(SolutionName)' == '*Undefined*'">NuDepot</SolutionName>
+	</PropertyGroup>
+
+</Project>

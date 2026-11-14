@@ -23,7 +23,7 @@ public class PackageStorageServiceTests
                     nuspecStream: Stream.Null,
                     readmeStream: Stream.Null,
                     iconStream: Stream.Null,
-                    licenseStream: Stream.Null));
+                    licenseStream: Stream.Null, TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -36,7 +36,7 @@ public class PackageStorageServiceTests
                     nuspecStream: Stream.Null,
                     readmeStream: Stream.Null,
                     iconStream: Stream.Null,
-                    licenseStream: Stream.Null));
+                    licenseStream: Stream.Null, TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -49,7 +49,7 @@ public class PackageStorageServiceTests
                     nuspecStream: null!,
                     readmeStream: Stream.Null,
                     iconStream: Stream.Null,
-                    licenseStream: Stream.Null));
+                    licenseStream: Stream.Null, TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -70,7 +70,7 @@ public class PackageStorageServiceTests
                 nuspecStream: nuspecStream,
                 readmeStream: readmeStream,
                 iconStream: iconStream,
-                licenseStream: licenseStream);
+                licenseStream: licenseStream, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.True(_puts.ContainsKey(PackagePath));
@@ -106,7 +106,7 @@ public class PackageStorageServiceTests
                     nuspecStream: nuspecStream,
                     readmeStream: null,
                     iconStream: null,
-                    licenseStream: null);
+                    licenseStream: null, TestContext.Current.CancellationToken);
             }
 
             // Assert
@@ -133,7 +133,7 @@ public class PackageStorageServiceTests
                     nuspecStream: nuspecStream,
                     readmeStream: readmeStream,
                     iconStream: iconStream,
-                    licenseStream: licenseStream);
+                    licenseStream: licenseStream, TestContext.Current.CancellationToken);
             }
 
             // Assert
@@ -159,7 +159,7 @@ public class PackageStorageServiceTests
                 nuspecStream: nuspecStream,
                 readmeStream: readmeStream,
                 iconStream: iconStream,
-                licenseStream: licenseStream);
+                licenseStream: licenseStream, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.True(_puts.ContainsKey(PackagePath));
@@ -198,7 +198,7 @@ public class PackageStorageServiceTests
                     nuspecStream: nuspecStream,
                     readmeStream: readmeStream,
                     iconStream: iconStream,
-                    licenseStream: licenseStream));
+                    licenseStream: licenseStream, TestContext.Current.CancellationToken));
         }
     }
 

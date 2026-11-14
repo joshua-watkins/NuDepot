@@ -12,7 +12,7 @@ public class RawPackageContentClientTests(ProtocolFixture fixture) : IClassFixtu
     [Fact]
     public async Task GetsPackageVersions()
     {
-        PackageVersionsResponse? result = await Target.GetPackageVersionsOrNullAsync("Test.Package");
+        PackageVersionsResponse? result = await Target.GetPackageVersionsOrNullAsync("Test.Package", TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Versions.Count);
@@ -23,7 +23,7 @@ public class RawPackageContentClientTests(ProtocolFixture fixture) : IClassFixtu
     [Fact]
     public async Task ReturnsNullIfPackageDoesNotExist()
     {
-        PackageVersionsResponse? result = await Target.GetPackageVersionsOrNullAsync(Guid.NewGuid().ToString());
+        PackageVersionsResponse? result = await Target.GetPackageVersionsOrNullAsync(Guid.NewGuid().ToString(), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }

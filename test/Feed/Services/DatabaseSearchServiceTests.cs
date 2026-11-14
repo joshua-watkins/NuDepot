@@ -24,7 +24,7 @@ public class DatabaseSearchServiceTests
             await AddAsync(CreatePackage("B", "1.0.0", downloads: 10, "B one", dependsOn: "Target"));
             await AddAsync(CreatePackage("Other", "1.0.0", downloads: 100, "Other", dependsOn: "Unrelated"));
 
-            DependentsResponse response = await _target.FindDependentsAsync("Target", default);
+            DependentsResponse response = await _target.FindDependentsAsync("Target", TestContext.Current.CancellationToken);
 
             Assert.Equal(2, response.TotalHits);
             Assert.Collection(
@@ -50,7 +50,7 @@ public class DatabaseSearchServiceTests
             await AddAsync(CreatePackage("A", "2.0.0", downloads: 2, "A two", dependsOn: null));
             await AddAsync(CreatePackage("A", "3.0.0", downloads: 4, "A three", dependsOn: null, listed: false));
 
-            PackageDependent dependent = Assert.Single((await _target.FindDependentsAsync("Target", default)).Data);
+            PackageDependent dependent = Assert.Single((await _target.FindDependentsAsync("Target", TestContext.Current.CancellationToken)).Data);
 
             Assert.Equal(7, dependent.TotalDownloads);
             Assert.Equal("A two", dependent.Description);
@@ -61,7 +61,7 @@ public class DatabaseSearchServiceTests
         {
             await AddAsync(CreatePackage("A", "1.0.0", downloads: 1, "A one", dependsOn: "Target", listed: false));
 
-            Assert.Empty((await _target.FindDependentsAsync("Target", default)).Data);
+            Assert.Empty((await _target.FindDependentsAsync("Target", TestContext.Current.CancellationToken)).Data);
         }
 
         [Fact]
@@ -69,7 +69,7 @@ public class DatabaseSearchServiceTests
         {
             await AddAsync(CreatePackage("A", "1.0.0", downloads: 1, "A one", dependsOn: "Target"));
 
-            Assert.Single((await _target.FindDependentsAsync("TARGET", default)).Data);
+            Assert.Single((await _target.FindDependentsAsync("TARGET", TestContext.Current.CancellationToken)).Data);
         }
 
         [Fact]
@@ -82,7 +82,7 @@ public class DatabaseSearchServiceTests
                 await AddAsync(CreatePackage($"P{i:D2}", "2.0.0", downloads: i, $"P{i}", dependsOn: "Target"));
             }
 
-            IReadOnlyList<PackageDependent> data = (await _target.FindDependentsAsync("Target", default)).Data;
+            IReadOnlyList<PackageDependent> data = (await _target.FindDependentsAsync("Target", TestContext.Current.CancellationToken)).Data;
 
             Assert.Equal(DatabaseSearchService.MaxDependents, data.Count);
             Assert.Equal(data.Count, data.Select(d => d.Id).Distinct().Count());

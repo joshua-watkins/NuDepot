@@ -12,7 +12,7 @@ public class RawSearchClientTests(ProtocolFixture fixture) : IClassFixture<Proto
     [Fact]
     public async Task GetDefaultSearchResults()
     {
-        SearchResponse response = await Target.SearchAsync();
+        SearchResponse response = await Target.SearchAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(response);
         Assert.Equal(1, response.TotalHits);

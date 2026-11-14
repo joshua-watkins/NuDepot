@@ -41,7 +41,7 @@ public sealed class FileCursorTests : IDisposable
     [InlineData("{\"value\": 42}")]
     public async Task HasNoValueWhenTheFileIsNotACursor(string content)
     {
-        await File.WriteAllTextAsync(Path, content);
+        await File.WriteAllTextAsync(Path, content, TestContext.Current.CancellationToken);
 
         Assert.Null(await Target.GetAsync(CancellationToken.None));
     }

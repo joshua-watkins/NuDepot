@@ -33,7 +33,7 @@ public class CatalogProcessorTests
     [Fact]
     public async Task ProcessesEveryLeafInOrderAndMovesTheCursor()
     {
-        Assert.True(await Target.ProcessAsync());
+        Assert.True(await Target.ProcessAsync(TestContext.Current.CancellationToken));
 
         Assert.Equal(["details A 1.0.0", "details B 1.0.0", "details A 2.0.0", "delete A 1.0.0", "details C 1.0.0"], Leaves.Processed);
         Assert.Equal([T1, T2, T3], Cursor.Writes);
@@ -44,7 +44,7 @@ public class CatalogProcessorTests
     {
         Cursor.Value = T2;
 
-        Assert.True(await Target.ProcessAsync());
+        Assert.True(await Target.ProcessAsync(TestContext.Current.CancellationToken));
 
         // The first page ends at T2, so it isn't read again.
         Assert.Equal(["delete A 1.0.0", "details C 1.0.0"], Leaves.Processed);
@@ -56,7 +56,7 @@ public class CatalogProcessorTests
     {
         Options.DefaultMinCommitTimestamp = T1;
 
-        await Target.ProcessAsync();
+        await Target.ProcessAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(["details A 2.0.0", "delete A 1.0.0", "details C 1.0.0"], Leaves.Processed);
     }
@@ -67,7 +67,7 @@ public class CatalogProcessorTests
         Cursor.Value = T1;
         Options.MinCommitTimestamp = T2;
 
-        await Target.ProcessAsync();
+        await Target.ProcessAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(["delete A 1.0.0", "details C 1.0.0"], Leaves.Processed);
     }
@@ -77,7 +77,7 @@ public class CatalogProcessorTests
     {
         Options.MaxCommitTimestamp = T2;
 
-        Assert.True(await Target.ProcessAsync());
+        Assert.True(await Target.ProcessAsync(TestContext.Current.CancellationToken));
 
         Assert.Equal(["details A 1.0.0", "details B 1.0.0", "details A 2.0.0"], Leaves.Processed);
         Assert.Equal([T1, T2], Cursor.Writes);
@@ -90,7 +90,7 @@ public class CatalogProcessorTests
         Options.ExcludeRedundantLeaves = true;
         Cursor.Value = T3;
 
-        await Target.ProcessAsync();
+        await Target.ProcessAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(["delete D 1.0.0"], Leaves.Processed);
     }
@@ -100,7 +100,7 @@ public class CatalogProcessorTests
     {
         Leaves.FailOn = "details A 2.0.0";
 
-        Assert.False(await Target.ProcessAsync());
+        Assert.False(await Target.ProcessAsync(TestContext.Current.CancellationToken));
 
         Assert.Equal(["details A 1.0.0", "details B 1.0.0", "details A 2.0.0"], Leaves.Processed);
         Assert.Equal([T1], Cursor.Writes);
@@ -112,7 +112,7 @@ public class CatalogProcessorTests
     {
         Leaves.ThrowOn = "details B 1.0.0";
 
-        Assert.False(await Target.ProcessAsync());
+        Assert.False(await Target.ProcessAsync(TestContext.Current.CancellationToken));
 
         // B shares A's commit, so the cursor doesn't move past it.
         Assert.Empty(Cursor.Writes);
@@ -124,7 +124,7 @@ public class CatalogProcessorTests
         Catalog.AddPage("page2", new CatalogLeafItem { CatalogLeafUrl = "leaf", Type = "nuget:Unknown", CommitTimestamp = T4, PackageId = "E", PackageVersion = "1.0.0" });
         Cursor.Value = T3;
 
-        Assert.False(await Target.ProcessAsync());
+        Assert.False(await Target.ProcessAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]

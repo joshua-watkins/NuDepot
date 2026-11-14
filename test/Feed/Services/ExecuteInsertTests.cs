@@ -46,23 +46,23 @@ public sealed class ExecuteInsertTests : IDisposable
     {
         User user = NewUser("user");
 
-        Assert.Equal(1, await Context.Users.ExecuteInsertAsync(user, default));
+        Assert.Equal(1, await Context.Users.ExecuteInsertAsync(user, TestContext.Current.CancellationToken));
 
         Assert.NotEqual(0, user.Key);
         Assert.Empty(Context.ChangeTracker.Entries());
-        Assert.True(await Context.Users.AnyAsync(u => u.Key == user.Key));
+        Assert.True(await Context.Users.AnyAsync(u => u.Key == user.Key, TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task StopsTrackingWhenTheInsertFails()
     {
-        await Context.Users.ExecuteInsertAsync(NewUser("user"), default);
+        await Context.Users.ExecuteInsertAsync(NewUser("user"), TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<DbUpdateException>(
-            () => Context.Users.ExecuteInsertAsync(NewUser("user"), default));
+            () => Context.Users.ExecuteInsertAsync(NewUser("user"), TestContext.Current.CancellationToken));
 
         Assert.Empty(Context.ChangeTracker.Entries());
-        Assert.Equal(1, await Context.Users.ExecuteInsertAsync(NewUser("other"), default));
+        Assert.Equal(1, await Context.Users.ExecuteInsertAsync(NewUser("other"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -71,6 +71,6 @@ public sealed class ExecuteInsertTests : IDisposable
         Context.Users.Add(NewUser("pending"));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => Context.Users.ExecuteInsertAsync(NewUser("user"), default));
+            () => Context.Users.ExecuteInsertAsync(NewUser("user"), TestContext.Current.CancellationToken));
     }
 }

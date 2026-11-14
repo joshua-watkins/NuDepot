@@ -9,7 +9,6 @@ using System.IO.Compression;
 using System.Net;
 using System.Text;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -32,7 +31,7 @@ public sealed class PackagePublishIntegrationTests(ITestOutputHelper output) : I
         using HttpClient client = App.CreateClient();
 
         Assert.Equal(HttpStatusCode.Created, await PushAsync(client, "api/v2/package", Resource(TestResources.Package)));
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("v3/package/testdata/1.2.3/testdata.1.2.3.nupkg")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("v3/package/testdata/1.2.3/testdata.1.2.3.nupkg", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -63,7 +62,7 @@ public sealed class PackagePublishIntegrationTests(ITestOutputHelper output) : I
     {
         using HttpClient client = App.CreateClient();
 
-        using HttpResponseMessage response = await client.PutAsync("api/v2/package", new StringContent(""));
+        using HttpResponseMessage response = await client.PutAsync("api/v2/package", new StringContent(""), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -106,7 +105,7 @@ public sealed class PackagePublishIntegrationTests(ITestOutputHelper output) : I
     {
         using HttpClient client = App.CreateClient();
 
-        using HttpResponseMessage response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), url));
+        using HttpResponseMessage response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), url), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -117,8 +116,8 @@ public sealed class PackagePublishIntegrationTests(ITestOutputHelper output) : I
         using HttpClient client = App.CreateClient();
         await PushAsync(client, "api/v2/package", Resource(TestResources.Package));
 
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/v2/package/TestData/1.2.3")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("api/v2/package/TestData/1.2.3", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/v2/package/TestData/1.2.3", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("api/v2/package/TestData/1.2.3", null, TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Theory]
@@ -179,7 +178,7 @@ public sealed class PackagePublishIntegrationTests(ITestOutputHelper output) : I
         using HttpClient client = app.CreateClient();
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, await PushAsync(client, url, package));
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/package/testdata/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/package/testdata/index.json", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -205,8 +204,8 @@ public sealed class PackagePublishIntegrationTests(ITestOutputHelper output) : I
         using HttpClient client = app.CreateClient();
 
         // Refused by its length, before it's read, and by what's read.
-        using HttpResponseMessage huge = await client.PutAsync("api/v2/package", new ByteArrayContent(new byte[2 * 1024 * 1024]));
-        using HttpResponseMessage small = await client.PutAsync("api/v2/package", new ByteArrayContent(Resource(TestResources.Package)));
+        using HttpResponseMessage huge = await client.PutAsync("api/v2/package", new ByteArrayContent(new byte[2 * 1024 * 1024]), TestContext.Current.CancellationToken);
+        using HttpResponseMessage small = await client.PutAsync("api/v2/package", new ByteArrayContent(Resource(TestResources.Package)), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, huge.StatusCode);
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, small.StatusCode);

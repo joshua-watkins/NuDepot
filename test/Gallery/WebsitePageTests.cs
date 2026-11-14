@@ -108,7 +108,7 @@ public sealed partial class WebsitePageTests : IDisposable
     {
         using HttpClient client = App.GetTestClient();
 
-        HttpResponseMessage response = await client.GetAsync("/?p=0");
+        HttpResponseMessage response = await client.GetAsync("/?p=0", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -220,8 +220,8 @@ public sealed partial class WebsitePageTests : IDisposable
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
         using HttpClient client = App.GetTestClient();
-        HttpResponseMessage response = await client.GetAsync("/");
-        string html = await response.Content.ReadAsStringAsync();
+        HttpResponseMessage response = await client.GetAsync("/", TestContext.Current.CancellationToken);
+        string html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.Contains("the feed isn't responding", html);
@@ -238,22 +238,22 @@ public sealed partial class WebsitePageTests : IDisposable
     {
         using HttpClient client = App.GetTestClient();
 
-        HttpResponseMessage response = await client.GetAsync(url);
+        HttpResponseMessage response = await client.GetAsync(url, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(contentType, response.Content.Headers.ContentType?.MediaType);
-        Assert.NotEmpty(await response.Content.ReadAsByteArrayAsync());
+        Assert.NotEmpty(await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task EmbeddedFilesAreNotModifiedForTheSameETag()
     {
         using HttpClient client = App.GetTestClient();
-        HttpResponseMessage first = await client.GetAsync("/_content/NuDepot.Gallery/css/site.css");
+        HttpResponseMessage first = await client.GetAsync("/_content/NuDepot.Gallery/css/site.css", TestContext.Current.CancellationToken);
 
         using HttpRequestMessage request = new(HttpMethod.Get, "/_content/NuDepot.Gallery/css/site.css");
         request.Headers.IfNoneMatch.Add(first.Headers.ETag!);
-        HttpResponseMessage second = await client.SendAsync(request);
+        HttpResponseMessage second = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotModified, second.StatusCode);
     }
@@ -265,7 +265,7 @@ public sealed partial class WebsitePageTests : IDisposable
     {
         using HttpClient client = App.GetTestClient();
 
-        HttpResponseMessage response = await client.GetAsync(url);
+        HttpResponseMessage response = await client.GetAsync(url, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -277,7 +277,7 @@ public sealed partial class WebsitePageTests : IDisposable
     {
         using HttpClient client = App.GetTestClient();
 
-        HttpResponseMessage response = await client.GetAsync(url);
+        HttpResponseMessage response = await client.GetAsync(url, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -298,7 +298,7 @@ public sealed partial class WebsitePageTests : IDisposable
     {
         using HttpClient client = App.GetTestClient();
 
-        HttpResponseMessage response = await client.GetAsync(url);
+        HttpResponseMessage response = await client.GetAsync(url, TestContext.Current.CancellationToken);
 
         Assert.Equal("DENY", Assert.Single(response.Headers.GetValues("X-Frame-Options")));
         Assert.Equal(GalleryApplicationBuilderExtensions.PagePolicy, Assert.Single(response.Headers.GetValues("Content-Security-Policy")));
@@ -332,7 +332,7 @@ public sealed partial class WebsitePageTests : IDisposable
     {
         using HttpClient client = App.GetTestClient();
 
-        HttpResponseMessage response = await client.GetAsync("/_content/NuDepot.Gallery/css/site.css");
+        HttpResponseMessage response = await client.GetAsync("/_content/NuDepot.Gallery/css/site.css", TestContext.Current.CancellationToken);
 
         Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
     }

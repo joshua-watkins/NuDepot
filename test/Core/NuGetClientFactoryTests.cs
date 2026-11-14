@@ -15,7 +15,7 @@ public class NuGetClientFactoryTests(ProtocolFixture fixture) : IClassFixture<Pr
     [Fact]
     public async Task ServiceIndexClientReadsTheServiceIndex()
     {
-        ServiceIndexResponse index = await Target.CreateServiceIndexClient().GetAsync();
+        ServiceIndexResponse index = await Target.CreateServiceIndexClient().GetAsync(TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(index.Resources);
     }
@@ -25,10 +25,10 @@ public class NuGetClientFactoryTests(ProtocolFixture fixture) : IClassFixture<Pr
     {
         ICatalogClient client = Target.CreateCatalogClient();
 
-        CatalogIndex index = await client.GetIndexAsync();
-        CatalogPage page = await client.GetPageAsync(index.Items[0].CatalogPageUrl);
-        PackageDetailsCatalogLeaf details = await client.GetPackageDetailsLeafAsync(TestData.PackageDetailsCatalogLeafUrl);
-        PackageDeleteCatalogLeaf delete = await client.GetPackageDeleteLeafAsync(TestData.PackageDeleteCatalogLeafUrl);
+        CatalogIndex index = await client.GetIndexAsync(TestContext.Current.CancellationToken);
+        CatalogPage page = await client.GetPageAsync(index.Items[0].CatalogPageUrl, TestContext.Current.CancellationToken);
+        PackageDetailsCatalogLeaf details = await client.GetPackageDetailsLeafAsync(TestData.PackageDetailsCatalogLeafUrl, TestContext.Current.CancellationToken);
+        PackageDeleteCatalogLeaf delete = await client.GetPackageDeleteLeafAsync(TestData.PackageDeleteCatalogLeafUrl, TestContext.Current.CancellationToken);
 
         Assert.Equal(TestData.CatalogPageUrl, index.Items[0].CatalogPageUrl);
         Assert.Equal(2, page.Items.Count);
@@ -39,7 +39,7 @@ public class NuGetClientFactoryTests(ProtocolFixture fixture) : IClassFixture<Pr
     [Fact]
     public async Task ContentClientListsVersions()
     {
-        PackageVersionsResponse? versions = await Target.CreatePackageContentClient().GetPackageVersionsOrNullAsync("Test.Package");
+        PackageVersionsResponse? versions = await Target.CreatePackageContentClient().GetPackageVersionsOrNullAsync("Test.Package", TestContext.Current.CancellationToken);
 
         Assert.Equal(["1.0.0", "2.0.0"], versions!.Versions);
     }
@@ -47,7 +47,7 @@ public class NuGetClientFactoryTests(ProtocolFixture fixture) : IClassFixture<Pr
     [Fact]
     public async Task MetadataClientReadsRegistrations()
     {
-        RegistrationIndexResponse? index = await Target.CreatePackageMetadataClient().GetRegistrationIndexOrNullAsync("Test.Package");
+        RegistrationIndexResponse? index = await Target.CreatePackageMetadataClient().GetRegistrationIndexOrNullAsync("Test.Package", TestContext.Current.CancellationToken);
 
         Assert.Equal(2, index!.Pages.Count);
     }
@@ -55,8 +55,8 @@ public class NuGetClientFactoryTests(ProtocolFixture fixture) : IClassFixture<Pr
     [Fact]
     public async Task SearchAndAutocompleteClientsSearch()
     {
-        SearchResponse search = await Target.CreateSearchClient().SearchAsync();
-        AutocompleteResponse autocomplete = await Target.CreateAutocompleteClient().AutocompleteAsync();
+        SearchResponse search = await Target.CreateSearchClient().SearchAsync(cancellationToken: TestContext.Current.CancellationToken);
+        AutocompleteResponse autocomplete = await Target.CreateAutocompleteClient().AutocompleteAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("Test.Package", Assert.Single(search.Data).PackageId);
         Assert.Equal("Test.Package", Assert.Single(autocomplete.Data));

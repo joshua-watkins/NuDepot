@@ -131,10 +131,10 @@ public class PackageDeletionServiceTests
 
         // A push of the version holds its lock.
         SemaphoreSlim packageLock = Locks.For(PackageId, PackageVersion);
-        await packageLock.WaitAsync();
+        await packageLock.WaitAsync(TestContext.Current.CancellationToken);
 
         Task<bool> deletion = Target.TryDeletePackageAsync(PackageId, PackageVersion, CancellationToken.None);
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         Assert.False(deletion.IsCompleted);
         Packages.Verify(

@@ -8,7 +8,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -27,7 +26,7 @@ public sealed class PackageFilesIntegrationTests(ITestOutputHelper output) : IDi
     [Fact]
     public async Task ServesEmbeddedFiles()
     {
-        await App.AddPackageAsync(TestPackages.Create("Files.Package", "1.0.0", icon: "icon.png", readme: "README.md", licenseFile: "LICENSE.md"));
+        await App.AddPackageAsync(TestPackages.Create("Files.Package", "1.0.0", icon: "icon.png", readme: "README.md", licenseFile: "LICENSE.md"), cancellationToken: TestContext.Current.CancellationToken);
         using HttpClient client = App.CreateClient();
 
         await AssertFileAsync(client, "v3/package/files.package/1.0.0/icon", "icon.png", "image/png");
@@ -38,15 +37,15 @@ public sealed class PackageFilesIntegrationTests(ITestOutputHelper output) : IDi
     [Fact]
     public async Task MetadataLinksToEmbeddedFiles()
     {
-        await App.AddPackageAsync(TestPackages.Create("Files.Package", "1.0.0", icon: "icon.png", readme: "README.md", licenseFile: "LICENSE.md"));
+        await App.AddPackageAsync(TestPackages.Create("Files.Package", "1.0.0", icon: "icon.png", readme: "README.md", licenseFile: "LICENSE.md"), cancellationToken: TestContext.Current.CancellationToken);
         using HttpClient client = App.CreateClient();
 
-        JsonElement registration = await client.GetFromJsonAsync<JsonElement>("v3/registration/files.package/index.json");
+        JsonElement registration = await client.GetFromJsonAsync<JsonElement>("v3/registration/files.package/index.json", cancellationToken: TestContext.Current.CancellationToken);
         JsonElement entry = registration.GetProperty("items")[0].GetProperty("items")[0].GetProperty("catalogEntry");
-        JsonElement result = (await client.GetFromJsonAsync<JsonElement>("v3/search?q=Files.Package")).GetProperty("data")[0];
-        JsonElement catalog = await client.GetFromJsonAsync<JsonElement>("v3/catalog/index.json");
-        JsonElement page = await client.GetFromJsonAsync<JsonElement>(catalog.GetProperty("items")[0].GetProperty("@id").GetString());
-        JsonElement leaf = await client.GetFromJsonAsync<JsonElement>(page.GetProperty("items")[0].GetProperty("@id").GetString());
+        JsonElement result = (await client.GetFromJsonAsync<JsonElement>("v3/search?q=Files.Package", cancellationToken: TestContext.Current.CancellationToken)).GetProperty("data")[0];
+        JsonElement catalog = await client.GetFromJsonAsync<JsonElement>("v3/catalog/index.json", cancellationToken: TestContext.Current.CancellationToken);
+        JsonElement page = await client.GetFromJsonAsync<JsonElement>(catalog.GetProperty("items")[0].GetProperty("@id").GetString(), cancellationToken: TestContext.Current.CancellationToken);
+        JsonElement leaf = await client.GetFromJsonAsync<JsonElement>(page.GetProperty("items")[0].GetProperty("@id").GetString(), cancellationToken: TestContext.Current.CancellationToken);
 
         foreach ((JsonElement metadata, string property, string file) in (List<(JsonElement, string, string)>)
         [
@@ -68,7 +67,7 @@ public sealed class PackageFilesIntegrationTests(ITestOutputHelper output) : IDi
     [Fact]
     public async Task ServesTextLicenses()
     {
-        await App.AddPackageAsync(TestPackages.Create("Text.License", "1.0.0", licenseFile: "LICENSE.txt"));
+        await App.AddPackageAsync(TestPackages.Create("Text.License", "1.0.0", licenseFile: "LICENSE.txt"), cancellationToken: TestContext.Current.CancellationToken);
         using HttpClient client = App.CreateClient();
 
         await AssertFileAsync(client, "v3/package/text.license/1.0.0/license.txt", "LICENSE.txt", "text/plain");
@@ -83,16 +82,16 @@ public sealed class PackageFilesIntegrationTests(ITestOutputHelper output) : IDi
     [InlineData("v3/package/missing.package/1.0.0/license.txt")]
     public async Task FilesAPackageDoesntHaveAreNotFound(string url)
     {
-        await App.AddPackageAsync(TestPackages.Create("Plain.Package", "1.0.0"));
+        await App.AddPackageAsync(TestPackages.Create("Plain.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         using HttpClient client = App.CreateClient();
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(url)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(url, TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
     public async Task DeletingAPackageDeletesItsFiles()
     {
-        await App.AddPackageAsync(TestPackages.Create("Files.Package", "1.0.0", icon: "icon.png", readme: "README.md", licenseFile: "LICENSE.txt"));
+        await App.AddPackageAsync(TestPackages.Create("Files.Package", "1.0.0", icon: "icon.png", readme: "README.md", licenseFile: "LICENSE.txt"), cancellationToken: TestContext.Current.CancellationToken);
         using HttpClient client = App.CreateClient();
 
         using (IServiceScope scope = App.Services.CreateScope())
@@ -107,7 +106,7 @@ public sealed class PackageFilesIntegrationTests(ITestOutputHelper output) : IDi
         Assert.Empty(Directory.Exists(folder) ? Directory.GetFiles(folder) : []);
 
         // So it can be pushed again.
-        await App.AddPackageAsync(TestPackages.Create("Files.Package", "1.0.0", icon: "icon.png"));
+        await App.AddPackageAsync(TestPackages.Create("Files.Package", "1.0.0", icon: "icon.png"), cancellationToken: TestContext.Current.CancellationToken);
         await AssertFileAsync(client, "v3/package/files.package/1.0.0/icon", "icon.png", "image/png");
     }
 

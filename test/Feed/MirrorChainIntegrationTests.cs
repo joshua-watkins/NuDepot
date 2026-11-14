@@ -5,7 +5,6 @@ using NuDepot.Feed.Tests.Support;
 using System.Collections.Concurrent;
 using System.Net;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -25,21 +24,21 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
     [Fact]
     public async Task TheFirstMirrorWithAPackageProvidesAllItsVersions()
     {
-        await Private.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
-        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
-        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "2.0.0"));
-        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"));
+        await Private.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "2.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         HttpClient client = CreateMirror().CreateClient();
 
         // The public feed can't add versions of the private feed's package.
-        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json"));
-        using (HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/2.0.0/shared.package.2.0.0.nupkg"))
+        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json", TestContext.Current.CancellationToken));
+        using (HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/2.0.0/shared.package.2.0.0.nupkg", TestContext.Current.CancellationToken))
         {
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         // Packages the private feed doesn't have come from the public feed.
-        using (HttpResponseMessage response = await client.GetAsync("v3/package/public.package/1.0.0/public.package.1.0.0.nupkg"))
+        using (HttpResponseMessage response = await client.GetAsync("v3/package/public.package/1.0.0/public.package.1.0.0.nupkg", TestContext.Current.CancellationToken))
         {
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
@@ -49,50 +48,50 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
     public async Task MirrorsCantAddVersionsOfPushedPackages()
     {
         // Someone publishes the feed's own package ID publicly, with a higher version.
-        await Public.AddPackageAsync(TestPackages.Create("Contoso.Internal", "1.0.0"));
-        await Public.AddPackageAsync(TestPackages.Create("Contoso.Internal", "99.0.0"));
-        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"));
+        await Public.AddPackageAsync(TestPackages.Create("Contoso.Internal", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        await Public.AddPackageAsync(TestPackages.Create("Contoso.Internal", "99.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         NuDepotTestApplication mirror = CreateMirror();
-        await mirror.AddPackageAsync(TestPackages.Create("Contoso.Internal", "1.0.0"));
+        await mirror.AddPackageAsync(TestPackages.Create("Contoso.Internal", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         HttpClient client = mirror.CreateClient();
 
-        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/contoso.internal/index.json"));
-        using (HttpResponseMessage response = await client.GetAsync("v3/package/contoso.internal/99.0.0/contoso.internal.99.0.0.nupkg"))
+        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/contoso.internal/index.json", TestContext.Current.CancellationToken));
+        using (HttpResponseMessage response = await client.GetAsync("v3/package/contoso.internal/99.0.0/contoso.internal.99.0.0.nupkg", TestContext.Current.CancellationToken))
         {
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        using (HttpResponseMessage response = await client.GetAsync("v3/registration/contoso.internal/index.json"))
+        using (HttpResponseMessage response = await client.GetAsync("v3/registration/contoso.internal/index.json", TestContext.Current.CancellationToken))
         {
-            Assert.DoesNotContain("99.0.0", await response.Content.ReadAsStringAsync());
+            Assert.DoesNotContain("99.0.0", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         }
 
         // Packages the feed mirrored keep getting the mirror's new versions.
-        using (HttpResponseMessage response = await client.GetAsync("v3/package/public.package/1.0.0/public.package.1.0.0.nupkg"))
+        using (HttpResponseMessage response = await client.GetAsync("v3/package/public.package/1.0.0/public.package.1.0.0.nupkg", TestContext.Current.CancellationToken))
         {
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
-        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "2.0.0"));
-        Assert.Equal(@"{""versions"":[""1.0.0"",""2.0.0""]}", await client.GetStringAsync("v3/package/public.package/index.json"));
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "2.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal(@"{""versions"":[""1.0.0"",""2.0.0""]}", await client.GetStringAsync("v3/package/public.package/index.json", TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task APackagesMetadataFromTheMirrorsIsReusedForAMinute()
     {
-        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"));
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         TestTimeProvider time = new(DateTimeOffset.UtcNow);
         HttpClient client = CreateMirror(time: time).CreateClient();
 
         // Like a client reading a registration, then its pages.
-        await client.GetStringAsync("v3/registration/public.package/index.json");
-        await client.GetStringAsync("v3/registration-semver2/public.package/index.json");
+        await client.GetStringAsync("v3/registration/public.package/index.json", TestContext.Current.CancellationToken);
+        await client.GetStringAsync("v3/registration-semver2/public.package/index.json", TestContext.Current.CancellationToken);
         Assert.Equal(1, MetadataRequests("public.test"));
 
         // Versions published meanwhile show up once it expires.
-        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "2.0.0"));
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "2.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         time.Now += TimeSpan.FromMinutes(1);
-        string registration = await client.GetStringAsync("v3/registration/public.package/index.json");
+        string registration = await client.GetStringAsync("v3/registration/public.package/index.json", TestContext.Current.CancellationToken);
 
         Assert.Equal(2, MetadataRequests("public.test"));
         Assert.Contains("\"2.0.0\"", registration);
@@ -105,33 +104,33 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
     [Fact]
     public async Task MirrorsAreAskedInTheirListsOrder()
     {
-        await Private.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
-        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "2.0.0"));
+        await Private.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "2.0.0"), cancellationToken: TestContext.Current.CancellationToken);
 
         HttpClient client = CreateMirror(privateFirst: false).CreateClient();
 
-        Assert.Equal(@"{""versions"":[""2.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json"));
+        Assert.Equal(@"{""versions"":[""2.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json", TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task AMirrorThatCantBeReachedIsSkippedByDefault()
     {
-        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
+        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         HttpClient client = CreateMirror(privateHost: "down.test").CreateClient();
 
-        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json"));
-        using HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/1.0.0/shared.package.1.0.0.nupkg");
+        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json", TestContext.Current.CancellationToken));
+        using HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/1.0.0/shared.package.1.0.0.nupkg", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
     public async Task AMirrorThatDoesntAnswerInTimeIsSkipped()
     {
-        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
+        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         HttpClient client = CreateMirror(privateHost: "stall.test", privateRequestTimeoutSeconds: 1).CreateClient();
 
         System.Diagnostics.Stopwatch elapsed = System.Diagnostics.Stopwatch.StartNew();
-        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json"));
+        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/shared.package/index.json", TestContext.Current.CancellationToken));
         Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(30));
     }
 
@@ -140,14 +139,14 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
     {
         NuDepotTestApplication mirror = CreateMirror(privateHost: "down.test");
         HttpClient client = mirror.CreateClient();
-        Assert.Equal("Healthy", await client.GetStringAsync("health"));
+        Assert.Equal("Healthy", await client.GetStringAsync("health", TestContext.Current.CancellationToken));
 
-        await client.GetAsync("v3/package/missing.package/index.json");
+        await client.GetAsync("v3/package/missing.package/index.json", TestContext.Current.CancellationToken);
 
         // Degraded still answers 200, so load balancers keep sending requests.
-        using HttpResponseMessage response = await client.GetAsync("health");
+        using HttpResponseMessage response = await client.GetAsync("health", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("Degraded", await response.Content.ReadAsStringAsync());
+        Assert.Equal("Degraded", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -156,34 +155,34 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
         TestTimeProvider time = new(DateTimeOffset.UtcNow);
         HttpClient client = CreateMirror(privateHost: "down.test", time: time).CreateClient();
 
-        await client.GetAsync("v3/package/missing.package/index.json");
+        await client.GetAsync("v3/package/missing.package/index.json", TestContext.Current.CancellationToken);
         int attempts = Routing!.UnreachableAttempts;
         Assert.True(attempts > 0);
 
         // For 5 minutes, requests don't wait for it.
         time.Now += TimeSpan.FromMinutes(4);
-        await client.GetAsync("v3/package/missing.package/index.json");
+        await client.GetAsync("v3/package/missing.package/index.json", TestContext.Current.CancellationToken);
         Assert.Equal(attempts, Routing.UnreachableAttempts);
 
         // Then it's tried again.
         time.Now += TimeSpan.FromMinutes(1);
-        await client.GetAsync("v3/package/missing.package/index.json");
+        await client.GetAsync("v3/package/missing.package/index.json", TestContext.Current.CancellationToken);
         Assert.True(Routing.UnreachableAttempts > attempts);
     }
 
     [Fact]
     public async Task AMirrorThatCantBeReachedCanStopTheChain()
     {
-        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
+        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         HttpClient client = CreateMirror(privateHost: "down.test", privateWhenUnreachable: UnreachableMirrorBehavior.Stop).CreateClient();
 
         // The private feed may have the package, so it isn't taken from the public feed.
-        using (HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/index.json"))
+        using (HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/index.json", TestContext.Current.CancellationToken))
         {
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        using (HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/1.0.0/shared.package.1.0.0.nupkg"))
+        using (HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/1.0.0/shared.package.1.0.0.nupkg", TestContext.Current.CancellationToken))
         {
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
@@ -192,10 +191,10 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
     [Fact]
     public async Task MirroringCanBeConfiguredWhileItsOff()
     {
-        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"));
+        await Public.AddPackageAsync(TestPackages.Create("Shared.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         HttpClient client = CreateMirror(isEnabled: false).CreateClient();
 
-        using HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/index.json");
+        using HttpResponseMessage response = await client.GetAsync("v3/package/shared.package/index.json", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 

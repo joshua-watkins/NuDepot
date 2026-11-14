@@ -9,7 +9,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -75,14 +74,14 @@ public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : ID
         configuration["PackageDeletionBehavior"] = operation == "hard delete" ? "HardDelete" : "Unlist";
 
         NuDepotTestApplication app = CreateApp(configuration);
-        await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
+        await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         using HttpClient client = app.CreateClient();
 
         using HttpRequestMessage request = CreateRequest(operation);
         if (apiKey != null)
             request.Headers.Add("X-NuGet-ApiKey", apiKey);
 
-        using HttpResponseMessage response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -105,10 +104,10 @@ public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : ID
         Dictionary<string, string> configuration = new()
         { ["PackageDeletionBehavior"] = operation == "hard delete" ? "HardDelete" : "Unlist" };
         NuDepotTestApplication app = CreateApp(configuration);
-        await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"));
+        await app.AddPackageAsync(TestPackages.Create("Seed.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         using HttpClient client = app.CreateClient();
 
-        using HttpResponseMessage response = await client.SendAsync(CreateRequest(operation));
+        using HttpResponseMessage response = await client.SendAsync(CreateRequest(operation), TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -149,7 +148,7 @@ public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : ID
 
         using HttpRequestMessage request = CreateRequest("push");
         request.Headers.Authorization = Basic(userName, password);
-        using HttpResponseMessage response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -160,7 +159,7 @@ public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : ID
         NuDepotTestApplication app = CreateApp(RoleKeys());
         using HttpClient client = app.CreateClient();
 
-        using HttpResponseMessage anonymous = await client.GetAsync("v3/index.json");
+        using HttpResponseMessage anonymous = await client.GetAsync("v3/index.json", TestContext.Current.CancellationToken);
 
         // NuGet clients, including Visual Studio, answer the challenge with the source's credentials.
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
@@ -169,7 +168,7 @@ public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : ID
 
         using HttpRequestMessage request = new(HttpMethod.Get, "v3/index.json");
         request.Headers.Authorization = Basic("ReadOnly", ReadOnlyKey);
-        using HttpResponseMessage withCredentials = await client.SendAsync(request);
+        using HttpResponseMessage withCredentials = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, withCredentials.StatusCode);
     }
@@ -187,7 +186,7 @@ public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : ID
             request.Headers.Authorization = Basic("ReadWrite", "wrong-key");
         else
             request.Headers.Add(header, "wrong-key");
-        using HttpResponseMessage response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("Basic", Assert.Single(response.Headers.WwwAuthenticate).Scheme);
@@ -201,7 +200,7 @@ public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : ID
 
         using HttpRequestMessage request = new(HttpMethod.Get, "v3/index.json");
         request.Headers.Add("X-NuGet-ApiKey", "wrong-key");
-        using HttpResponseMessage response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -213,12 +212,12 @@ public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : ID
     {
         // The test application allows package overwrites.
         NuDepotTestApplication app = CreateApp(RoleKeys());
-        await app.AddPackageAsync(TestPackages.Create("New.Package", "1.0.0"));
+        await app.AddPackageAsync(TestPackages.Create("New.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
         using HttpClient client = app.CreateClient();
 
         using HttpRequestMessage request = CreateRequest("push");
         request.Headers.Add("X-NuGet-ApiKey", apiKey);
-        using HttpResponseMessage response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -233,10 +232,10 @@ public sealed class AuthorizationIntegrationTests(ITestOutputHelper output) : ID
 
         using HttpRequestMessage request = CreateRequest("push");
         request.Headers.Add("X-NuGet-ApiKey", AdminKey);
-        using HttpResponseMessage push = await client.SendAsync(request);
+        using HttpResponseMessage push = await client.SendAsync(request, TestContext.Current.CancellationToken);
         using HttpRequestMessage read = new(HttpMethod.Get, "v3/index.json");
         read.Headers.Add("X-NuGet-ApiKey", ReadOnlyKey);
-        using HttpResponseMessage readResponse = await client.SendAsync(read);
+        using HttpResponseMessage readResponse = await client.SendAsync(read, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, push.StatusCode);
         Assert.Equal(HttpStatusCode.OK, readResponse.StatusCode);

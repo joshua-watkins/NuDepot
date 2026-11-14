@@ -12,7 +12,6 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -52,7 +51,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         Assert.False((await GetAccountAsync(browser)).GetProperty("signedIn").GetBoolean());
 
         string options = await PostAsync(browser, "api/account/signin/options", new { userName = "ALICE" });
-        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)));
+        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NoContent, signIn.StatusCode);
         JsonElement account = await GetAccountAsync(browser);
@@ -70,8 +69,8 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         string options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
         string assertion = authenticator.GetAssertion(options);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(assertion))).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync("api/account/signin", Json(assertion))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(assertion), TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync("api/account/signin", Json(assertion), TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -86,11 +85,11 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         string firstOptions = await PostAsync(first, "api/account/signin/options", new { userName = "alice" });
         string secondOptions = await PostAsync(second, "api/account/signin/options", new { userName = "alice" });
 
-        HttpResponseMessage replaced = await first.PostAsync("api/account/signin", Json(authenticator.GetAssertion(firstOptions)));
+        HttpResponseMessage replaced = await first.PostAsync("api/account/signin", Json(authenticator.GetAssertion(firstOptions)), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, replaced.StatusCode);
-        Assert.Contains("expired", await replaced.Content.ReadAsStringAsync());
+        Assert.Contains("expired", await replaced.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
-        Assert.Equal(HttpStatusCode.NoContent, (await second.PostAsync("api/account/signin", Json(authenticator.GetAssertion(secondOptions)))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await second.PostAsync("api/account/signin", Json(authenticator.GetAssertion(secondOptions)), TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Theory]
@@ -118,16 +117,16 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
             assertion["response"]!["clientDataJSON"] = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(clientData.ToJsonString()));
         }
 
-        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(assertion.ToJsonString()));
+        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(assertion.ToJsonString()), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, signIn.StatusCode);
-        Assert.Contains("couldn't be verified", await signIn.Content.ReadAsStringAsync());
+        Assert.Contains("couldn't be verified", await signIn.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.False((await GetAccountAsync(browser)).GetProperty("signedIn").GetBoolean());
 
         // The challenge is used up, but the next one works.
-        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)), TestContext.Current.CancellationToken)).StatusCode);
         string retry = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
-        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(retry)))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(retry)), TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -138,10 +137,10 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         using TestAuthenticator phishing = new("http://phishing.example");
 
         string options = await PostAsync(browser, "api/account/signup", new { userName = "mallory" });
-        HttpResponseMessage created = await browser.PostAsync("api/account/passkeys?userName=mallory", Json(phishing.CreateCredential(options)));
+        HttpResponseMessage created = await browser.PostAsync("api/account/passkeys?userName=mallory", Json(phishing.CreateCredential(options)), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, created.StatusCode);
-        Assert.Contains("couldn't be verified", await created.Content.ReadAsStringAsync());
+        Assert.Contains("couldn't be verified", await created.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.False((await GetAccountAsync(browser)).GetProperty("signedIn").GetBoolean());
         Assert.True((await GetAccountAsync(browser)).GetProperty("isFirstUser").GetBoolean());
     }
@@ -164,7 +163,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         using HttpClient anonymous = app.CreateBrowserClient();
 
         using HttpRequestMessage request = new(new HttpMethod(method), url) { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
-        using HttpResponseMessage response = await anonymous.SendAsync(request);
+        using HttpResponseMessage response = await anonymous.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -179,10 +178,10 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         string options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
         app.Clock.Advance(TimeSpan.FromMinutes(6));
 
-        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)));
+        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(authenticator.GetAssertion(options)), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, signIn.StatusCode);
-        Assert.Contains("expired", await signIn.Content.ReadAsStringAsync());
+        Assert.Contains("expired", await signIn.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -192,12 +191,12 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         using HttpClient browser = app.CreateBrowserClient();
         await PostAsync(browser, "api/account/signup", new { userName = "never-finished" });
 
-        HttpResponseMessage unknown = await browser.PostAsync("api/account/signin/options", JsonContent.Create(new { userName = "nobody" }));
-        HttpResponseMessage unfinished = await browser.PostAsync("api/account/signin/options", JsonContent.Create(new { userName = "never-finished" }));
+        HttpResponseMessage unknown = await browser.PostAsync("api/account/signin/options", JsonContent.Create(new { userName = "nobody" }), TestContext.Current.CancellationToken);
+        HttpResponseMessage unfinished = await browser.PostAsync("api/account/signin/options", JsonContent.Create(new { userName = "never-finished" }), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, unfinished.StatusCode);
-        Assert.Contains("no account", await unfinished.Content.ReadAsStringAsync());
+        Assert.Contains("no account", await unfinished.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         // An unfinished sign-up isn't an account, so the next one is still the first.
         Assert.True((await GetAccountAsync(browser)).GetProperty("isFirstUser").GetBoolean());
@@ -215,10 +214,10 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         stranger.CreateCredential(await PostAsync(browser, "api/account/signup", new { userName = "never-finished" }));
 
         string options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
-        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(stranger.GetAssertion(options)));
+        HttpResponseMessage signIn = await browser.PostAsync("api/account/signin", Json(stranger.GetAssertion(options)), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, signIn.StatusCode);
-        Assert.Contains("isn't registered", await signIn.Content.ReadAsStringAsync());
+        Assert.Contains("isn't registered", await signIn.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -233,14 +232,14 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         string firstOptions = await PostAsync(first, "api/account/signup", new { userName = "bob" });
         string secondOptions = await PostAsync(second, "api/account/signup", new { userName = "bob" });
 
-        HttpResponseMessage replaced = await first.PostAsync("api/account/passkeys?userName=bob", Json(firstAuthenticator.CreateCredential(firstOptions)));
-        HttpResponseMessage created = await second.PostAsync("api/account/passkeys?userName=bob", Json(secondAuthenticator.CreateCredential(secondOptions)));
+        HttpResponseMessage replaced = await first.PostAsync("api/account/passkeys?userName=bob", Json(firstAuthenticator.CreateCredential(firstOptions)), TestContext.Current.CancellationToken);
+        HttpResponseMessage created = await second.PostAsync("api/account/passkeys?userName=bob", Json(secondAuthenticator.CreateCredential(secondOptions)), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, replaced.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, created.StatusCode);
 
         // Once the account is created, the user name is taken.
-        HttpResponseMessage third = await first.PostAsync("api/account/signup", JsonContent.Create(new { userName = "bob" }));
+        HttpResponseMessage third = await first.PostAsync("api/account/signup", JsonContent.Create(new { userName = "bob" }), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Conflict, third.StatusCode);
     }
 
@@ -249,11 +248,11 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
     {
         NuDepotTestApplication app = CreateApp();
         (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
-        Assert.Equal(HttpStatusCode.Created, (await alice.PutAsync("api/v2/package", Package("Admin.Package"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await alice.PutAsync("api/v2/package", Package("Admin.Package"), TestContext.Current.CancellationToken)).StatusCode);
 
         await SetRoleAsync(app, "alice", FeedRole.ReadOnly);
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await alice.PutAsync("api/v2/package", Package("ReadOnly.Package"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await alice.PutAsync("api/v2/package", Package("ReadOnly.Package"), TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -274,7 +273,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
 
         // The copy is too old to have been sent with Alice's requests, so it was stolen.
         Assert.False((await GetAccountAsync(thief)).GetProperty("signedIn").GetBoolean());
-        Assert.Equal(HttpStatusCode.Unauthorized, (await thief.GetAsync("api/account/apikeys")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await thief.GetAsync("api/account/apikeys", TestContext.Current.CancellationToken)).StatusCode);
         Assert.False((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
     }
 
@@ -285,11 +284,11 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
 
         app.Clock.Advance(TimeSpan.FromMinutes(14));
-        using (HttpResponseMessage response = await alice.GetAsync("api/account"))
+        using (HttpResponseMessage response = await alice.GetAsync("api/account", TestContext.Current.CancellationToken))
             Assert.False(response.Headers.Contains("Set-Cookie"));
 
         app.Clock.Advance(TimeSpan.FromMinutes(1));
-        using (HttpResponseMessage response = await alice.GetAsync("api/account"))
+        using (HttpResponseMessage response = await alice.GetAsync("api/account", TestContext.Current.CancellationToken))
             Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("NuDepot.User=", StringComparison.Ordinal));
     }
 
@@ -306,7 +305,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         using (HttpClient lost = app.CreateClient())
         {
             lost.DefaultRequestHeaders.Add("Cookie", original);
-            using HttpResponseMessage response = await lost.GetAsync("api/account");
+            using HttpResponseMessage response = await lost.GetAsync("api/account", TestContext.Current.CancellationToken);
             Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("NuDepot.User=", StringComparison.Ordinal));
         }
 
@@ -359,14 +358,14 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
             Content = new StringContent(@"{""name"":""Planted""}", Encoding.UTF8, "text/plain"),
         };
         request.Headers.Add(header, value);
-        using HttpResponseMessage response = await alice.SendAsync(request);
+        using HttpResponseMessage response = await alice.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
 
         // The user stays signed in, and can still read.
         using HttpRequestMessage read = new(HttpMethod.Get, "api/account");
         read.Headers.Add("Sec-Fetch-Site", "cross-site");
-        Assert.True((await (await alice.SendAsync(read)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("signedIn").GetBoolean());
+        Assert.True((await (await alice.SendAsync(read, TestContext.Current.CancellationToken)).Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken)).GetProperty("signedIn").GetBoolean());
     }
 
     [Fact]
@@ -379,7 +378,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         using HttpClient copy = app.CreateClient();
         copy.DefaultRequestHeaders.Add("Cookie", cookies.GetCookieHeader(alice.BaseAddress!));
 
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.PostAsync("api/account/signout", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.PostAsync("api/account/signout", null, TestContext.Current.CancellationToken)).StatusCode);
 
         Assert.False((await GetAccountAsync(copy)).GetProperty("signedIn").GetBoolean());
     }
@@ -393,9 +392,9 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         for (int i = 0; i < 3; i++)
         {
             app.Clock.Advance(TimeSpan.FromDays(300));
-            HttpResponseMessage response = await alice.GetAsync("api/account");
+            HttpResponseMessage response = await alice.GetAsync("api/account", TestContext.Current.CancellationToken);
 
-            Assert.True((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("signedIn").GetBoolean());
+            Assert.True((await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken)).GetProperty("signedIn").GetBoolean());
             Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("NuDepot.User=", StringComparison.Ordinal));
         }
 
@@ -417,7 +416,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         await SignUpAsync(app, "alice");
 
         using HttpClient browser = app.CreateBrowserClient();
-        HttpResponseMessage response = await browser.PostAsync("api/account/signup", JsonContent.Create(new { userName }));
+        HttpResponseMessage response = await browser.PostAsync("api/account/signup", JsonContent.Create(new { userName }), TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -430,7 +429,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         await SignUpAsync(app, "owner");
 
         using HttpClient browser = app.CreateBrowserClient();
-        HttpResponseMessage response = await browser.PostAsync("api/account/signup", JsonContent.Create(new { userName = "bob" }));
+        HttpResponseMessage response = await browser.PostAsync("api/account/signup", JsonContent.Create(new { userName = "bob" }), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.False((await GetAccountAsync(browser)).GetProperty("canSignUp").GetBoolean());
     }
@@ -445,7 +444,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         (HttpClient? bob, TestAuthenticator _) = await SignUpAsync(app, "bob");
 
         HttpClient browser = userName == "alice" ? alice : bob;
-        HttpResponseMessage response = await browser.PutAsync("api/v2/package", Package("Signed.In.Package"));
+        HttpResponseMessage response = await browser.PutAsync("api/v2/package", Package("Signed.In.Package"), TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -458,8 +457,8 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
 
         using HttpClient anonymous = app.CreateClient();
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("v3/index.json")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await alice.GetAsync("v3/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("v3/index.json", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await alice.GetAsync("v3/index.json", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -503,9 +502,9 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
         using HttpClient anonymous = app.CreateClient();
 
-        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("v3/index.json")).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PutAsync("api/v2/package", Package("Anonymous.Package"))).StatusCode);
-        Assert.Equal(HttpStatusCode.Created, (await alice.PutAsync("api/v2/package", Package("Alice.Package"))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("v3/index.json", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PutAsync("api/v2/package", Package("Anonymous.Package"), TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await alice.PutAsync("api/v2/package", Package("Alice.Package"), TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -515,11 +514,11 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
         using HttpClient anonymous = app.CreateClient();
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("v3/index.json")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await alice.GetAsync("v3/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("v3/index.json", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await alice.GetAsync("v3/index.json", TestContext.Current.CancellationToken)).StatusCode);
 
         // The gallery's sign-in still works.
-        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("api/account")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("api/account", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -529,12 +528,12 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
         string key = await CreateApiKeyAsync(alice, "Build server");
 
-        JsonElement apiKeys = await alice.GetFromJsonAsync<JsonElement>("api/account/apikeys");
+        JsonElement apiKeys = await alice.GetFromJsonAsync<JsonElement>("api/account/apikeys", cancellationToken: TestContext.Current.CancellationToken);
         JsonElement apiKey = Assert.Single(apiKeys.EnumerateArray());
         Assert.Equal(key[..10], apiKey.GetProperty("prefix").GetString());
         Assert.False(apiKey.TryGetProperty("key", out _));
 
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/apikeys/{apiKey.GetProperty("id").GetInt32()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/apikeys/{apiKey.GetProperty("id").GetInt32()}", TestContext.Current.CancellationToken)).StatusCode);
 
         using HttpClient client = app.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await SendWithKeyAsync(client, key, "Revoked.Package", userName: "alice")).StatusCode);
@@ -546,27 +545,27 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         NuDepotTestApplication app = CreateApp();
         (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
 
-        JsonElement passkeys = await alice.GetFromJsonAsync<JsonElement>("api/account/passkeys");
+        JsonElement passkeys = await alice.GetFromJsonAsync<JsonElement>("api/account/passkeys", cancellationToken: TestContext.Current.CancellationToken);
         int first = Assert
             .Single(passkeys.EnumerateArray())
             .GetProperty("id")
             .GetInt32();
-        Assert.Equal(HttpStatusCode.Conflict, (await alice.DeleteAsync($"api/account/passkeys/{first}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await alice.DeleteAsync($"api/account/passkeys/{first}", TestContext.Current.CancellationToken)).StatusCode);
 
         using TestAuthenticator phone = new();
         string options = await PostAsync(alice, "api/account/passkeys/options", new { passkeyName = "Phone" });
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.PostAsync("api/account/passkeys", Json(phone.CreateCredential(options)))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.PostAsync("api/account/passkeys", Json(phone.CreateCredential(options)), TestContext.Current.CancellationToken)).StatusCode);
 
-        passkeys = await alice.GetFromJsonAsync<JsonElement>("api/account/passkeys");
+        passkeys = await alice.GetFromJsonAsync<JsonElement>("api/account/passkeys", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(2, passkeys.GetArrayLength());
         Assert.Equal("Phone", passkeys[1].GetProperty("name").GetString());
 
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/passkeys/{first}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/passkeys/{first}", TestContext.Current.CancellationToken)).StatusCode);
 
         // The new passkey signs in.
         using HttpClient browser = app.CreateBrowserClient();
         string signInOptions = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
-        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(phone.GetAssertion(signInOptions)))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(phone.GetAssertion(signInOptions)), TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -577,7 +576,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
 
         using HttpRequestMessage request = new(HttpMethod.Get, "api/account/apikeys");
         request.Headers.Add("X-NuGet-ApiKey", "admin-key");
-        HttpResponseMessage response = await client.SendAsync(request);
+        HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         // API keys can't manage accounts, and the browser isn't asked for Basic credentials.
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -590,7 +589,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         NuDepotTestApplication app = CreateApp();
         (HttpClient? alice, TestAuthenticator _) = await SignUpAsync(app, "alice");
 
-        HttpResponseMessage signOut = await alice.PostAsync("api/account/signout", null);
+        HttpResponseMessage signOut = await alice.PostAsync("api/account/signout", null, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NoContent, signOut.StatusCode);
 
         Assert.False((await GetAccountAsync(alice)).GetProperty("signedIn").GetBoolean());
@@ -603,7 +602,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         Disposables.Add(app);
         using HttpClient client = app.CreateClient();
 
-        using HttpResponseMessage response = await client.GetAsync("api/account");
+        using HttpResponseMessage response = await client.GetAsync("api/account", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -619,23 +618,23 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         string key = await CreateApiKeyAsync(alice, "Build server");
         using HttpClient client = app.CreateClient();
         Assert.Equal(HttpStatusCode.Created, (await SendWithKeyAsync(client, key, "Logged.Package", userName: "alice")).StatusCode);
-        int apiKeyId = (await alice.GetFromJsonAsync<JsonElement>("api/account/apikeys"))[0].GetProperty("id").GetInt32();
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/apikeys/{apiKeyId}")).StatusCode);
+        int apiKeyId = (await alice.GetFromJsonAsync<JsonElement>("api/account/apikeys", cancellationToken: TestContext.Current.CancellationToken))[0].GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/apikeys/{apiKeyId}", TestContext.Current.CancellationToken)).StatusCode);
 
-        int bobId = (await alice.GetFromJsonAsync<JsonElement>("api/admin/users"))[1].GetProperty("id").GetInt32();
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/admin/users/{bobId}/sessions")).StatusCode);
+        int bobId = (await alice.GetFromJsonAsync<JsonElement>("api/admin/users", cancellationToken: TestContext.Current.CancellationToken))[1].GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/admin/users/{bobId}/sessions", TestContext.Current.CancellationToken)).StatusCode);
 
         // A page from another site, and a sign-in that's sent again.
         using HttpRequestMessage crossSite = new(HttpMethod.Post, "api/account/apikeys") { Content = JsonContent.Create(new { name = "Stolen" }) };
         crossSite.Headers.Add("Origin", "http://evil.example");
-        Assert.Equal(HttpStatusCode.Unauthorized, (await alice.SendAsync(crossSite)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await alice.SendAsync(crossSite, TestContext.Current.CancellationToken)).StatusCode);
         using HttpClient browser = app.CreateBrowserClient();
         string options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
         string assertion = authenticator.GetAssertion(options);
-        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(assertion))).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync("api/account/signin", Json(assertion))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(assertion), TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync("api/account/signin", Json(assertion), TestContext.Current.CancellationToken)).StatusCode);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.PostAsync("api/account/signout", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.PostAsync("api/account/signout", null, TestContext.Current.CancellationToken)).StatusCode);
 
         IReadOnlyList<string> information = logs.Messages(LogLevel.Information);
         IReadOnlyList<string> warnings = logs.Messages(LogLevel.Warning);

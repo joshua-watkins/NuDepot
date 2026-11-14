@@ -21,10 +21,10 @@ public class HostIntegrationTests
     private string ConnectionStringKey { get; } = "Feed:Database:ConnectionString";
 
     [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public void VerboseLoggingToTheEventLogIsAnOption()
     {
-        if (!OperatingSystem.IsWindows())
-            return;
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "The Event Log is only on Windows.");
 
         using ServiceProvider before = BuildLogging("Windows", uncomment: false, AddEventLog);
         using ServiceProvider after = BuildLogging("Windows", uncomment: true, AddEventLog);
@@ -164,7 +164,7 @@ public class HostIntegrationTests
         using (IServiceScope scope = provider.CreateScope())
         {
             NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
-            await context.RunMigrationsAsync(default);
+            await context.RunMigrationsAsync(TestContext.Current.CancellationToken);
             await context.VulnerabilityAdvisories.ExecuteInsertAsync(
                 new VulnerabilityAdvisory
                 {
@@ -172,13 +172,13 @@ public class HostIntegrationTests
                     VersionRange = "[1.0.0]",
                     AdvisoryUrl = "https://example.com/advisory",
                 },
-                default);
+                TestContext.Current.CancellationToken);
         }
 
         using (IServiceScope scope = provider.CreateScope())
         {
             NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
-            Assert.Equal(1, await context.VulnerabilityAdvisories.CountAsync());
+            Assert.Equal(1, await context.VulnerabilityAdvisories.CountAsync(TestContext.Current.CancellationToken));
         }
     }
 
@@ -198,15 +198,15 @@ public class HostIntegrationTests
             {
                 using IServiceScope scope = provider.CreateScope();
                 NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
-                await context.RunMigrationsAsync(default);
+                await context.RunMigrationsAsync(TestContext.Current.CancellationToken);
             }
 
             // A new connection reads the mode from the file.
             await using SqliteConnection connection = new($"Data Source={databasePath};Pooling=false");
-            await connection.OpenAsync();
+            await connection.OpenAsync(TestContext.Current.CancellationToken);
             await using SqliteCommand command = connection.CreateCommand();
             command.CommandText = "PRAGMA journal_mode;";
-            Assert.Equal("wal", await command.ExecuteScalarAsync());
+            Assert.Equal("wal", await command.ExecuteScalarAsync(TestContext.Current.CancellationToken));
         }
         finally
         {

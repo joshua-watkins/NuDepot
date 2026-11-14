@@ -8,7 +8,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -29,7 +28,7 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
     {
         using HttpClient client = App.CreateClient();
 
-        JsonElement index = await client.GetFromJsonAsync<JsonElement>("v3/registration/many.versions/index.json");
+        JsonElement index = await client.GetFromJsonAsync<JsonElement>("v3/registration/many.versions/index.json", cancellationToken: TestContext.Current.CancellationToken);
 
         JsonElement[] pages = [.. index.GetProperty("items").EnumerateArray()];
         Assert.Equal(3, index.GetProperty("count").GetInt32());
@@ -46,12 +45,12 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
     public async Task EachPageListsItsVersions(string indexUrl, int expected)
     {
         using HttpClient client = App.CreateClient();
-        JsonElement index = await client.GetFromJsonAsync<JsonElement>(indexUrl);
+        JsonElement index = await client.GetFromJsonAsync<JsonElement>(indexUrl, cancellationToken: TestContext.Current.CancellationToken);
 
         List<string> versions = [];
         foreach (JsonElement link in index.GetProperty("items").EnumerateArray())
         {
-            JsonElement page = await client.GetFromJsonAsync<JsonElement>(link.GetProperty("@id").GetString());
+            JsonElement page = await client.GetFromJsonAsync<JsonElement>(link.GetProperty("@id").GetString(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(link.GetProperty("@id").GetString(), page.GetProperty("@id").GetString());
             Assert.Equal(index.GetProperty("@id").GetString(), page.GetProperty("parent").GetString());
@@ -76,7 +75,7 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
     {
         using HttpClient client = App.CreateClient();
 
-        using HttpResponseMessage response = await client.GetAsync(url);
+        using HttpResponseMessage response = await client.GetAsync(url, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -95,14 +94,14 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
         using HttpRequestMessage request = new(HttpMethod.Get, url);
         request.Headers.AcceptEncoding.ParseAdd("gzip");
 
-        using HttpResponseMessage response = await client.SendAsync(request);
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(gzipped, response.Content.Headers.ContentEncoding.Contains("gzip"));
         if (gzipped)
         {
-            using GZipStream json = new(await response.Content.ReadAsStreamAsync(), CompressionMode.Decompress);
-            Assert.Equal(JsonValueKind.Object, (await JsonDocument.ParseAsync(json)).RootElement.ValueKind);
+            using GZipStream json = new(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), CompressionMode.Decompress);
+            Assert.Equal(JsonValueKind.Object, (await JsonDocument.ParseAsync(json, cancellationToken: TestContext.Current.CancellationToken)).RootElement.ValueKind);
         }
     }
 
@@ -111,7 +110,7 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
     {
         using HttpClient client = App.CreateClient();
 
-        JsonElement index = await client.GetFromJsonAsync<JsonElement>("v3/registration/few.versions/index.json");
+        JsonElement index = await client.GetFromJsonAsync<JsonElement>("v3/registration/few.versions/index.json", cancellationToken: TestContext.Current.CancellationToken);
 
         JsonElement page = Assert.Single(index.GetProperty("items").EnumerateArray());
         Assert.Equal("http://localhost/v3/registration/few.versions/index.json#page/1.0.0/1.0.0", page.GetProperty("@id").GetString());
@@ -126,7 +125,7 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
         SourceRepository repository = new(source, [new(() => new HttpSourceResourceProviderTestHost(client)), .. Repository.Provider.GetCoreV3()]);
         using SourceCacheContext cache = new() { NoCache = true, DirectDownload = true };
 
-        PackageMetadataResource resource = (await repository.GetResourceAsync<PackageMetadataResource>())!;
+        PackageMetadataResource resource = (await repository.GetResourceAsync<PackageMetadataResource>(TestContext.Current.CancellationToken))!;
         IEnumerable<IPackageSearchMetadata> packages = await resource.GetMetadataAsync(
             "Many.Versions",
             includePrerelease: true,
@@ -145,13 +144,13 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
 
         // The gallery's client, and the one mirrors use.
         RawPackageDetailsClient details = new(client, "http://localhost/v3/registration-semver2");
-        IReadOnlyList<NuDepotPackageMetadata> gallery = await details.GetPackageMetadataAsync("Many.Versions");
+        IReadOnlyList<NuDepotPackageMetadata> gallery = await details.GetPackageMetadataAsync("Many.Versions", TestContext.Current.CancellationToken);
         Core.NuGetClient nuget = new(new Core.NuGetClientFactory(client, "http://localhost/v3/index.json"));
-        IReadOnlyList<PackageMetadata> mirror = await nuget.GetPackageMetadataAsync("Many.Versions");
+        IReadOnlyList<PackageMetadata> mirror = await nuget.GetPackageMetadataAsync("Many.Versions", TestContext.Current.CancellationToken);
 
         Assert.Equal(Versions + 1, gallery.Count);
         Assert.Equal(Versions + 1, mirror.Count);
-        Assert.Equal("1.0.100", (await nuget.GetPackageMetadataAsync("Many.Versions", NuGet.Versioning.NuGetVersion.Parse("1.0.100"))).Version);
+        Assert.Equal("1.0.100", (await nuget.GetPackageMetadataAsync("Many.Versions", NuGet.Versioning.NuGetVersion.Parse("1.0.100"), TestContext.Current.CancellationToken)).Version);
     }
 
     /// <summary>
@@ -161,7 +160,7 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
     {
         internal NuDepotTestApplication App { get; } = new(new NullTestOutputHelper());
 
-        public async Task InitializeAsync()
+        public async ValueTask InitializeAsync()
         {
             for (int i = 1; i <= Versions; i++)
                 await App.AddPackageAsync(TestPackages.Create("Many.Versions", $"1.0.{i}"));
@@ -170,15 +169,21 @@ public class RegistrationPagingIntegrationTests(RegistrationPagingIntegrationTes
             await App.AddPackageAsync(TestPackages.Create("Few.Versions", "1.0.0"));
         }
 
-        public Task DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             App.Dispose();
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 
     private sealed class NullTestOutputHelper : ITestOutputHelper
     {
+        public string Output => string.Empty;
+
+        public void Write(string message) { }
+
+        public void Write(string format, params object[] args) { }
+
         public void WriteLine(string message) { }
 
         public void WriteLine(string format, params object[] args) { }

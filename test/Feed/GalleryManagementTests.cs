@@ -15,7 +15,6 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -48,7 +47,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
 
         string package = await GetPageAsync(visitor, "packages/Contoso.Utils");
         string upload = await GetPageAsync(visitor, "upload");
-        using HttpResponseMessage admin = await visitor.GetAsync("admin");
+        using HttpResponseMessage admin = await visitor.GetAsync("admin", TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("manage-package", package);
         Assert.DoesNotContain("upload-form", upload);
@@ -67,7 +66,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
 
         string package = await GetPageAsync(bob, "packages/Contoso.Utils");
         string upload = await GetPageAsync(bob, "upload");
-        using HttpResponseMessage admin = await bob.GetAsync("admin");
+        using HttpResponseMessage admin = await bob.GetAsync("admin", TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("manage-package", package);
         Assert.DoesNotContain("upload-form", upload);
@@ -82,7 +81,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
         await AddPackageAsync(app, "Contoso.Utils", "1.0.0");
         await AddPackageAsync(app, "Contoso.Utils", "2.0.0");
         HttpClient alice = await SignUpAsync(address, "alice");
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync("api/v2/package/Contoso.Utils/1.0.0")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync("api/v2/package/Contoso.Utils/1.0.0", TestContext.Current.CancellationToken)).StatusCode);
 
         string package = await GetPageAsync(alice, "packages/Contoso.Utils/2.0.0");
 
@@ -101,7 +100,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
         (WebApplication app, Uri address) = await StartAsync(new() { ["Feed:PackageDeletionBehavior"] = "Unlist" });
         await AddPackageAsync(app, "Contoso.Hidden", "1.0.0");
         HttpClient alice = await SignUpAsync(address, "alice");
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync("api/v2/package/Contoso.Hidden/1.0.0")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync("api/v2/package/Contoso.Hidden/1.0.0", TestContext.Current.CancellationToken)).StatusCode);
 
         string managed = await GetPageAsync(alice, "packages/Contoso.Hidden");
         string anonymous = await GetPageAsync(CreateBrowser(address), "packages/Contoso.Hidden");
@@ -150,7 +149,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
 
         // What manage.js sends.
         using MultipartFormDataContent content = new() { { new StreamContent(TestPackages.Create("Contoso.Uploaded", "1.0.0")), "package", "Contoso.Uploaded.1.0.0.nupkg" } };
-        using HttpResponseMessage response = await alice.PutAsync("api/v2/package", content);
+        using HttpResponseMessage response = await alice.PutAsync("api/v2/package", content, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Contains("Contoso.Uploaded", await GetPageAsync(alice, "packages/Contoso.Uploaded"));
@@ -189,7 +188,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
 
         // NuGet only pushes to an HTTP source when it's told to.
         Assert.Contains($">dotnet nuget push -s {address}v3/index.json --allow-insecure-connections package.nupkg<", upload);
-        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("admin")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("admin", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -202,7 +201,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
         admin.DefaultRequestHeaders.Add("X-Forwarded-Proto", "https");
         admin.DefaultRequestHeaders.Add("X-NuGet-ApiKey", "admin-key");
         using MultipartFormDataContent content = new() { { new StreamContent(TestPackages.Create("Contoso.Utils", "1.0.0")), "package", "package.nupkg" } };
-        Assert.Equal(HttpStatusCode.Created, (await admin.PutAsync("api/v2/package", content)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await admin.PutAsync("api/v2/package", content, TestContext.Current.CancellationToken)).StatusCode);
 
         // The gallery tells the feed the browser used HTTPS.
         HttpClient visitor = CreateBrowser(address);
@@ -214,7 +213,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
         Assert.Contains($">dotnet nuget push -s https://localhost:{address.Port}/v3/index.json package.nupkg<", await GetPageAsync(visitor, "upload"));
 
         // Over HTTP, the feed refuses it.
-        using HttpResponseMessage http = await CreateBrowser(address).GetAsync("packages/Contoso.Utils");
+        using HttpResponseMessage http = await CreateBrowser(address).GetAsync("packages/Contoso.Utils", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, http.StatusCode);
     }
 
@@ -245,7 +244,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
         (_, Uri address) = await StartAsync();
         HttpClient visitor = CreateBrowser(address);
 
-        using HttpResponseMessage anonymous = await visitor.GetAsync("account?tab=keys");
+        using HttpResponseMessage anonymous = await visitor.GetAsync("account?tab=keys", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
         Assert.Equal("/account/signin?returnUrl=" + Uri.EscapeDataString("/account?tab=keys"), anonymous.Headers.Location!.OriginalString);
@@ -262,8 +261,8 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
         (WebApplication app, Uri address) = await StartAsync(new() { ["Feed:Authorization:Users:AnonymousReads"] = "false" });
         await AddPackageAsync(app, "Contoso.Utils", "1.0.0");
 
-        using HttpResponseMessage response = await CreateBrowser(address).GetAsync("packages/Contoso.Utils");
-        string page = await response.Content.ReadAsStringAsync();
+        using HttpResponseMessage response = await CreateBrowser(address).GetAsync("packages/Contoso.Utils", TestContext.Current.CancellationToken);
+        string page = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Contains("href=\"/account/signin?returnUrl=" + Uri.EscapeDataString("/packages/Contoso.Utils") + "\"", page);

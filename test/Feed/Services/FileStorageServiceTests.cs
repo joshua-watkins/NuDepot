@@ -15,7 +15,7 @@ public class FileStorageServiceTests
         public async Task ThrowsIfStorePathDoesNotExist()
         {
             await Assert.ThrowsAsync<DirectoryNotFoundException>(() =>
-                _target.GetAsync("hello.txt"));
+                _target.GetAsync("hello.txt", TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -25,10 +25,10 @@ public class FileStorageServiceTests
             Directory.CreateDirectory(_storePath);
 
             await Assert.ThrowsAsync<FileNotFoundException>(() =>
-                _target.GetAsync("hello.txt"));
+                _target.GetAsync("hello.txt", TestContext.Current.CancellationToken));
 
             await Assert.ThrowsAsync<DirectoryNotFoundException>(() =>
-                _target.GetAsync("hello/world.txt"));
+                _target.GetAsync("hello/world.txt", TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -37,11 +37,11 @@ public class FileStorageServiceTests
             // Arrange
             using (Stream content = StringStream("Hello world"))
             {
-                await _target.PutAsync("hello.txt", content, "text/plain");
+                await _target.PutAsync("hello.txt", content, "text/plain", TestContext.Current.CancellationToken);
             }
 
             // Act
-            Stream? result = await _target.GetAsync("hello.txt");
+            Stream? result = await _target.GetAsync("hello.txt", TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal("Hello world", await ToStringAsync(result!));
@@ -53,7 +53,7 @@ public class FileStorageServiceTests
             foreach (string path in OutsideStorePathData)
             {
                 await Assert.ThrowsAsync<ArgumentException>(async () =>
-                    await _target.GetAsync(path));
+                    await _target.GetAsync(path, TestContext.Current.CancellationToken));
             }
         }
     }
@@ -63,7 +63,7 @@ public class FileStorageServiceTests
         [Fact]
         public async Task CreatesUriEvenIfDoesntExist()
         {
-            Uri? result = await _target.GetDownloadUriAsync("test.txt");
+            Uri? result = await _target.GetDownloadUriAsync("test.txt", TestContext.Current.CancellationToken);
             Uri expected = new(Path.Combine(_storePath, "test.txt"));
 
             Assert.Equal(expected, result);
@@ -75,7 +75,7 @@ public class FileStorageServiceTests
             foreach (string path in OutsideStorePathData)
             {
                 await Assert.ThrowsAsync<ArgumentException>(async () =>
-                    await _target.GetDownloadUriAsync(path));
+                    await _target.GetDownloadUriAsync(path, TestContext.Current.CancellationToken));
             }
         }
     }
@@ -88,14 +88,14 @@ public class FileStorageServiceTests
             StoragePutResult result;
             using (Stream content = StringStream("Hello world"))
             {
-                result = await _target.PutAsync("test.txt", content, "text/plain");
+                result = await _target.PutAsync("test.txt", content, "text/plain", TestContext.Current.CancellationToken);
             }
 
             string path = Path.Combine(_storePath, "test.txt");
 
             Assert.True(File.Exists(path));
             Assert.Equal(StoragePutResult.Success, result);
-            Assert.Equal("Hello world", await File.ReadAllTextAsync(path));
+            Assert.Equal("Hello world", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -104,7 +104,7 @@ public class FileStorageServiceTests
             using (FailingStream content = new())
             {
                 await Assert.ThrowsAsync<IOException>(() =>
-                    _target.PutAsync("test.txt", content, "text/plain"));
+                    _target.PutAsync("test.txt", content, "text/plain", TestContext.Current.CancellationToken));
             }
 
             Assert.Empty(Directory.GetFiles(_storePath));
@@ -112,7 +112,7 @@ public class FileStorageServiceTests
             // So the content can be stored again.
             using (Stream content = StringStream("Hello world"))
             {
-                Assert.Equal(StoragePutResult.Success, await _target.PutAsync("test.txt", content, "text/plain"));
+                Assert.Equal(StoragePutResult.Success, await _target.PutAsync("test.txt", content, "text/plain", TestContext.Current.CancellationToken));
             }
         }
 
@@ -129,7 +129,7 @@ public class FileStorageServiceTests
             using (Stream content = StringStream("Hello world"))
             {
                 // Act
-                result = await _target.PutAsync("test.txt", content, "text/plain");
+                result = await _target.PutAsync("test.txt", content, "text/plain", TestContext.Current.CancellationToken);
             }
 
             // Assert
@@ -149,7 +149,7 @@ public class FileStorageServiceTests
             using (Stream content = StringStream("foo bar"))
             {
                 // Act
-                result = await _target.PutAsync("test.txt", content, "text/plain");
+                result = await _target.PutAsync("test.txt", content, "text/plain", TestContext.Current.CancellationToken);
             }
 
             // Assert
@@ -163,7 +163,7 @@ public class FileStorageServiceTests
             {
                 using Stream content = StringStream("Hello world");
                 await Assert.ThrowsAsync<ArgumentException>(async () =>
-                    await _target.PutAsync(path, content, "text/plain"));
+                    await _target.PutAsync(path, content, "text/plain", TestContext.Current.CancellationToken));
             }
         }
     }
@@ -173,7 +173,7 @@ public class FileStorageServiceTests
         [Fact]
         public async Task DoesNotThrowIfPathDoesNotExist()
         {
-            await _target.DeleteAsync("test.txt");
+            await _target.DeleteAsync("test.txt", TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -183,10 +183,10 @@ public class FileStorageServiceTests
             string path = Path.Combine(_storePath, "test.txt");
 
             Directory.CreateDirectory(_storePath);
-            await File.WriteAllTextAsync(path, "Hello world");
+            await File.WriteAllTextAsync(path, "Hello world", TestContext.Current.CancellationToken);
 
             // Act & Assert
-            await _target.DeleteAsync("test.txt");
+            await _target.DeleteAsync("test.txt", TestContext.Current.CancellationToken);
 
             Assert.False(File.Exists(path));
         }
@@ -197,7 +197,7 @@ public class FileStorageServiceTests
             foreach (string path in OutsideStorePathData)
             {
                 await Assert.ThrowsAsync<ArgumentException>(async () =>
-                    await _target.DeleteAsync(path));
+                    await _target.DeleteAsync(path, TestContext.Current.CancellationToken));
             }
         }
     }

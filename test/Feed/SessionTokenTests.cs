@@ -14,7 +14,6 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -69,11 +68,11 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
         HttpClient browser = await SignUpAsync(app, "alice", cookies);
         string first = Decode(GetCookie(cookies).Split('.')[1]).GetProperty("sit").GetString()!;
 
-        await browser.GetAsync("api/account");
+        await browser.GetAsync("api/account", TestContext.Current.CancellationToken);
         Assert.Equal(first, Decode(GetCookie(cookies).Split('.')[1]).GetProperty("sit").GetString());
 
         app.Clock.Advance(TimeSpan.FromMinutes(15));
-        await browser.GetAsync("api/account");
+        await browser.GetAsync("api/account", TestContext.Current.CancellationToken);
 
         string second = Decode(GetCookie(cookies).Split('.')[1]).GetProperty("sit").GetString()!;
         Assert.NotEqual(first, second);
@@ -96,9 +95,9 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
         using HttpClient browser = app.CreateClient();
         using HttpRequestMessage request = new(HttpMethod.Get, "api/account");
         request.Headers.Add("Cookie", $"{CookieName}={forged}");
-        using HttpResponseMessage response = await browser.SendAsync(request);
+        using HttpResponseMessage response = await browser.SendAsync(request, TestContext.Current.CancellationToken);
 
-        Assert.False((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("signedIn").GetBoolean());
+        Assert.False((await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken)).GetProperty("signedIn").GetBoolean());
     }
 
     [Fact]
@@ -110,7 +109,7 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
 
         using (IServiceScope scope = app.Services.CreateScope())
         {
-            Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().SessionSigningKeys.CountAsync());
+            Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().SessionSigningKeys.CountAsync(TestContext.Current.CancellationToken));
         }
 
         // A new instance loads the key from the database, like the feed does when it starts again.
@@ -141,7 +140,7 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
             await scope.ServiceProvider
                 .GetRequiredService<NuDepotDbContext>()
                 .SessionSigningKeys
-                .ExecuteUpdateAsync(setters => setters.SetProperty(k => k.ProtectedPrivateKey, [1, 2, 3]));
+                .ExecuteUpdateAsync(setters => setters.SetProperty(k => k.ProtectedPrivateKey, [1, 2, 3]), TestContext.Current.CancellationToken);
         }
 
         // The feed starts again.
@@ -158,7 +157,7 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
         Assert.Single(keys.ValidationKeys);
         using (IServiceScope scope = app.Services.CreateScope())
         {
-            Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().SessionSigningKeys.CountAsync());
+            Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().SessionSigningKeys.CountAsync(TestContext.Current.CancellationToken));
         }
     }
 

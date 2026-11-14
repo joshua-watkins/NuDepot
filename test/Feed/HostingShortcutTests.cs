@@ -23,8 +23,8 @@ public class HostingShortcutTests
         await using WebApplication app = await StartAsync(new Dictionary<string, string?>());
         using HttpClient client = app.GetTestClient();
 
-        using HttpResponseMessage index = await client.GetAsync("v3/index.json");
-        using HttpResponseMessage account = await client.GetAsync("api/account");
+        using HttpResponseMessage index = await client.GetAsync("v3/index.json", TestContext.Current.CancellationToken);
+        using HttpResponseMessage account = await client.GetAsync("api/account", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, index.StatusCode);
 
@@ -41,10 +41,10 @@ public class HostingShortcutTests
         });
         using HttpClient client = app.GetTestClient();
 
-        using HttpResponseMessage anonymous = await client.GetAsync("v3/index.json");
+        using HttpResponseMessage anonymous = await client.GetAsync("v3/index.json", TestContext.Current.CancellationToken);
         client.DefaultRequestHeaders.Add("X-NuGet-ApiKey", "secret");
-        using HttpResponseMessage withKey = await client.GetAsync("v3/index.json");
-        using HttpResponseMessage account = await client.GetAsync("api/account");
+        using HttpResponseMessage withKey = await client.GetAsync("v3/index.json", TestContext.Current.CancellationToken);
+        using HttpResponseMessage account = await client.GetAsync("api/account", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
         Assert.Equal(HttpStatusCode.OK, withKey.StatusCode);
@@ -59,11 +59,11 @@ public class HostingShortcutTests
         await using WebApplication app = await StartAsync(new Dictionary<string, string?>(), users: true);
         using HttpClient client = app.GetTestClient();
 
-        using HttpResponseMessage account = await client.GetAsync("api/account");
+        using HttpResponseMessage account = await client.GetAsync("api/account", TestContext.Current.CancellationToken);
         using HttpResponseMessage push = await client.PutAsync("api/v2/package", new MultipartFormDataContent
         {
             { new StreamContent(TestPackages.Create("Anonymous.Package", "1.0.0")), "package", "package.nupkg" },
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, account.StatusCode);
 

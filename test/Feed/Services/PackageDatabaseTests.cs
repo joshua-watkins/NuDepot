@@ -17,7 +17,7 @@ public class PackageDatabaseTests
             using NuDepotDbContext context = CreateContext();
             PackageDatabase target = new(context);
 
-            PackageAddResult result = await target.AddAsync(CreatePackage("Package", "1.0.0"), default);
+            PackageAddResult result = await target.AddAsync(CreatePackage("Package", "1.0.0"), TestContext.Current.CancellationToken);
 
             Assert.Equal(PackageAddResult.PackageAlreadyExists, result);
         }
@@ -25,10 +25,10 @@ public class PackageDatabaseTests
         [Fact]
         public async Task AddsPackage()
         {
-            PackageAddResult result = await _target.AddAsync(CreatePackage("New.Package", "2.0.0"), default);
+            PackageAddResult result = await _target.AddAsync(CreatePackage("New.Package", "2.0.0"), TestContext.Current.CancellationToken);
 
             Assert.Equal(PackageAddResult.Success, result);
-            Assert.True(await _target.ExistsAsync("New.Package", NuGetVersion.Parse("2.0.0"), default));
+            Assert.True(await _target.ExistsAsync("New.Package", NuGetVersion.Parse("2.0.0"), TestContext.Current.CancellationToken));
         }
     }
 
@@ -43,7 +43,7 @@ public class PackageDatabaseTests
         [InlineData("Fake.Package", "1.0.0", false)]
         public async Task ReturnsTrueIfPackageExists(string packageId, string packageVersion, bool exists)
         {
-            Assert.Equal(exists, await _target.ExistsAsync(packageId, NuGetVersion.Parse(packageVersion), default));
+            Assert.Equal(exists, await _target.ExistsAsync(packageId, NuGetVersion.Parse(packageVersion), TestContext.Current.CancellationToken));
         }
 
         [Theory]
@@ -52,7 +52,7 @@ public class PackageDatabaseTests
         [InlineData("Fake.Package", false)]
         public async Task ReturnsTrueIfAnyVersionExists(string packageId, bool exists)
         {
-            Assert.Equal(exists, await _target.ExistsAsync(packageId, default));
+            Assert.Equal(exists, await _target.ExistsAsync(packageId, TestContext.Current.CancellationToken));
         }
     }
 
@@ -61,14 +61,14 @@ public class PackageDatabaseTests
         [Fact]
         public async Task ReturnsEmptyListIfPackageDoesNotExist()
         {
-            Assert.Empty(await _target.FindAsync("Fake.Package", includeUnlisted: true, default));
+            Assert.Empty(await _target.FindAsync("Fake.Package", includeUnlisted: true, TestContext.Current.CancellationToken));
         }
 
         [Theory]
         [MemberData(nameof(ReturnsPackagesData))]
         public async Task ReturnsPackages(string packageId, bool includeUnlisted, bool exists)
         {
-            IReadOnlyList<Package> packages = await _target.FindAsync(packageId, includeUnlisted, default);
+            IReadOnlyList<Package> packages = await _target.FindAsync(packageId, includeUnlisted, TestContext.Current.CancellationToken);
 
             if (exists)
             {
@@ -103,14 +103,14 @@ public class PackageDatabaseTests
         [Fact]
         public async Task ReturnsNullIfPackageDoesNotExist()
         {
-            Assert.Null(await _target.FindOrNullAsync("Package", NuGetVersion.Parse("2.0.0"), includeUnlisted: true, default));
+            Assert.Null(await _target.FindOrNullAsync("Package", NuGetVersion.Parse("2.0.0"), includeUnlisted: true, TestContext.Current.CancellationToken));
         }
 
         [Theory]
         [MemberData(nameof(ReturnsPackageData))]
         public async Task ReturnsPackage(string packageId, string packageVersion, bool includeUnlisted, bool exists)
         {
-            Package? package = await _target.FindOrNullAsync(packageId, NuGetVersion.Parse(packageVersion), includeUnlisted, default);
+            Package? package = await _target.FindOrNullAsync(packageId, NuGetVersion.Parse(packageVersion), includeUnlisted, TestContext.Current.CancellationToken);
 
             Assert.Equal(exists, package != null);
             Assert.Equal(exists ? "1.0.0" : null, package?.NormalizedVersionString);
@@ -139,7 +139,7 @@ public class PackageDatabaseTests
         [Fact]
         public async Task ReturnsFalseIfPackageDoesNotExist()
         {
-            Assert.False(await _target.UnlistPackageAsync("Fake.Package", NuGetVersion.Parse("1.0.0"), default));
+            Assert.False(await _target.UnlistPackageAsync("Fake.Package", NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken));
         }
 
         [Theory]
@@ -147,7 +147,7 @@ public class PackageDatabaseTests
         [InlineData("Unlisted.Package")]
         public async Task UnlistsPackage(string packageId)
         {
-            Assert.True(await _target.UnlistPackageAsync(packageId, NuGetVersion.Parse("1.0.0"), default));
+            Assert.True(await _target.UnlistPackageAsync(packageId, NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken));
 
             Assert.False((await FindAsync(packageId)).Listed);
         }
@@ -158,7 +158,7 @@ public class PackageDatabaseTests
         [Fact]
         public async Task ReturnsFalseIfPackageDoesNotExist()
         {
-            Assert.False(await _target.RelistPackageAsync("Fake.Package", NuGetVersion.Parse("1.0.0"), default));
+            Assert.False(await _target.RelistPackageAsync("Fake.Package", NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken));
         }
 
         [Theory]
@@ -166,7 +166,7 @@ public class PackageDatabaseTests
         [InlineData("Unlisted.Package")]
         public async Task RelistsPackage(string packageId)
         {
-            Assert.True(await _target.RelistPackageAsync(packageId, NuGetVersion.Parse("1.0.0"), default));
+            Assert.True(await _target.RelistPackageAsync(packageId, NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken));
 
             Assert.True((await FindAsync(packageId)).Listed);
         }
@@ -177,16 +177,16 @@ public class PackageDatabaseTests
         [Fact]
         public async Task IgnoresPackageThatDoesNotExist()
         {
-            await _target.AddDownloadAsync("Fake.Package", NuGetVersion.Parse("1.0.0"), default);
+            await _target.AddDownloadAsync("Fake.Package", NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken);
 
-            Assert.False(await _target.ExistsAsync("Fake.Package", default));
+            Assert.False(await _target.ExistsAsync("Fake.Package", TestContext.Current.CancellationToken));
         }
 
         [Fact]
         public async Task IncrementsPackageDownloads()
         {
-            await _target.AddDownloadAsync("Package", NuGetVersion.Parse("1.0.0"), default);
-            await _target.AddDownloadAsync("Package", NuGetVersion.Parse("1.0.0"), default);
+            await _target.AddDownloadAsync("Package", NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken);
+            await _target.AddDownloadAsync("Package", NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken);
 
             Assert.Equal(2, (await FindAsync("Package")).Downloads);
         }
@@ -197,15 +197,15 @@ public class PackageDatabaseTests
         [Fact]
         public async Task ReturnsFalseIfPackageDoesNotExist()
         {
-            Assert.False(await _target.HardDeletePackageAsync("Fake.Package", NuGetVersion.Parse("1.0.0"), default));
+            Assert.False(await _target.HardDeletePackageAsync("Fake.Package", NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken));
         }
 
         [Fact]
         public async Task DeletesPackage()
         {
-            Assert.True(await _target.HardDeletePackageAsync("Package", NuGetVersion.Parse("1.0.0"), default));
+            Assert.True(await _target.HardDeletePackageAsync("Package", NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken));
 
-            Assert.False(await _target.ExistsAsync("Package", default));
+            Assert.False(await _target.ExistsAsync("Package", TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -213,12 +213,12 @@ public class PackageDatabaseTests
         {
             Package package = CreatePackage("Dependent.Package", "1.0.0");
             package.Dependencies = [new PackageDependency { Id = "Package", VersionRange = "[1.0.0, )", TargetFramework = "net10.0" }];
-            Assert.Equal(PackageAddResult.Success, await _target.AddAsync(package, default));
+            Assert.Equal(PackageAddResult.Success, await _target.AddAsync(package, TestContext.Current.CancellationToken));
 
-            Assert.True(await _target.HardDeletePackageAsync("Dependent.Package", NuGetVersion.Parse("1.0.0"), default));
+            Assert.True(await _target.HardDeletePackageAsync("Dependent.Package", NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken));
 
             using NuDepotDbContext context = CreateContext();
-            Assert.False(await context.PackageDependencies.AnyAsync());
+            Assert.False(await context.PackageDependencies.AnyAsync(TestContext.Current.CancellationToken));
         }
     }
 
@@ -227,7 +227,7 @@ public class PackageDatabaseTests
         [Fact]
         public async Task ReturnsFalseIfAnyPackageIsUnsigned()
         {
-            Assert.False(await _target.AllRepositorySignedAsync(default));
+            Assert.False(await _target.AllRepositorySignedAsync(TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -235,10 +235,10 @@ public class PackageDatabaseTests
         {
             using (NuDepotDbContext context = CreateContext())
             {
-                await context.Packages.ExecuteUpdateAsync(setters => setters.SetProperty(p => p.IsRepositorySigned, true));
+                await context.Packages.ExecuteUpdateAsync(setters => setters.SetProperty(p => p.IsRepositorySigned, true), TestContext.Current.CancellationToken);
             }
 
-            Assert.True(await _target.AllRepositorySignedAsync(default));
+            Assert.True(await _target.AllRepositorySignedAsync(TestContext.Current.CancellationToken));
         }
     }
 

@@ -15,7 +15,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -52,7 +51,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         HttpClient client = app.CreateHttpsClient();
 
         await PushAsync(client, TestPackages.Create("Generated.Signed", "1.0.0"));
-        byte[] package = await client.GetByteArrayAsync(PackageUrl);
+        byte[] package = await client.GetByteArrayAsync(PackageUrl, TestContext.Current.CancellationToken);
 
         using X509Certificate2 signer = await GetRepositorySignerAsync(package);
         Assert.Equal(signer.Subject, signer.Issuer);
@@ -65,7 +64,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
 
         using (PackageArchiveReader reader = new(new MemoryStream(package)))
         {
-            PrimarySignature signature = (await reader.GetPrimarySignatureAsync(default))!;
+            PrimarySignature signature = (await reader.GetPrimarySignatureAsync(TestContext.Current.CancellationToken))!;
             Assert.Equal(Sha512Oid, signature.SignerInfo.DigestAlgorithm.Value);
         }
 
@@ -73,10 +72,10 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         JsonElement signatures = await GetJsonAsync(client, "v3/repository-signatures/5.0.0/index.json");
         JsonElement advertised = Assert.Single(signatures.GetProperty("signingCertificates").EnumerateArray());
         Assert.Equal(CertificateFingerprint.Of(signer), advertised.GetProperty("fingerprints").GetProperty("2.16.840.1.101.3.4.2.1").GetString()!);
-        Assert.Equal(signer.RawData, await client.GetByteArrayAsync(advertised.GetProperty("contentUrl").GetString()!));
+        Assert.Equal(signer.RawData, await client.GetByteArrayAsync(advertised.GetProperty("contentUrl").GetString()!, TestContext.Current.CancellationToken));
 
         // Downloading it again doesn't re-sign it.
-        Assert.Equal(package, await client.GetByteArrayAsync(PackageUrl));
+        Assert.Equal(package, await client.GetByteArrayAsync(PackageUrl, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -86,12 +85,12 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         HttpClient client = app.CreateHttpsClient();
 
         await PushAsync(client, TestPackages.Create("Generated.Signed", "1.0.0"));
-        byte[] original = await client.GetByteArrayAsync(PackageUrl);
+        byte[] original = await client.GetByteArrayAsync(PackageUrl, TestContext.Current.CancellationToken);
         using X509Certificate2 oldSigner = await GetRepositorySignerAsync(original);
 
-        string newFingerprint = (await app.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(default)).Fingerprint;
+        string newFingerprint = (await app.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(TestContext.Current.CancellationToken)).Fingerprint;
 
-        byte[] resigned = await client.GetByteArrayAsync(PackageUrl);
+        byte[] resigned = await client.GetByteArrayAsync(PackageUrl, TestContext.Current.CancellationToken);
         Assert.NotEqual(original, resigned);
         using (X509Certificate2 newSigner = await GetRepositorySignerAsync(resigned))
         {
@@ -101,7 +100,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         // The stored package, its hash and the catalog all describe the re-signed package.
         using (IServiceScope scope = app.Services.CreateScope())
         {
-            Package package = await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SingleAsync(p => p.Id == "Generated.Signed");
+            Package package = await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SingleAsync(p => p.Id == "Generated.Signed", TestContext.Current.CancellationToken);
             Assert.Equal(Convert.ToBase64String(SHA512.HashData(resigned)), package.PackageHash);
             Assert.Equal(resigned.Length, package.PackageSize);
             Assert.Equal(newFingerprint, package.RepositorySignatureFingerprint);
@@ -111,7 +110,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         Assert.Equal(Convert.ToBase64String(SHA512.HashData(resigned)), leaf.GetProperty("packageHash").GetString()!);
 
         // It's only re-signed once.
-        Assert.Equal(resigned, await client.GetByteArrayAsync(PackageUrl));
+        Assert.Equal(resigned, await client.GetByteArrayAsync(PackageUrl, TestContext.Current.CancellationToken));
 
         // The replaced certificate is revoked, so only the new one is advertised.
         JsonElement signatures = await GetJsonAsync(client, "v3/repository-signatures/5.0.0/index.json");
@@ -129,14 +128,14 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         TestTimeProvider time = new(new DateTimeOffset(2030, 6, 15, 0, 0, 0, TimeSpan.Zero));
         NuDepotTestApplication app = CreateApp(time);
         IRepositorySigningService signing = app.Services.GetRequiredService<IRepositorySigningService>();
-        string before = (await signing.GetSigningFingerprintAsync(default))!;
+        string before = (await signing.GetSigningFingerprintAsync(TestContext.Current.CancellationToken))!;
 
-        SigningCertificateRotation rotation = await app.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(default);
+        SigningCertificateRotation rotation = await app.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal([before], rotation.Revoked);
         Assert.Equal(new DateTimeOffset(2030, 12, 31, 23, 59, 59, TimeSpan.Zero), rotation.ExpiresAt);
-        Assert.Equal(rotation.Fingerprint, await signing.GetSigningFingerprintAsync(default));
-        Assert.Equal([rotation.Fingerprint], (await signing.GetCertificatesAsync(default)).Select(CertificateFingerprint.Of));
+        Assert.Equal(rotation.Fingerprint, await signing.GetSigningFingerprintAsync(TestContext.Current.CancellationToken));
+        Assert.Equal([rotation.Fingerprint], (await signing.GetCertificatesAsync(TestContext.Current.CancellationToken)).Select(CertificateFingerprint.Of));
     }
 
     [Fact]
@@ -145,15 +144,15 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         TestTimeProvider time = new(new DateTimeOffset(2030, 6, 1, 0, 0, 0, TimeSpan.Zero));
         NuDepotTestApplication app = CreateApp(time);
         IRepositorySigningService signing = app.Services.GetRequiredService<IRepositorySigningService>();
-        string original = (await signing.GetSigningFingerprintAsync(default))!;
+        string original = (await signing.GetSigningFingerprintAsync(TestContext.Current.CancellationToken))!;
 
         // Like the "rotate signing-certificate" command, which runs in another process.
         using GeneratedSigningCertificates command = ActivatorUtilities.CreateInstance<GeneratedSigningCertificates>(app.Services);
-        SigningCertificateRotation rotation = await command.RotateAsync(default);
+        SigningCertificateRotation rotation = await command.RotateAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(original, await signing.GetSigningFingerprintAsync(default));
+        Assert.Equal(original, await signing.GetSigningFingerprintAsync(TestContext.Current.CancellationToken));
         time.Now += TimeSpan.FromMinutes(1);
-        Assert.Equal(rotation.Fingerprint, await signing.GetSigningFingerprintAsync(default));
+        Assert.Equal(rotation.Fingerprint, await signing.GetSigningFingerprintAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -164,15 +163,15 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
 
         // A signature records the service index's HTTPS URL, which an HTTP request doesn't have.
         HttpClient http = app.CreateClient();
-        Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync("v3/index.json")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync(PackageUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync("v3/index.json", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync(PackageUrl, TestContext.Current.CancellationToken)).StatusCode);
 
         // A reverse proxy that serves HTTPS says so.
         using HttpRequestMessage proxied = new(HttpMethod.Get, PackageUrl);
         proxied.Headers.Add("X-Forwarded-Proto", "https");
-        using HttpResponseMessage response = await http.SendAsync(proxied);
+        using HttpResponseMessage response = await http.SendAsync(proxied, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        using X509Certificate2 signer = await GetRepositorySignerAsync(await response.Content.ReadAsByteArrayAsync());
+        using X509Certificate2 signer = await GetRepositorySignerAsync(await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -182,8 +181,8 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
 
         using HttpRequestMessage proxied = new(HttpMethod.Get, "v3/index.json");
         proxied.Headers.Add("X-Forwarded-Proto", "https");
-        Assert.Equal(HttpStatusCode.Forbidden, (await app.CreateClient().SendAsync(proxied)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await app.CreateHttpsClient().GetAsync("v3/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await app.CreateClient().SendAsync(proxied, TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await app.CreateHttpsClient().GetAsync("v3/index.json", TestContext.Current.CancellationToken)).StatusCode);
 
         // The gallery hosted with the feed is still trusted, with the application's secret.
         string token = app.Services.GetRequiredService<NuDepotFeatures>().CoHostedToken;
@@ -212,7 +211,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
             c.Request.Path = "/v3/index.json";
             c.Request.Headers["X-Forwarded-Proto"] = "https";
             c.Connection.RemoteIpAddress = IPAddress.Parse(client);
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal((int)expected, context.Response.StatusCode);
     }
@@ -241,15 +240,15 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         NuDepotTestApplication app = CreateApp(time);
         IRepositorySigningService signing = app.Services.GetRequiredService<IRepositorySigningService>();
 
-        X509Certificate2 thisYear = Assert.Single(await signing.GetCertificatesAsync(default));
+        X509Certificate2 thisYear = Assert.Single(await signing.GetCertificatesAsync(TestContext.Current.CancellationToken));
         Assert.Equal(new DateTime(2030, 12, 31, 23, 59, 59, DateTimeKind.Utc), thisYear.NotAfter.ToUniversalTime());
 
         // Next year's certificate isn't advertised before it's used.
         time.Now = new DateTimeOffset(2031, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        string nextYear = (await signing.GetSigningFingerprintAsync(default))!;
+        string nextYear = (await signing.GetSigningFingerprintAsync(TestContext.Current.CancellationToken))!;
         Assert.NotEqual(CertificateFingerprint.Of(thisYear), nextYear);
 
-        X509Certificate2 advertised = Assert.Single(await signing.GetCertificatesAsync(default));
+        X509Certificate2 advertised = Assert.Single(await signing.GetCertificatesAsync(TestContext.Current.CancellationToken));
         Assert.Equal(nextYear, CertificateFingerprint.Of(advertised));
         Assert.Equal(new DateTime(2031, 12, 31, 23, 59, 59, DateTimeKind.Utc), advertised.NotAfter.ToUniversalTime());
     }
@@ -285,29 +284,29 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         HttpClient mirrorClient = mirror.CreateHttpsClient();
 
         const string url = "v3/package/mirrored.signed/1.0.0/mirrored.signed.1.0.0.nupkg";
-        byte[] original = await mirrorClient.GetByteArrayAsync(url);
+        byte[] original = await mirrorClient.GetByteArrayAsync(url, TestContext.Current.CancellationToken);
         using X509Certificate2 originalSigner = await GetRepositorySignerAsync(original);
 
         // While the signature is valid, the mirror serves its copy.
-        string rotated = (await upstream.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(default)).Fingerprint;
-        Assert.Equal(original, await mirrorClient.GetByteArrayAsync(url));
+        string rotated = (await upstream.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(TestContext.Current.CancellationToken)).Fingerprint;
+        Assert.Equal(original, await mirrorClient.GetByteArrayAsync(url, TestContext.Current.CancellationToken));
 
         // Once it expires, the mirror downloads the package again, which the upstream feed re-signs.
         mirrorTime.Now = originalSigner.NotAfter.ToUniversalTime().AddSeconds(1);
-        byte[] refreshed = await mirrorClient.GetByteArrayAsync(url);
+        byte[] refreshed = await mirrorClient.GetByteArrayAsync(url, TestContext.Current.CancellationToken);
         using (X509Certificate2 refreshedSigner = await GetRepositorySignerAsync(refreshed))
         {
             Assert.Equal(rotated, CertificateFingerprint.Of(refreshedSigner));
         }
 
         using IServiceScope scope = mirror.Services.CreateScope();
-        Package package = await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SingleAsync(p => p.Id == "Mirrored.Signed");
+        Package package = await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SingleAsync(p => p.Id == "Mirrored.Signed", TestContext.Current.CancellationToken);
         Assert.Equal(Convert.ToBase64String(SHA512.HashData(refreshed)), package.PackageHash);
         Assert.Equal(rotated, package.RepositorySignatureFingerprint);
         Assert.False(package.IsRepositorySigned);
 
         // Its new signature has also expired by the mirror's clock, but the mirror only checks upstream once an hour.
-        Assert.Equal(refreshed, await mirrorClient.GetByteArrayAsync(url));
+        Assert.Equal(refreshed, await mirrorClient.GetByteArrayAsync(url, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -316,7 +315,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         // A package another feed signed, like one downloaded from nuget.org.
         NuDepotTestApplication other = CreateApp();
         await PushAsync(other.CreateHttpsClient(), TestPackages.Create("Generated.Signed", "1.0.0"));
-        byte[] signed = await other.CreateHttpsClient().GetByteArrayAsync(PackageUrl);
+        byte[] signed = await other.CreateHttpsClient().GetByteArrayAsync(PackageUrl, TestContext.Current.CancellationToken);
         using X509Certificate2 otherSigner = await GetRepositorySignerAsync(signed);
 
         NuDepotTestApplication app = CreateApp();
@@ -324,70 +323,70 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         await PushAsync(client, new MemoryStream(signed));
 
         // A package can only have one repository signature, so it's stored and served as it was.
-        Assert.Equal(signed, await client.GetByteArrayAsync(PackageUrl));
+        Assert.Equal(signed, await client.GetByteArrayAsync(PackageUrl, TestContext.Current.CancellationToken));
         using IServiceScope scope = app.Services.CreateScope();
-        Package package = await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SingleAsync(p => p.Id == "Generated.Signed");
+        Package package = await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SingleAsync(p => p.Id == "Generated.Signed", TestContext.Current.CancellationToken);
         Assert.False(package.IsRepositorySigned);
         Assert.Equal(CertificateFingerprint.Of(otherSigner), package.RepositorySignatureFingerprint);
-        Assert.NotEqual(await app.Services.GetRequiredService<IRepositorySigningService>().GetSigningFingerprintAsync(default), package.RepositorySignatureFingerprint);
+        Assert.NotEqual(await app.Services.GetRequiredService<IRepositorySigningService>().GetSigningFingerprintAsync(TestContext.Current.CancellationToken), package.RepositorySignatureFingerprint);
     }
 
     [Fact]
     public async Task AnUpstreamCopyWithOtherContentIsntUsed()
     {
         (NuDepotTestApplication upstream, HttpClient mirror, TestTimeProvider mirrorTime) = await CreateMirrorAsync();
-        byte[] original = await mirror.GetByteArrayAsync(MirroredUrl);
+        byte[] original = await mirror.GetByteArrayAsync(MirroredUrl, TestContext.Current.CancellationToken);
         using X509Certificate2 originalSigner = await GetRepositorySignerAsync(original);
 
         // The upstream feed replaces the version with other content, and signs it with its next certificate.
-        await upstream.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(default);
+        await upstream.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(TestContext.Current.CancellationToken);
         HttpClient admin = upstream.CreateHttpsClient();
         admin.DefaultRequestHeaders.Add("X-NuGet-ApiKey", "admin-key");
         await PushAsync(admin, TestPackages.Create("Mirrored.Signed", "1.0.0", description: "Something else"));
-        Assert.NotEqual(original, await upstream.CreateHttpsClient().GetByteArrayAsync(MirroredUrl));
+        Assert.NotEqual(original, await upstream.CreateHttpsClient().GetByteArrayAsync(MirroredUrl, TestContext.Current.CancellationToken));
         mirrorTime.Now = originalSigner.NotAfter.ToUniversalTime().AddSeconds(1);
 
-        Assert.Equal(original, await mirror.GetByteArrayAsync(MirroredUrl));
+        Assert.Equal(original, await mirror.GetByteArrayAsync(MirroredUrl, TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task AnUpstreamCopyThatWasntResignedIsntUsed()
     {
         (_, HttpClient mirror, TestTimeProvider mirrorTime) = await CreateMirrorAsync();
-        byte[] original = await mirror.GetByteArrayAsync(MirroredUrl);
+        byte[] original = await mirror.GetByteArrayAsync(MirroredUrl, TestContext.Current.CancellationToken);
         using X509Certificate2 originalSigner = await GetRepositorySignerAsync(original);
 
         mirrorTime.Now = originalSigner.NotAfter.ToUniversalTime().AddSeconds(1);
 
-        Assert.Equal(original, await mirror.GetByteArrayAsync(MirroredUrl));
+        Assert.Equal(original, await mirror.GetByteArrayAsync(MirroredUrl, TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task AnUpstreamFeedThatCantBeReachedLeavesTheMirroredCopy()
     {
         (NuDepotTestApplication upstream, HttpClient mirror, TestTimeProvider mirrorTime) = await CreateMirrorAsync();
-        byte[] original = await mirror.GetByteArrayAsync(MirroredUrl);
+        byte[] original = await mirror.GetByteArrayAsync(MirroredUrl, TestContext.Current.CancellationToken);
         using X509Certificate2 originalSigner = await GetRepositorySignerAsync(original);
 
         upstream.Dispose();
         mirrorTime.Now = originalSigner.NotAfter.ToUniversalTime().AddSeconds(1);
 
-        Assert.Equal(original, await mirror.GetByteArrayAsync(MirroredUrl));
+        Assert.Equal(original, await mirror.GetByteArrayAsync(MirroredUrl, TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task PushedPackagesSignedByAnotherRepositoryArentRefreshed()
     {
         (NuDepotTestApplication upstream, HttpClient mirror, TestTimeProvider mirrorTime) = await CreateMirrorAsync();
-        byte[] signed = await upstream.CreateHttpsClient().GetByteArrayAsync(MirroredUrl);
+        byte[] signed = await upstream.CreateHttpsClient().GetByteArrayAsync(MirroredUrl, TestContext.Current.CancellationToken);
         using X509Certificate2 signer = await GetRepositorySignerAsync(signed);
 
         // The package was pushed to this feed with the upstream feed's signature, so it's this feed's own.
         await PushAsync(mirror, new MemoryStream(signed));
-        await upstream.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(default);
+        await upstream.Services.GetRequiredService<GeneratedSigningCertificates>().RotateAsync(TestContext.Current.CancellationToken);
         mirrorTime.Now = signer.NotAfter.ToUniversalTime().AddSeconds(1);
 
-        Assert.Equal(signed, await mirror.GetByteArrayAsync(MirroredUrl));
+        Assert.Equal(signed, await mirror.GetByteArrayAsync(MirroredUrl, TestContext.Current.CancellationToken));
     }
 
     private const string MirroredUrl = "v3/package/mirrored.signed/1.0.0/mirrored.signed.1.0.0.nupkg";
@@ -417,31 +416,31 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
     {
         TestTimeProvider time = new(new DateTimeOffset(2030, 6, 1, 0, 0, 0, TimeSpan.Zero));
         NuDepotTestApplication app = CreateApp(time);
-        string original = (await app.Services.GetRequiredService<IRepositorySigningService>().GetSigningFingerprintAsync(default))!;
+        string original = (await app.Services.GetRequiredService<IRepositorySigningService>().GetSigningFingerprintAsync(TestContext.Current.CancellationToken))!;
 
         // Like when data protection's keys are lost.
         using (IServiceScope scope = app.Services.CreateScope())
         {
             NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
-            await context.SigningCertificates.ExecuteUpdateAsync(setters => setters.SetProperty(c => c.ProtectedPrivateKey, [1, 2, 3]));
+            await context.SigningCertificates.ExecuteUpdateAsync(setters => setters.SetProperty(c => c.ProtectedPrivateKey, [1, 2, 3]), TestContext.Current.CancellationToken);
         }
 
         using GeneratedSigningCertificates restarted = ActivatorUtilities.CreateInstance<GeneratedSigningCertificates>(app.Services);
-        string replacement = CertificateFingerprint.Of(await restarted.GetSigningCertificateAsync(default));
+        string replacement = CertificateFingerprint.Of(await restarted.GetSigningCertificateAsync(TestContext.Current.CancellationToken));
 
         Assert.NotEqual(original, replacement);
-        Assert.Equal([original, replacement], (await restarted.GetAdvertisedCertificatesAsync(default)).Select(CertificateFingerprint.Of));
+        Assert.Equal([original, replacement], (await restarted.GetAdvertisedCertificatesAsync(TestContext.Current.CancellationToken)).Select(CertificateFingerprint.Of));
     }
 
     [Fact]
     public async Task PrivateKeysAreEncryptedWithAes256AndHmacSha512()
     {
         NuDepotTestApplication app = CreateApp();
-        await app.Services.GetRequiredService<IRepositorySigningService>().GetSigningFingerprintAsync(default);
+        await app.Services.GetRequiredService<IRepositorySigningService>().GetSigningFingerprintAsync(TestContext.Current.CancellationToken);
 
         // The key that encrypted the certificate's private key, stored in the database.
         using IServiceScope scope = app.Services.CreateScope();
-        string key = (await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().DataProtectionKeys.SingleAsync()).Xml!;
+        string key = (await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().DataProtectionKeys.SingleAsync(TestContext.Current.CancellationToken)).Xml!;
 
         Assert.Contains("<encryption algorithm=\"AES_256_CBC\" />", key);
         Assert.Contains("<validation algorithm=\"HMACSHA512\" />", key);

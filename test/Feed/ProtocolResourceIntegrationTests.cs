@@ -14,7 +14,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -68,7 +67,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         Assert.Equal(0, results.GetProperty("data").GetArrayLength());
 
         // The package is still on the feed.
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("v3/package/contoso.searched/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("v3/package/contoso.searched/index.json", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Theory]
@@ -86,7 +85,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         NuDepotTestApplication app = new(Output, configureServices: services => services.AddSingleton(search.Object));
         Disposables.Add(app);
 
-        using HttpResponseMessage response = await app.CreateClient().GetAsync(url);
+        using HttpResponseMessage response = await app.CreateClient().GetAsync(url, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         (int Skip, int Take) page = Assert.Single(search.Invocations).Arguments[0] switch
@@ -109,8 +108,8 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         HttpClient client = CreateClient(out _);
         await PushAsync(client, TestPackages.Create("Contoso.Json", "1.0.0"));
 
-        HttpResponseMessage response = await client.GetAsync(path);
-        string message = await response.Content.ReadAsStringAsync();
+        HttpResponseMessage response = await client.GetAsync(path, TestContext.Current.CancellationToken);
+        string message = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Contains("V2 (OData) feed is not supported", message);
@@ -177,8 +176,8 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
             .Select(i => i.GetProperty("catalogEntry").GetProperty("version").GetString()!);
         Assert.Equal(["1.0.0", "2.0.0-beta.1"], semVer2Versions);
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/registration/semver.package/2.0.0-beta.1.json")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("v3/registration-semver2/semver.package/2.0.0-beta.1.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/registration/semver.package/2.0.0-beta.1.json", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("v3/registration-semver2/semver.package/2.0.0-beta.1.json", TestContext.Current.CancellationToken)).StatusCode);
 
         JsonElement semVer1Search = await GetJsonAsync(client, "v3/search?q=semver&prerelease=true");
         Assert.Equal("1.0.0", semVer1Search.GetProperty("data")[0].GetProperty("version").GetString()!);
@@ -195,8 +194,8 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         // The server's appsettings.json hard deletes by default.
         HttpClient client = CreateClient(out _, new Dictionary<string, string> { { "PackageDeletionBehavior", "Unlist" } });
         await PushAsync(client, TestPackages.Create("Catalog.Package", "1.0.0"));
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/v2/package/Catalog.Package/1.0.0")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("api/v2/package/Catalog.Package/1.0.0", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/v2/package/Catalog.Package/1.0.0", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("api/v2/package/Catalog.Package/1.0.0", null, TestContext.Current.CancellationToken)).StatusCode);
 
         JsonElement index = await GetJsonAsync(client, "v3/catalog/index.json");
         Assert.Equal(1, index.GetProperty("count").GetInt32());
@@ -233,7 +232,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         await PushAsync(client, TestPackages.Create("Catalog.Package", "1.0.0", licenseExpression: "MIT", packageType: "Template"));
 
         JsonElement leaf = await GetLatestCatalogLeafAsync(client);
-        byte[] package = await client.GetByteArrayAsync("v3/package/catalog.package/1.0.0/catalog.package.1.0.0.nupkg");
+        byte[] package = await client.GetByteArrayAsync("v3/package/catalog.package/1.0.0/catalog.package.1.0.0.nupkg", TestContext.Current.CancellationToken);
 
         Assert.Contains("PackageDetails", leaf.GetProperty("@type").EnumerateArray().Select(t => t.GetString()!));
         Assert.Equal("Catalog.Package", leaf.GetProperty("id").GetString()!);
@@ -254,7 +253,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
     {
         HttpClient client = CreateClient(out _, new Dictionary<string, string> { { "PackageDeletionBehavior", "HardDelete" } });
         await PushAsync(client, TestPackages.Create("Catalog.Package", "1.0.0"));
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/v2/package/Catalog.Package/1.0.0")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/v2/package/Catalog.Package/1.0.0", TestContext.Current.CancellationToken)).StatusCode);
 
         JsonElement leaf = await GetLatestCatalogLeafAsync(client);
 
@@ -271,9 +270,9 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
 
         RawCatalogClient catalogClient = new(client, new Uri(client.BaseAddress!, "v3/catalog/index.json").AbsoluteUri);
 
-        CatalogIndex index = await catalogClient.GetIndexAsync();
-        CatalogPage page = await catalogClient.GetPageAsync(index.Items[0].CatalogPageUrl);
-        PackageDetailsCatalogLeaf leaf = await catalogClient.GetPackageDetailsLeafAsync(page.Items[0].CatalogLeafUrl);
+        CatalogIndex index = await catalogClient.GetIndexAsync(TestContext.Current.CancellationToken);
+        CatalogPage page = await catalogClient.GetPageAsync(index.Items[0].CatalogPageUrl, TestContext.Current.CancellationToken);
+        PackageDetailsCatalogLeaf leaf = await catalogClient.GetPackageDetailsLeafAsync(page.Items[0].CatalogLeafUrl, TestContext.Current.CancellationToken);
 
         Assert.Equal("Catalog.Package", leaf.PackageId);
         Assert.Equal("1.0.0", leaf.PackageVersion);
@@ -290,16 +289,16 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         using (IServiceScope scope = app.Services.CreateScope())
         {
             NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
-            await context.CatalogEntries.ExecuteDeleteAsync();
-            await context.Packages.ExecuteUpdateAsync(setters => setters.SetProperty(p => p.PackageHash, (string?)null));
+            await context.CatalogEntries.ExecuteDeleteAsync(TestContext.Current.CancellationToken);
+            await context.Packages.ExecuteUpdateAsync(setters => setters.SetProperty(p => p.PackageHash, (string?)null), TestContext.Current.CancellationToken);
 
             await scope.ServiceProvider
                 .GetRequiredService<ICatalogService>()
-                .InitializeAsync(default);
+                .InitializeAsync(TestContext.Current.CancellationToken);
         }
 
         JsonElement leaf = await GetLatestCatalogLeafAsync(client);
-        byte[] package = await client.GetByteArrayAsync("v3/package/old.package/1.0.0/old.package.1.0.0.nupkg");
+        byte[] package = await client.GetByteArrayAsync("v3/package/old.package/1.0.0/old.package.1.0.0.nupkg", TestContext.Current.CancellationToken);
 
         Assert.Equal("Old.Package", leaf.GetProperty("id").GetString()!);
         Assert.Equal(Convert.ToBase64String(SHA512.HashData(package)), leaf.GetProperty("packageHash").GetString()!);
@@ -316,7 +315,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
             reasons = (string[])["legacy"],
             message = "Use New.Package instead.",
             alternatePackageId = "New.Package",
-        });
+        }, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 
         JsonElement deprecation = (await GetCatalogEntryAsync(client, "old.package")).GetProperty("deprecation");
@@ -331,7 +330,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         JsonElement leaf = await GetLatestCatalogLeafAsync(client);
         Assert.Equal("Legacy", leaf.GetProperty("deprecation").GetProperty("reasons")[0].GetString()!);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/package/Old.Package/1.0.0/deprecation")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/package/Old.Package/1.0.0/deprecation", TestContext.Current.CancellationToken)).StatusCode);
         Assert.False((await GetCatalogEntryAsync(client, "old.package")).TryGetProperty("deprecation", out _));
     }
 
@@ -346,7 +345,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         await PushAsync(client, TestPackages.Create("Old.Package", "1.0.0"));
 
         using StringContent content = new(body, System.Text.Encoding.UTF8, "application/json");
-        HttpResponseMessage response = await client.PutAsync($"api/package/{packageId}/1.0.0/deprecation", content);
+        HttpResponseMessage response = await client.PutAsync($"api/package/{packageId}/1.0.0/deprecation", content, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -360,7 +359,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
 
         // Without vulnerability data, the resource must not be advertised.
         Assert.DoesNotContain("VulnerabilityInfo/6.7.0", await GetResourceTypesAsync(client));
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/vulnerabilities/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/vulnerabilities/index.json", TestContext.Current.CancellationToken)).StatusCode);
 
         HttpResponseMessage response = await client.PutAsJsonAsync("api/vulnerabilities", new
         {
@@ -368,7 +367,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
             versions = "(, 2.0.0)",
             url = "https://example.com/advisories/1",
             severity = 2,
-        });
+        }, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         Assert.Contains("VulnerabilityInfo/6.7.0", await GetResourceTypesAsync(client));
@@ -401,7 +400,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         Assert.Equal("1.0.0", leaf.GetProperty("version").GetString()!);
         Assert.Equal("2", leaf.GetProperty("vulnerabilities")[0].GetProperty("severity").GetString()!);
 
-        HttpResponseMessage delete = await client.DeleteAsync("api/vulnerabilities?packageId=Vulnerable.Package&url=" + Uri.EscapeDataString("https://example.com/advisories/1"));
+        HttpResponseMessage delete = await client.DeleteAsync("api/vulnerabilities?packageId=Vulnerable.Package&url=" + Uri.EscapeDataString("https://example.com/advisories/1"), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
         Assert.DoesNotContain("VulnerabilityInfo/6.7.0", await GetResourceTypesAsync(client));
     }
@@ -471,11 +470,11 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
     {
         HttpClient client = CreateClient(out _);
 
-        using HttpResponseMessage response = await client.PutAsync("api/vulnerabilities", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+        using HttpResponseMessage response = await client.PutAsync("api/vulnerabilities", new StringContent(body, System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains(message, await response.Content.ReadAsStringAsync());
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/vulnerabilities/index.json")).StatusCode);
+        Assert.Contains(message, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/vulnerabilities/index.json", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -484,7 +483,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         HttpClient client = CreateClient(out _);
         await PutAdvisoryAsync(client, "https://example.com/advisories/1", "(, 2.0.0)", 1);
 
-        using HttpResponseMessage response = await client.DeleteAsync("api/vulnerabilities?packageId=Vulnerable.Package&url=" + Uri.EscapeDataString("https://example.com/advisories/2"));
+        using HttpResponseMessage response = await client.DeleteAsync("api/vulnerabilities?packageId=Vulnerable.Package&url=" + Uri.EscapeDataString("https://example.com/advisories/2"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -542,12 +541,12 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
 
             Assert.Equal(HttpStatusCode.Created, (await PushAsync(client, TestPackages.Create("Signed.Package", "1.0.0"))).StatusCode);
 
-            byte[] package = await client.GetByteArrayAsync("v3/package/signed.package/1.0.0/signed.package.1.0.0.nupkg");
+            byte[] package = await client.GetByteArrayAsync("v3/package/signed.package/1.0.0/signed.package.1.0.0.nupkg", TestContext.Current.CancellationToken);
             using (PackageArchiveReader reader = new(new MemoryStream(package)))
             {
-                Assert.True(await reader.IsSignedAsync(default));
+                Assert.True(await reader.IsSignedAsync(TestContext.Current.CancellationToken));
 
-                RepositoryPrimarySignature signature = Assert.IsType<RepositoryPrimarySignature>(await reader.GetPrimarySignatureAsync(default));
+                RepositoryPrimarySignature signature = Assert.IsType<RepositoryPrimarySignature>(await reader.GetPrimarySignatureAsync(TestContext.Current.CancellationToken));
                 Assert.Equal(new Uri("https://localhost/v3/index.json"), signature.V3ServiceIndexUrl);
                 Assert.Equal(certificate.Thumbprint, signature.SignerInfo.Certificate!.Thumbprint);
 
@@ -571,7 +570,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
             Assert.Equal(fingerprint, signingCertificate.GetProperty("fingerprints").GetProperty("2.16.840.1.101.3.4.2.1").GetString()!);
             Assert.Equal(certificate.Subject, signingCertificate.GetProperty("subject").GetString()!);
 
-            byte[] download = await client.GetByteArrayAsync(signingCertificate.GetProperty("contentUrl").GetString()!);
+            byte[] download = await client.GetByteArrayAsync(signingCertificate.GetProperty("contentUrl").GetString()!, TestContext.Current.CancellationToken);
             Assert.Equal(certificate.RawData, download);
 
             // Pushing over HTTP can't record an HTTPS service index URL, so a feed that signs doesn't accept it.
@@ -579,7 +578,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
             {
                 { new StreamContent(TestPackages.Create("Unsigned.Package", "1.0.0")), "package", "package.nupkg" },
             };
-            using HttpResponseMessage overHttp = await app.CreateClient().PutAsync("api/v2/package", content);
+            using HttpResponseMessage overHttp = await app.CreateClient().PutAsync("api/v2/package", content, TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.Forbidden, overHttp.StatusCode);
         }
         finally
@@ -594,7 +593,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         HttpClient client = CreateApp().CreateHttpsClient();
 
         Assert.DoesNotContain(await GetResourceTypesAsync(client), t => t.StartsWith("RepositorySignatures/"));
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/repository-signatures/5.0.0/index.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("v3/repository-signatures/5.0.0/index.json", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     private NuDepotTestApplication CreateApp(IReadOnlyDictionary<string, string>? configuration = null)

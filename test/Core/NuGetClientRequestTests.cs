@@ -61,7 +61,7 @@ public class NuGetClientRequestTests
     [Fact]
     public async Task GetsEveryVersionOfARegistrationSplitIntoPages()
     {
-        IReadOnlyList<Models.PackageMetadata> packages = await Target.GetPackageMetadataAsync("Split.Package");
+        IReadOnlyList<Models.PackageMetadata> packages = await Target.GetPackageMetadataAsync("Split.Package", TestContext.Current.CancellationToken);
 
         // The malformed page is skipped.
         Assert.Equal(["1.0.0", "2.0.0"], packages.Select(p => p.Version));
@@ -74,7 +74,7 @@ public class NuGetClientRequestTests
     [InlineData("2.0.0")]
     public async Task GetsOneVersionFromItsPage(string version)
     {
-        Models.PackageMetadata package = await Target.GetPackageMetadataAsync("Split.Package", NuGetVersion.Parse(version));
+        Models.PackageMetadata package = await Target.GetPackageMetadataAsync("Split.Package", NuGetVersion.Parse(version), TestContext.Current.CancellationToken);
 
         Assert.Equal(version, package.Version);
     }
@@ -83,7 +83,7 @@ public class NuGetClientRequestTests
     public async Task AVersionOnAMalformedPageIsNotFound()
     {
         await Assert.ThrowsAsync<Models.PackageNotFoundException>(() =>
-            Target.GetPackageMetadataAsync("Split.Package", NuGetVersion.Parse("3.0.0")));
+            Target.GetPackageMetadataAsync("Split.Package", NuGetVersion.Parse("3.0.0"), TestContext.Current.CancellationToken));
     }
 
     // A feed with the test service index, empty search results, and a registration whose pages are separate documents.

@@ -1,5 +1,8 @@
 <Project>
 
+	<!-- The repository's shared properties. -->
+	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
 	<!--
 		The libraries are published as NuGet packages, so applications can host the feed and the gallery
 		themselves. Pack them with "dotnet pack NuDepot.slnx -c Release", and set the version with

@@ -12,7 +12,7 @@ public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixt
     [Fact]
     public async Task GetRegistrationIndexInlinedItems()
     {
-        RegistrationIndexResponse? result = await Target.GetRegistrationIndexOrNullAsync("Test.Package");
+        RegistrationIndexResponse? result = await Target.GetRegistrationIndexOrNullAsync("Test.Package", TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Pages.Count);
@@ -33,7 +33,7 @@ public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixt
     [Fact]
     public async Task GetRegistrationIndexPagedItems()
     {
-        RegistrationIndexResponse? result = await Target.GetRegistrationIndexOrNullAsync("Paged.Package");
+        RegistrationIndexResponse? result = await Target.GetRegistrationIndexOrNullAsync("Paged.Package", TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Pages.Count);
@@ -52,7 +52,7 @@ public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixt
     [Fact]
     public async Task GetRegistrationPage()
     {
-        RegistrationPageResponse result = await Target.GetRegistrationPageAsync(TestData.RegistrationPageUrl);
+        RegistrationPageResponse result = await Target.GetRegistrationPageAsync(TestData.RegistrationPageUrl, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
@@ -70,7 +70,7 @@ public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixt
     [Fact]
     public async Task GetRegistrationPageDeprecated()
     {
-        RegistrationPageResponse result = await Target.GetRegistrationPageAsync(TestData.RegistrationPageDeprecatedUrl);
+        RegistrationPageResponse result = await Target.GetRegistrationPageAsync(TestData.RegistrationPageDeprecatedUrl, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result.ItemsOrNull);
         Assert.Equal(2, result.ItemsOrNull.Count);
@@ -97,14 +97,14 @@ public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixt
         Assert.Null(second.Vulnerabilities);
 
         // Versions that aren't deprecated have none.
-        RegistrationPageResponse other = await Target.GetRegistrationPageAsync(TestData.RegistrationPageUrl);
+        RegistrationPageResponse other = await Target.GetRegistrationPageAsync(TestData.RegistrationPageUrl, TestContext.Current.CancellationToken);
         Assert.All(other.ItemsOrNull!, item => Assert.Null(item.PackageMetadata.Deprecation));
     }
 
     [Fact]
     public async Task GetsRegistrationLeaf()
     {
-        RegistrationLeafResponse result = await Target.GetRegistrationLeafAsync(TestData.RegistrationLeafListedUrl);
+        RegistrationLeafResponse result = await Target.GetRegistrationLeafAsync(TestData.RegistrationLeafListedUrl, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.True(result.Listed);
@@ -124,7 +124,7 @@ public class RawPackageMetadataClientTests(ProtocolFixture fixture) : IClassFixt
     [Fact]
     public async Task GetsRegistrationLeafUnlisted()
     {
-        RegistrationLeafResponse result = await Target.GetRegistrationLeafAsync(TestData.RegistrationLeafUnlistedUrl);
+        RegistrationLeafResponse result = await Target.GetRegistrationLeafAsync(TestData.RegistrationLeafUnlistedUrl, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.False(result.Listed);

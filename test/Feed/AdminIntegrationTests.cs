@@ -6,7 +6,6 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -62,7 +61,7 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         Assert.Equal(2, sessions.GetArrayLength());
         JsonElement other = sessions.EnumerateArray().Single(s => !s.GetProperty("isCurrent").GetBoolean());
 
-        using HttpResponseMessage response = await laptop.DeleteAsync($"api/account/sessions/{other.GetProperty("id").GetInt32()}");
+        using HttpResponseMessage response = await laptop.DeleteAsync($"api/account/sessions/{other.GetProperty("id").GetInt32()}", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.False((await GetJsonAsync(phone, "api/account")).GetProperty("signedIn").GetBoolean());
@@ -77,7 +76,7 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         (HttpClient bob, _) = await SignUpAsync(app, "bob");
         int bobsSession = (await GetJsonAsync(bob, "api/account/sessions"))[0].GetProperty("id").GetInt32();
 
-        using HttpResponseMessage response = await alice.DeleteAsync($"api/account/sessions/{bobsSession}");
+        using HttpResponseMessage response = await alice.DeleteAsync($"api/account/sessions/{bobsSession}", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.True((await GetJsonAsync(bob, "api/account")).GetProperty("signedIn").GetBoolean());
@@ -98,7 +97,7 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         Assert.Equal(1, bobRow.GetProperty("sessions").GetInt32());
         Assert.True(users[0].GetProperty("isCurrentUser").GetBoolean());
 
-        using HttpResponseMessage response = await alice.PutAsync($"api/admin/users/{bobRow.GetProperty("id").GetInt32()}", Json("""{ "role": "ReadWrite" }"""));
+        using HttpResponseMessage response = await alice.PutAsync($"api/admin/users/{bobRow.GetProperty("id").GetInt32()}", Json("""{ "role": "ReadWrite" }"""), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal("ReadWrite", (await GetJsonAsync(bob, "api/account")).GetProperty("role").GetString());
@@ -117,7 +116,7 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         await SignUpAsync(app, "bob");
         int bobId = (await GetJsonAsync(alice, "api/admin/users"))[1].GetProperty("id").GetInt32();
 
-        using HttpResponseMessage response = await alice.PutAsync($"api/admin/users/{bobId}", Json(body));
+        using HttpResponseMessage response = await alice.PutAsync($"api/admin/users/{bobId}", Json(body), TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -128,7 +127,7 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         NuDepotTestApplication app = CreateApp();
         (HttpClient alice, _) = await SignUpAsync(app, "alice");
 
-        using HttpResponseMessage response = await alice.PutAsync("api/admin/users/999", Json("""{ "role": "ReadWrite" }"""));
+        using HttpResponseMessage response = await alice.PutAsync("api/admin/users/999", Json("""{ "role": "ReadWrite" }"""), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -142,7 +141,7 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
 
         foreach (string url in (string[])["api/admin/users", "api/admin/status", "api/admin/signing"])
         {
-            using HttpResponseMessage response = await bob.GetAsync(url);
+            using HttpResponseMessage response = await bob.GetAsync(url, TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
     }
@@ -154,8 +153,8 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         (HttpClient alice, _) = await SignUpAsync(app, "alice");
         int aliceId = (await GetJsonAsync(alice, "api/admin/users"))[0].GetProperty("id").GetInt32();
 
-        using HttpResponseMessage demote = await alice.PutAsync($"api/admin/users/{aliceId}", Json("""{ "role": "ReadOnly" }"""));
-        using HttpResponseMessage delete = await alice.DeleteAsync($"api/admin/users/{aliceId}");
+        using HttpResponseMessage demote = await alice.PutAsync($"api/admin/users/{aliceId}", Json("""{ "role": "ReadOnly" }"""), TestContext.Current.CancellationToken);
+        using HttpResponseMessage delete = await alice.DeleteAsync($"api/admin/users/{aliceId}", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Conflict, demote.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, delete.StatusCode);
@@ -171,7 +170,7 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         string bobsKey = await CreateApiKeyAsync(bob);
         int bobId = (await GetJsonAsync(alice, "api/admin/users"))[1].GetProperty("id").GetInt32();
 
-        using HttpResponseMessage response = await alice.DeleteAsync($"api/admin/users/{bobId}");
+        using HttpResponseMessage response = await alice.DeleteAsync($"api/admin/users/{bobId}", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.False((await GetJsonAsync(bob, "api/account")).GetProperty("signedIn").GetBoolean());
@@ -188,8 +187,8 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         string bobsKey = await CreateApiKeyAsync(bob);
         int bobId = (await GetJsonAsync(alice, "api/admin/users"))[1].GetProperty("id").GetInt32();
 
-        using HttpResponseMessage signOut = await alice.DeleteAsync($"api/admin/users/{bobId}/sessions");
-        using HttpResponseMessage revoke = await alice.DeleteAsync($"api/admin/users/{bobId}/apikeys");
+        using HttpResponseMessage signOut = await alice.DeleteAsync($"api/admin/users/{bobId}/sessions", TestContext.Current.CancellationToken);
+        using HttpResponseMessage revoke = await alice.DeleteAsync($"api/admin/users/{bobId}/apikeys", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NoContent, signOut.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, revoke.StatusCode);
@@ -242,10 +241,10 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         JsonElement original = Assert.Single(signing.GetProperty("certificates").EnumerateArray());
         Assert.True(original.GetProperty("isCurrent").GetBoolean());
 
-        using HttpResponseMessage response = await alice.PostAsync("api/admin/signing/rotate", content: null);
+        using HttpResponseMessage response = await alice.PostAsync("api/admin/signing/rotate", content: null, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        JsonElement[] certificates = [.. (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("certificates").EnumerateArray()];
+        JsonElement[] certificates = [.. (await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken)).GetProperty("certificates").EnumerateArray()];
         Assert.Equal(2, certificates.Length);
         Assert.True(certificates[0].GetProperty("isCurrent").GetBoolean());
         Assert.Equal(original.GetProperty("fingerprint").GetString(), certificates[1].GetProperty("fingerprint").GetString());
@@ -259,7 +258,7 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         (HttpClient alice, _) = await SignUpAsync(app, "alice");
 
         Assert.False((await GetJsonAsync(alice, "api/admin/signing")).GetProperty("isEnabled").GetBoolean());
-        using HttpResponseMessage response = await alice.PostAsync("api/admin/signing/rotate", content: null);
+        using HttpResponseMessage response = await alice.PostAsync("api/admin/signing/rotate", content: null, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
@@ -268,7 +267,7 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
     {
         NuDepotTestApplication app = CreateApp();
         (HttpClient alice, _) = await SignUpAsync(app, "alice");
-        using (HttpResponseMessage added = await alice.PutAsync("api/vulnerabilities", Json("""{ "packageId": "Contoso.Utils", "versions": "(, 1.2.0)", "url": "https://example.com/1", "severity": 2 }""")))
+        using (HttpResponseMessage added = await alice.PutAsync("api/vulnerabilities", Json("""{ "packageId": "Contoso.Utils", "versions": "(, 1.2.0)", "url": "https://example.com/1", "severity": 2 }"""), TestContext.Current.CancellationToken))
         {
             Assert.Equal(HttpStatusCode.OK, added.StatusCode);
         }

@@ -64,16 +64,16 @@ public sealed class CatalogServiceTests : IDisposable
                     PackageId = "Package",
                     PackageVersion = $"1.0.{i}",
                 }),
-            default);
+            TestContext.Current.CancellationToken);
 
-        CatalogIndex index = await Target.GetIndexAsync(default);
-        CatalogPage? first = await Target.GetPageOrNullAsync(0, default);
-        CatalogPage? second = await Target.GetPageOrNullAsync(1, default);
+        CatalogIndex index = await Target.GetIndexAsync(TestContext.Current.CancellationToken);
+        CatalogPage? first = await Target.GetPageOrNullAsync(0, TestContext.Current.CancellationToken);
+        CatalogPage? second = await Target.GetPageOrNullAsync(1, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, index.Count);
         Assert.Equal(CatalogService.MaxPageSize, first!.Items.Count);
         Assert.Equal("1.0.0", first.Items.First().PackageVersion);
         Assert.Equal($"1.0.{CatalogService.MaxPageSize}", Assert.Single(second!.Items).PackageVersion);
-        Assert.Null(await Target.GetPageOrNullAsync(2, default));
+        Assert.Null(await Target.GetPageOrNullAsync(2, TestContext.Current.CancellationToken));
     }
 }

@@ -4,7 +4,6 @@ using NuDepot.Feed.Entities;
 using NuDepot.Feed.Tests.Support;
 using NuDepot.Feed.Upstream;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
@@ -76,7 +75,7 @@ public sealed class NuDepotCommandsTests(ITestOutputHelper output) : IDisposable
             Counts = new() { ["testdata"] = new() { ["1.2.3"] = 1234, ["9.9.9"] = 1 }, ["other"] = new() { ["1.0.0"] = 5 } },
         };
         using NuDepotTestApplication app = new(output, configureServices: services => services.AddSingleton<IPackageDownloadsSource>(downloads));
-        await app.AddPackageAsync(TestResources.GetResourceStream(TestResources.Package));
+        await app.AddPackageAsync(TestResources.GetResourceStream(TestResources.Package), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(await app.Host.TryRunCommandAsync(["import", "downloads"]));
 
@@ -84,7 +83,7 @@ public sealed class NuDepotCommandsTests(ITestOutputHelper output) : IDisposable
         Package package = await scope.ServiceProvider
             .GetRequiredService<NuDepotDbContext>()
             .Packages
-            .SingleAsync();
+            .SingleAsync(TestContext.Current.CancellationToken);
         Assert.Equal(1234, package.Downloads);
         Assert.Equal(0, Environment.ExitCode);
     }
@@ -94,12 +93,12 @@ public sealed class NuDepotCommandsTests(ITestOutputHelper output) : IDisposable
     {
         FakeDownloads downloads = new() { Counts = [] };
         using NuDepotTestApplication app = new(output, configureServices: services => services.AddSingleton<IPackageDownloadsSource>(downloads));
-        await app.AddPackageAsync(TestResources.GetResourceStream(TestResources.Package));
+        await app.AddPackageAsync(TestResources.GetResourceStream(TestResources.Package), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(await app.Host.TryRunCommandAsync(["import", "downloads"]));
 
         using IServiceScope scope = app.Services.CreateScope();
-        Assert.Equal(0, await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SumAsync(p => p.Downloads));
+        Assert.Equal(0, await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SumAsync(p => p.Downloads, TestContext.Current.CancellationToken));
     }
 
     [Fact]
