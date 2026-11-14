@@ -65,9 +65,12 @@
     // Mirror nuget.org: packages that aren't on this feed are downloaded from it, and kept. The mirrors are asked
     // in this order, and the first one that has a package provides all its versions, so put private feeds first.
     // A mirror that can't be reached isn't asked for 5 minutes, and is skipped meanwhile. With "WhenUnreachable":
-    // "Stop", requests stop at it instead, so nuget.org can't provide packages with the same IDs as yours.
+    // "Stop", requests stop at it instead, so nuget.org can't provide packages with the same IDs as yours. The mirrors
+    // are asked at most 50 times a second, so busy clients can't get this server throttled by nuget.org: beyond that,
+    // requests for packages the feed doesn't have get 429 Too Many Requests. 0 removes the limit.
     "Mirroring": {
       //"IsEnabled": true,
+      //"MaxLookupsPerSecond": 50,
       "Mirrors": [
         //{ "Name": "Internal", "PackageSource": "https://nuget.example.com/v3/index.json", "WhenUnreachable": "Stop" },
         { "Name": "nuget.org", "PackageSource": "https://api.nuget.org/v3/index.json" },
@@ -87,6 +90,18 @@
     // through the proxy from a private network, since they could set those headers too.
     //"TrustedProxies": [ "203.0.113.7" ],
     //"UseForwardedHeaders": false,
+
+    // Each client may send 2000 requests at once, enough to restore a large solution, and 200 a second after that.
+    // A signed-in user, or a user's API key, is one client wherever it sends from; anyone else is limited by their
+    // address, which is the proxy's unless the proxy is trusted above. An address may also send 20 keys that aren't
+    // valid in 15 minutes, and try to sign up or sign in 30 times in 10. Turn the limits off if the reverse proxy
+    // limits requests instead. For a feed open to the internet, anonymous clients can be limited together too.
+    //"RateLimiting": {
+    //  "IsEnabled": false,
+    //  "RequestBurst": 2000,
+    //  "RequestsPerSecond": 200,
+    //  "AnonymousRequestsPerSecond": 100,
+    //},
   },
 
   // Show another feed's packages in the gallery, instead of this feed's.

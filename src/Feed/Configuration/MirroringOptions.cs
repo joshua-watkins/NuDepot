@@ -33,4 +33,12 @@ public class MirroringOptions
     /// <see cref="MirrorOptions.WhenUnreachable"/> decides what happens to requests meanwhile. Must be positive.
     /// </summary>
     public int UnreachableMirrorMinutes { get; set; } = 5;
+
+    /// <summary>
+    /// How many times a second the mirrors may be asked, together, for packages the feed doesn't have, so busy
+    /// clients can't get the feed's address throttled by a mirror like nuget.org. Ten seconds' worth may be asked at
+    /// once. Packages the feed has, and versions looked up in the last minute, don't count. Beyond it, requests that
+    /// need the mirrors get 429 Too Many Requests. 0 for no limit.
+    /// </summary>
+    public int MaxLookupsPerSecond { get; set; } = 50;
 }

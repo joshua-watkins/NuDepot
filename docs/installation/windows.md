@@ -63,6 +63,10 @@ See the [configuration](../configuration.md) guide for every setting.
 
   A `ReadOnly` key makes the feed private, as do users with `AnonymousReads` off. See
   [Require an API key](../configuration.md#require-an-api-key).
+- **Let NuDepot see clients' addresses.** Each client's requests are [limited](../configuration.md#rate-limits), by
+  its address unless it's signed in. NuDepot reads the address a reverse proxy on this machine or a private network
+  forwards; list a proxy with a public address in `TrustedProxies`, or all clients share one limit. See
+  [Forwarded headers](https.md#forwarded-headers).
 - **Create your account first.** With users on, the first person to sign up becomes an Admin, so sign up before you
   share the feed's address.
 

@@ -25,6 +25,7 @@ using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Health;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Metadata;
+using NuDepot.Feed.RateLimiting;
 using NuDepot.Feed.Search;
 using NuDepot.Feed.ServiceIndex;
 using NuDepot.Feed.Signing;
@@ -391,6 +392,7 @@ public static class FeedServiceCollectionExtensions
         services.TryAddSingleton<IRepositorySigningService, RepositorySigningService>();
         services.TryAddTransient<PackageResigner>();
         services.TryAddSingleton<PackageLocks>();
+        services.TryAddSingleton<FeedRateLimiter>();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton(GeneratedCertificateKeySize.Default);
         services.TryAddSingleton<ConfiguredSigningCertificate>();
@@ -470,9 +472,12 @@ public static class FeedServiceCollectionExtensions
     private static bool HasApiKey(HttpRequest request)
         => !string.IsNullOrEmpty(request.GetApiKey()) || request.Headers.Authorization.Count > 0;
 
+    private const string ForwardedProtoHeader = "X-Forwarded-Proto";
+    private const string ForwardedForHeader = "X-Forwarded-For";
+
     /// <summary>
     /// Adds the middleware that has to come before routing: forwarded headers from a reverse proxy, the
-    /// HTTPS requirement of a feed that signs packages, and the <see cref="FeedOptions.PathBase"/>.
+    /// HTTPS requirement of a feed that signs packages, the <see cref="FeedOptions.PathBase"/>, and the rate limits.
     /// </summary>
     private sealed class FeedStartupFilter(IOptions<FeedOptions> options, IOptions<RepositorySigningOptions> signing) : IStartupFilter
     {
@@ -480,11 +485,9 @@ public static class FeedServiceCollectionExtensions
         {
             return app =>
             {
-                if (options.Value.UseForwardedHeaders)
-                    app.UseForwardedHeaders();
-
-                // The gallery hosted in the same application calls the feed over HTTP, and says whether the browser
-                // used HTTPS, with the application's secret.
+                // The gallery hosted in the same application calls the feed over HTTP from this machine, and says,
+                // with the application's secret, whether the browser used HTTPS, and the browser's address. That's
+                // trusted whatever the trusted proxies are, and isn't forwarded headers' to apply again.
                 NuDepotFeatures? features = app.ApplicationServices.GetService<NuDepotFeatures>();
                 if (features != null)
                 {
@@ -493,13 +496,22 @@ public static class FeedServiceCollectionExtensions
                     {
                         HttpRequest request = context.Request;
                         if (request.Headers.Remove(NuDepotFeatures.CoHostedTokenHeader, out StringValues sent) &&
-                            CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(sent.ToString()), token) &&
-                            string.Equals(request.Headers["X-Forwarded-Proto"], Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-                            request.Scheme = Uri.UriSchemeHttps;
+                            CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(sent.ToString()), token))
+                        {
+                            if (request.Headers.Remove(ForwardedProtoHeader, out StringValues scheme) &&
+                                string.Equals(scheme.ToString(), Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                                request.Scheme = Uri.UriSchemeHttps;
+                            if (request.Headers.Remove(ForwardedForHeader, out StringValues client) &&
+                                IPAddress.TryParse(client.ToString(), out IPAddress? address))
+                                context.Connection.RemoteIpAddress = address;
+                        }
 
                         return nextMiddleware(context);
                     });
                 }
+
+                if (options.Value.UseForwardedHeaders)
+                    app.UseForwardedHeaders();
 
                 // Signatures name the feed's HTTPS address, and packages are signed when they're pushed and
                 // re-signed when they're downloaded over HTTPS, so a feed that signs doesn't answer HTTP. Except its
@@ -522,6 +534,10 @@ public static class FeedServiceCollectionExtensions
                 }
 
                 app.UsePathBase(options.Value.PathBase);
+
+                // Clients are limited once their address and path are known. The gallery's pages count too.
+                FeedRateLimiter limiter = app.ApplicationServices.GetRequiredService<FeedRateLimiter>();
+                app.Use((context, nextMiddleware) => limiter.InvokeAsync(context, nextMiddleware));
 
                 next(app);
             };

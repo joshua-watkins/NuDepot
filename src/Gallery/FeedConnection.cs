@@ -187,8 +187,12 @@ internal class FeedConnection
             UseCookies = false,
         };
 
-        if (IsCoHosted && HttpContextAccessor != null)
-            handler = new CoHostedFeedHandler(HttpContextAccessor, Features, SignInAvailable, () => new Uri(ServiceIndexUrl)) { InnerHandler = handler };
+        if (HttpContextAccessor != null)
+        {
+            handler = IsCoHosted
+                ? new CoHostedFeedHandler(HttpContextAccessor, Features, SignInAvailable, () => new Uri(ServiceIndexUrl)) { InnerHandler = handler }
+                : new ForwardedForHandler(HttpContextAccessor) { InnerHandler = handler };
+        }
 
         HttpClient client = new(handler);
 
@@ -199,10 +203,11 @@ internal class FeedConnection
     }
 
     /// <summary>
-    /// Tells the feed hosted in the same application about the browser's request. The website calls the feed
-    /// over HTTP, so it passes on that the browser used HTTPS, which a feed that signs packages requires, with the
-    /// application's secret so the feed trusts it. With sign-in, it sends the browser's cookies, including its
-    /// sign-in cookie, so the feed answers as it would answer the signed-in user.
+    /// Tells the feed hosted in the same application about the browser's request, with the application's secret so
+    /// the feed trusts it. The website calls the feed over HTTP, so it passes on that the browser used HTTPS, which a
+    /// feed that signs packages requires. It passes on the browser's address, so the feed limits the browser's
+    /// requests, rather than the website's. With sign-in, it sends the browser's cookies, including its sign-in
+    /// cookie, so the feed answers as it would answer the signed-in user.
     /// </summary>
     /// <param name="httpContextAccessor">The browser's request.</param>
     /// <param name="features">What the application's NuDepot parts offer, with the application's secret.</param>
@@ -220,17 +225,46 @@ internal class FeedConnection
                 requested.Port == local.Port)
                 request.RequestUri = new UriBuilder(requested) { Scheme = Uri.UriSchemeHttp, Port = local.Port }.Uri;
 
-            HttpRequest? browserRequest = httpContextAccessor.HttpContext?.Request;
-            if (browserRequest?.IsHttps == true && request.RequestUri?.Scheme == Uri.UriSchemeHttp)
+            // The secret only goes to the feed hosted with the website.
+            HttpContext? browser = httpContextAccessor.HttpContext;
+            if (request.RequestUri is { } uri &&
+                string.Equals(uri.Host, local.Host, StringComparison.OrdinalIgnoreCase) &&
+                uri.Port == local.Port)
             {
-                request.Headers.TryAddWithoutValidation("X-Forwarded-Proto", Uri.UriSchemeHttps);
                 request.Headers.TryAddWithoutValidation(NuDepotFeatures.CoHostedTokenHeader, features.CoHostedToken);
+                if (browser?.Request.IsHttps == true && uri.Scheme == Uri.UriSchemeHttp)
+                    request.Headers.TryAddWithoutValidation("X-Forwarded-Proto", Uri.UriSchemeHttps);
+                ForwardedForHandler.AddBrowserAddress(request, browser);
             }
 
-            StringValues? cookies = browserRequest?.Headers.Cookie;
+            StringValues? cookies = browser?.Request.Headers.Cookie;
             if (forwardCookies && cookies is { Count: > 0 })
                 request.Headers.TryAddWithoutValidation("Cookie", cookies.ToString());
 
+            return base.SendAsync(request, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Passes on the browser's address to a feed the website reaches over the network, like a reverse proxy, so the
+    /// feed limits the browser's requests, rather than the website's. The feed only trusts it if the website's
+    /// server is one of its trusted proxies.
+    /// </summary>
+    /// <param name="httpContextAccessor">The browser's request.</param>
+    private sealed class ForwardedForHandler(IHttpContextAccessor httpContextAccessor) : DelegatingHandler
+    {
+        /// <summary>
+        /// Adds the browser's address to the request, if it's known.
+        /// </summary>
+        public static void AddBrowserAddress(HttpRequestMessage request, HttpContext? browser)
+        {
+            if (browser?.Connection.RemoteIpAddress is IPAddress address)
+                request.Headers.TryAddWithoutValidation("X-Forwarded-For", address.ToString());
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            AddBrowserAddress(request, httpContextAccessor.HttpContext);
             return base.SendAsync(request, cancellationToken);
         }
     }

@@ -217,6 +217,35 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
         Assert.Equal(HttpStatusCode.Forbidden, http.StatusCode);
     }
 
+    [Fact]
+    public async Task TheGallerysRequestsToTheFeedCountAgainstTheBrowser()
+    {
+        // The gallery reads the feed with a key, which an address that sent a key that isn't valid can't use.
+        (WebApplication app, Uri address) = await StartAsync(new()
+        {
+            ["Feed:Authorization:ApiKeys:ReadWrite"] = "read-write-key-0123456789",
+            ["Feed:RateLimiting:FailedAuthenticationLimit"] = "1",
+            ["Gallery:ApiKey"] = "read-write-key-0123456789",
+        });
+        await AddPackageAsync(app, "Contoso.Utils", "1.0.0");
+
+        // Browsers reach the gallery through a reverse proxy, and one of them guesses a key.
+        HttpClient guesser = CreateBrowser(address);
+        guesser.DefaultRequestHeaders.Add("X-Forwarded-For", "203.0.113.7");
+        using (HttpRequestMessage guess = new(HttpMethod.Get, "v3/index.json"))
+        {
+            guess.Headers.Add("X-NuGet-ApiKey", "guessed-key");
+            using HttpResponseMessage guessed = await guesser.SendAsync(guess, TestContext.Current.CancellationToken);
+        }
+
+        // The gallery's requests to the feed for that browser are refused, but not for others.
+        using (HttpResponseMessage refused = await guesser.GetAsync("packages/Contoso.Utils", TestContext.Current.CancellationToken))
+            Assert.Equal(HttpStatusCode.TooManyRequests, refused.StatusCode);
+        HttpClient visitor = CreateBrowser(address);
+        visitor.DefaultRequestHeaders.Add("X-Forwarded-For", "203.0.113.8");
+        Assert.Contains("Contoso.Utils", await GetPageAsync(visitor, "packages/Contoso.Utils"));
+    }
+
     [Theory]
     [InlineData("/packages/Contoso.Utils", "/packages/Contoso.Utils")]
     [InlineData("/", "/")]

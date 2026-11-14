@@ -433,6 +433,11 @@ logs:
 
   A mirror whose connections are refused, or whose name doesn't resolve, fails straight away. One that drops them
   fails after the operating system's connect timeout, or `RequestTimeoutSeconds` if that's shorter.
+- **The mirrors are asked at most 50 times a second**, together, with up to 500 at once, so busy clients can't get
+  your server's address throttled by nuget.org. Only packages the feed doesn't have count, and a package's versions
+  are reused for a minute. Beyond the limit, requests that need the mirrors get `429 Too Many Requests` with a
+  `Retry-After` header, which NuGet clients retry, and the service logs a warning. `MaxLookupsPerSecond` changes the
+  limit, and `0` removes it.
 - Packages the feed has itself always come first.
 - Arrays in settings are merged item by item, by position: an environment variable like
   `Feed__Mirroring__Mirrors__0__PackageSource` changes the first mirror's source. Keep the list in one file.
@@ -478,6 +483,50 @@ Large`. `MaxPackageSize` sets the limit in bytes, and `0` removes it:
 
 A reverse proxy has its own limit, which needs raising too; see
 [Package size](installation/https.md#package-size).
+
+## Rate limits
+
+Each client may only send so many requests, so one client can't flood the feed, guess API keys, or create accounts
+in bulk. Refused requests get `429 Too Many Requests`, with a `Retry-After` header that says how many seconds to
+wait, and the service logs a warning for each limited client, once every 10 minutes rather than with each request.
+
+| Limit | Default | Settings |
+| --- | --- | --- |
+| Requests from each client | 2000 at once, then 200 a second | `RequestBurst`, `RequestsPerSecond` |
+| API keys or credentials that aren't valid, from each address | 20 in 15 minutes | `FailedAuthenticationLimit`, `FailedAuthenticationMinutes` |
+| Signing up, signing in and adding passkeys, from each address | 30 in 10 minutes | `AccountRequestLimit`, `AccountRequestMinutes` |
+| Requests from all anonymous clients together | None | `AnonymousRequestsPerSecond` |
+
+- **Who's a client.** A signed-in user, or one of a user's API keys, is one client wherever it sends from, so people
+  behind the same address don't limit each other. Anyone else, anonymous or with one of the feed's API keys, is
+  limited by their address: an IPv4 address, or an IPv6 /64 network, since one machine can have a whole one.
+- **Behind a reverse proxy**, the address is the one the proxy forwards, but only if NuDepot trusts the proxy, as
+  [Forwarded headers](installation/https.md#forwarded-headers) explains. Otherwise every client has the proxy's
+  address, and shares one limit.
+- **The gallery** counts against the browser: its pages, and the requests it makes to the feed to show them.
+- **Restores.** 2000 requests at once covers restoring a large solution from scratch. A client that sends more waits
+  up to a second for its turn before it's refused, so a restore slows down rather than fails.
+- **Keys that aren't valid.** Once an address has sent too many, its keys aren't checked at all, even correct ones,
+  so guessing can't tell when a key is right. Its requests with keys are refused until its oldest failures are 15
+  minutes old, counted a minute at a time. Its requests without keys still work.
+- **Anonymous clients together.** For a feed open to the internet, `AnonymousRequestsPerSecond` limits the requests
+  of all anonymous clients together, in case many addresses send at once. They may send ten seconds' worth at once.
+  Requests with an API key or a signed-in user don't count. Since anyone can use it up, keep it well above your
+  usual traffic.
+- **Health checks** aren't limited.
+
+The limits are in the `RateLimiting` section. Turn them off if your reverse proxy limits requests instead:
+
+```json
+"Feed": {
+    "RateLimiting": {
+        "IsEnabled": false
+    },
+    ...
+}
+```
+
+The mirrors have their own limit, `Mirroring:MaxLookupsPerSecond`; see [Mirror nuget.org](#mirror-nugetorg).
 
 ## Private feeds
 

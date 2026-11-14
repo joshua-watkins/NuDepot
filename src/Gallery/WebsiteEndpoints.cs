@@ -159,6 +159,11 @@ internal static partial class WebsiteEndpoints
                 model,
                 signedIn ? StatusCodes.Status403Forbidden : StatusCodes.Status401Unauthorized);
         }
+        catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            // The feed limits the visitor's requests, and logs it.
+            return Results.Text("Too many requests. Try again in a moment.", "text/plain; charset=utf-8", statusCode: StatusCodes.Status429TooManyRequests);
+        }
         catch (Exception e) when (e is HttpRequestException or JsonException or InvalidOperationException)
         {
             string serviceIndexUrl;

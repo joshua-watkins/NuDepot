@@ -3,8 +3,10 @@ using Microsoft.Extensions.Options;
 using NuDepot.Core;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
+using NuDepot.Feed.RateLimiting;
 using NuGet.Versioning;
 using System.Collections.Concurrent;
+using System.Threading.RateLimiting;
 
 namespace NuDepot.Feed.Upstream.Clients;
 
@@ -13,9 +15,10 @@ namespace NuDepot.Feed.Upstream.Clients;
 /// package ID provides it, so a later mirror, like nuget.org after a private feed, can't add versions of a package
 /// an earlier mirror has. A mirror that can't be reached, or times out, isn't asked for
 /// <see cref="MirroringOptions.UnreachableMirrorMinutes"/>, and meanwhile requests skip it or stop at it, as its
-/// <see cref="MirrorOptions.WhenUnreachable"/> says. Without mirroring, nothing is found.
+/// <see cref="MirrorOptions.WhenUnreachable"/> says. Lookups beyond <see cref="MirroringOptions.MaxLookupsPerSecond"/>
+/// throw <see cref="MirrorsBusyException"/>. Without mirroring, nothing is found.
 /// </summary>
-internal sealed partial class MirrorChain : IUpstreamClient
+internal sealed partial class MirrorChain : IUpstreamClient, IDisposable
 {
     /// <summary>
     /// A mirror, for the administration page.
@@ -33,6 +36,7 @@ internal sealed partial class MirrorChain : IUpstreamClient
 
         Logger = loggerFactory.CreateLogger<MirrorChain>();
         Time = time;
+        MaxLookupsPerSecond = mirroring.MaxLookupsPerSecond;
         UnreachableTime = TimeSpan.FromMinutes(mirroring.UnreachableMirrorMinutes);
         Mirrors = !mirroring.IsEnabled ? [] : [.. mirroring.Mirrors
             .Select(mirror => new Mirror(
@@ -45,6 +49,16 @@ internal sealed partial class MirrorChain : IUpstreamClient
                 mirror.DisplayName,
                 mirror.PackageSource!,
                 mirror.WhenUnreachable))];
+        if (Mirrors.Count > 0 && MaxLookupsPerSecond > 0)
+        {
+            Lookups = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = MaxLookupsPerSecond * 10,
+                TokensPerPeriod = MaxLookupsPerSecond,
+                ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+                AutoReplenishment = true,
+            });
+        }
     }
 
     /// <summary>
@@ -57,8 +71,12 @@ internal sealed partial class MirrorChain : IUpstreamClient
     /// </summary>
     internal const int MaxListedPackages = 1000;
 
+    private long warnedAtTicks;
+
     private ILogger Logger { get; }
     private TimeProvider Time { get; }
+    private int MaxLookupsPerSecond { get; }
+    private TokenBucketRateLimiter? Lookups { get; }
     private TimeSpan UnreachableTime { get; }
     private IReadOnlyList<Mirror> Mirrors { get; }
     private ConcurrentDictionary<string, Listing> ListedPackages { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -83,7 +101,10 @@ internal sealed partial class MirrorChain : IUpstreamClient
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(string id, CancellationToken cancellationToken)
-        => await FindAsync(mirror => mirror.Client.TryListPackageVersionsAsync(id, cancellationToken), versions => versions.Count > 0) ?? [];
+    {
+        TakeLookup();
+        return await FindAsync(mirror => mirror.Client.TryListPackageVersionsAsync(id, cancellationToken), versions => versions.Count > 0) ?? [];
+    }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<Package>> ListPackagesAsync(string id, CancellationToken cancellationToken)
@@ -127,11 +148,15 @@ internal sealed partial class MirrorChain : IUpstreamClient
     // Not cancelled with the request that started it, since others may be waiting for it. The mirrors' request
     // timeouts end it.
     private async Task<IReadOnlyList<Package>> ListFromMirrorsAsync(string id)
-        => await FindAsync(mirror => mirror.Client.TryListPackagesAsync(id, CancellationToken.None), packages => packages.Count > 0) ?? [];
+    {
+        TakeLookup();
+        return await FindAsync(mirror => mirror.Client.TryListPackagesAsync(id, CancellationToken.None), packages => packages.Count > 0) ?? [];
+    }
 
     /// <inheritdoc />
     public async Task<Stream?> DownloadPackageOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
     {
+        TakeLookup();
         for (int i = 0; i < Mirrors.Count; i++)
         {
             Mirror mirror = Mirrors[i];
@@ -198,6 +223,27 @@ internal sealed partial class MirrorChain : IUpstreamClient
         return null;
     }
 
+    // Counts a lookup in the mirrors against MaxLookupsPerSecond, or refuses it.
+    private void TakeLookup()
+    {
+        if (Lookups == null)
+            return;
+
+        using RateLimitLease lease = Lookups.AttemptAcquire();
+        if (lease.IsAcquired)
+            return;
+
+        long now = Time.GetUtcNow().UtcTicks;
+        long warnedAt = Interlocked.Read(ref warnedAtTicks);
+        if (now - warnedAt >= FeedRateLimiter.WarningInterval.Ticks && Interlocked.CompareExchange(ref warnedAtTicks, now, warnedAt) == warnedAt)
+            Log.TooManyLookups(Logger, MaxLookupsPerSecond);
+
+        throw new MirrorsBusyException(lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter) ? retryAfter : TimeSpan.FromSeconds(1));
+    }
+
+    public void Dispose()
+        => Lookups?.Dispose();
+
     private void MarkUnreachable(Mirror mirror)
     {
         if (!mirror.MarkUnreachable(Time.GetUtcNow(), UnreachableTime))
@@ -250,5 +296,8 @@ internal sealed partial class MirrorChain : IUpstreamClient
 
         [LoggerMessage(Level = LogLevel.Warning, Message = "Mirror {Mirror} can't be reached, so it won't be asked for {Minutes} minutes. Meanwhile, requests skip it, and the mirrors after it are asked instead.")]
         public static partial void UnreachableSkipped(ILogger logger, string mirror, double minutes);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "The mirrors were asked for packages the feed doesn't have more than {PerSecond} times a second, so requests that need them are refused with 429 Too Many Requests")]
+        public static partial void TooManyLookups(ILogger logger, int perSecond);
     }
 }

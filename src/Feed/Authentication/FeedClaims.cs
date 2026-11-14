@@ -38,6 +38,12 @@ internal static class FeedClaims
     }
 
     /// <summary>
+    /// Whether the principal is neither an API key nor a user, which only the feed's own claims say.
+    /// </summary>
+    public static bool IsAnonymous(ClaimsPrincipal principal)
+        => !principal.HasClaim(claim => claim.Type == ClaimTypes.Name && claim.Issuer == ApiKeyAuthenticationHandler.Issuer);
+
+    /// <summary>
     /// The key of the signed-in user, or null if the principal isn't a user.
     /// </summary>
     public static int? GetUserKey(ClaimsPrincipal principal)

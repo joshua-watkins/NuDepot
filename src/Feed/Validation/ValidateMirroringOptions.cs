@@ -23,6 +23,8 @@ internal sealed class ValidateMirroringOptions : IValidateOptions<MirroringOptio
 
         if (options.UnreachableMirrorMinutes <= 0)
             failures.Add($"'{MirroringOptions.Section}:{nameof(MirroringOptions.UnreachableMirrorMinutes)}' must be between 1 and {int.MaxValue}.");
+        if (options.MaxLookupsPerSecond < 0)
+            failures.Add($"'{MirroringOptions.Section}:{nameof(MirroringOptions.MaxLookupsPerSecond)}' can't be less than 0. Use 0 for no limit.");
 
         for (int i = 0; i < options.Mirrors.Count; i++)
         {

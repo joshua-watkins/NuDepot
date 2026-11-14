@@ -97,13 +97,23 @@ list it, or its network, in `TrustedProxies`, which then replaces the private ne
 ```
 
 A client on a trusted network that can reach NuDepot without going through the proxy could set those headers too,
-and claim to use HTTPS. If that matters, list only the proxy's address, or turn forwarded headers off:
+and claim to use HTTPS, or another address. If that matters, list only the proxy's address, or turn forwarded headers
+off:
 
 ```json
 "Feed": {
     "UseForwardedHeaders": false
 }
 ```
+
+The client's address matters for the [rate limits](../configuration.md#rate-limits), which limit anonymous clients
+by their address. If NuDepot doesn't trust the proxy, every request has the proxy's address, so all clients share one
+limit, and one client guessing keys locks out everyone's keys. The proxy must also send `X-Forwarded-For`, like the
+nginx example above does, and Caddy does by itself.
+
+A gallery that shows a feed on another server, with `Gallery:ServiceIndexUrl`, sends its visitors' addresses in
+`X-Forwarded-For` too. List the gallery's server in that feed's `TrustedProxies`, unless it's on a private network,
+or all its visitors share one limit there. A gallery hosted with its feed doesn't need this.
 
 ## Without a reverse proxy
 

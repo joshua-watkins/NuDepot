@@ -87,6 +87,10 @@ internal sealed partial class Visitor(ILogger<Visitor> logger, FeedConnection fe
             DeletesPermanently = account.PackageDeletion == "HardDelete";
             Permissions.UnionWith(account.Permissions ?? []);
         }
+        catch (HttpRequestException e) when (e.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            // The feed logs the clients it limits, once in a while rather than with each page.
+        }
         catch (Exception e) when (e is HttpRequestException or System.Text.Json.JsonException)
         {
             Log.PermissionsUnknown(Logger, e);

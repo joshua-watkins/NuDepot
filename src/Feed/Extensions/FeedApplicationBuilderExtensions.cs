@@ -99,7 +99,8 @@ public static partial class FeedApplicationBuilderExtensions
             access.UsersEnabled ? "on" : "off",
             services.GetRequiredService<IOptions<RepositorySigningOptions>>().Value.IsEnabled ? "on" : "off",
             mirroring.IsEnabled && mirroring.Mirrors.Count > 0 ? string.Join(", ", mirroring.Mirrors.Select(mirror => mirror.DisplayName)) : "off",
-            feed.IsReadOnlyMode ? "on" : "off");
+            feed.IsReadOnlyMode ? "on" : "off",
+            RateLimits(feed.RateLimiting));
 
         if (access.AnonymousRole == FeedRole.ReadWrite)
             Log.OpenFeed(logger);
@@ -108,12 +109,24 @@ public static partial class FeedApplicationBuilderExtensions
             Log.ShortApiKey(logger, role, key.Length, MinimumApiKeyLength);
     }
 
+    // Like "2000 requests at once and 200 a second for each client".
+    private static string RateLimits(RateLimitingOptions limits)
+    {
+        if (!limits.IsEnabled)
+            return "off";
+
+        string each = $"{limits.RequestBurst} requests at once and {limits.RequestsPerSecond} a second for each client";
+        return limits.AnonymousRequestsPerSecond > 0
+            ? $"{each}, and {limits.AnonymousRequestsPerSecond} a second for all anonymous clients"
+            : each;
+    }
+
     private const string LoggerCategory = "NuDepot.Feed";
 
     private static partial class Log
     {
-        [LoggerMessage(Level = LogLevel.Information, Message = "Requests without a key or user may do what {AnonymousRole} may. Users: {Users}. Repository signing: {Signing}. Mirrors: {Mirrors}. Read-only mode: {ReadOnlyMode}.")]
-        public static partial void Settings(ILogger logger, FeedRole anonymousRole, string users, string signing, string mirrors, string readOnlyMode);
+        [LoggerMessage(Level = LogLevel.Information, Message = "Requests without a key or user may do what {AnonymousRole} may. Users: {Users}. Repository signing: {Signing}. Mirrors: {Mirrors}. Read-only mode: {ReadOnlyMode}. Rate limits: {RateLimits}.")]
+        public static partial void Settings(ILogger logger, FeedRole anonymousRole, string users, string signing, string mirrors, string readOnlyMode, string rateLimits);
 
         [LoggerMessage(Level = LogLevel.Warning, Message = "The feed has no ReadWrite API key and no users, so anyone who can reach it may push and unlist packages. Set API keys, or turn on users, unless the feed is meant to be open.")]
         public static partial void OpenFeed(ILogger logger);

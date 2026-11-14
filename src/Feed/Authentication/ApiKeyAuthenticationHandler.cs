@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuDepot.Core;
 using NuDepot.Feed.Extensions;
+using NuDepot.Feed.RateLimiting;
 using NuDepot.Feed.Users;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -22,7 +23,7 @@ namespace NuDepot.Feed.Authentication;
 /// <item>Keys users create only work in credentials, with the user's name, and only if the application uses <c>MapUsers()</c>.</item>
 /// </list>
 /// </summary>
-internal sealed partial class ApiKeyAuthenticationHandler(ILoggerFactory logger, IOptionsMonitor<AuthenticationSchemeOptions> options, UrlEncoder encoder, FeedAccess access) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+internal sealed partial class ApiKeyAuthenticationHandler(ILoggerFactory logger, IOptionsMonitor<AuthenticationSchemeOptions> options, UrlEncoder encoder, FeedAccess access, FeedRateLimiter limiter) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = NuDepotAuthenticationSchemes.ApiKey;
 
@@ -32,6 +33,7 @@ internal sealed partial class ApiKeyAuthenticationHandler(ILoggerFactory logger,
     public const string Issuer = "NuDepot";
 
     private FeedAccess Access { get; } = access;
+    private FeedRateLimiter Limiter { get; } = limiter;
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -39,6 +41,10 @@ internal sealed partial class ApiKeyAuthenticationHandler(ILoggerFactory logger,
         (string UserName, string Password)? credentials = GetCredentials(Request);
         if (string.IsNullOrEmpty(headerKey) && credentials == null)
             return AuthenticateResult.NoResult();
+
+        // An address that sent too many keys that weren't valid can't find out whether the next one is.
+        if (Limiter.IsAuthenticationBlocked(Context))
+            return AuthenticateResult.Fail("Too many API keys that aren't valid were sent from this address.");
 
         if (Access.FindApiKey(headerKey) is { } headerRole)
             return Success(FeedClaims.CreateIdentity(headerRole.ToString(), headerRole, Scheme.Name));
@@ -60,7 +66,8 @@ internal sealed partial class ApiKeyAuthenticationHandler(ILoggerFactory logger,
         }
 
         // Someone guessing keys shows up in the logs, without the keys they tried. The request continues as
-        // anonymous, so an unknown key can still do what anyone may.
+        // anonymous, so an unknown key can still do what anyone may, unless the address sent too many.
+        Limiter.AddFailedAuthentication(Context);
         if (credentials is ({ } name, _))
             Log.InvalidCredentials(Logger, FeedActor.Address(Context), name);
         else

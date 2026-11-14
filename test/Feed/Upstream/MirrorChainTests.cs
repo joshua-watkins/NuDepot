@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Tests.Support;
+using NuDepot.Feed.Upstream;
 using NuDepot.Feed.Upstream.Clients;
 using System.Collections.Concurrent;
 using System.Net;
@@ -11,7 +12,8 @@ using Xunit;
 namespace NuDepot.Feed.Tests.Upstream;
 
 /// <summary>
-/// The packages' versions the mirrors are asked for, which are kept for a minute.
+/// The packages' versions the mirrors are asked for, which are kept for a minute, and how often the mirrors may be
+/// asked.
 /// </summary>
 public class MirrorChainTests
 {
@@ -52,12 +54,38 @@ public class MirrorChainTests
         Assert.Equal(1, Mirror.RegistrationRequests("public.package"));
     }
 
-    private MirrorChain CreateChain(TimeProvider time)
+    [Fact]
+    public async Task TheMirrorsArentAskedMoreOftenThanAllowed()
+    {
+        // Ten seconds' worth may be asked at once. The limit gets one more each second, which a slow test could use.
+        using MirrorChain chain = CreateChain(new TestTimeProvider(DateTimeOffset.UtcNow), maxLookupsPerSecond: 1);
+        for (int i = 0; i < 10; i++)
+            await chain.ListPackagesAsync($"Package.{i}", TestContext.Current.CancellationToken);
+
+        // Versions looked up in the last minute don't count.
+        await chain.ListPackagesAsync("Package.0", TestContext.Current.CancellationToken);
+        Assert.Equal(1, Mirror.RegistrationRequests("package.0"));
+
+        MirrorsBusyException busy = await Assert.ThrowsAsync<MirrorsBusyException>(async () =>
+        {
+            for (int i = 10; i < 20; i++)
+                await chain.ListPackagesAsync($"Package.{i}", TestContext.Current.CancellationToken);
+        });
+        Assert.InRange(busy.RetryAfter, TimeSpan.FromTicks(1), TimeSpan.FromSeconds(1));
+
+        // Every lookup in the mirrors counts.
+        await Assert.ThrowsAsync<MirrorsBusyException>(() => chain.ListPackageVersionsAsync("Other.Package", TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<MirrorsBusyException>(() => chain.DownloadPackageOrNullAsync("Other.Package", NuGet.Versioning.NuGetVersion.Parse("1.0.0"), TestContext.Current.CancellationToken));
+        Assert.Equal(0, Mirror.RegistrationRequests("other.package"));
+    }
+
+    private MirrorChain CreateChain(TimeProvider time, int maxLookupsPerSecond = 0)
     {
         MirroringOptions options = new()
         {
             IsEnabled = true,
             Mirrors = [new MirrorOptions { Name = "Mirror", PackageSource = new Uri("http://mirror.test/v3/index.json") }],
+            MaxLookupsPerSecond = maxLookupsPerSecond,
         };
 
         return new MirrorChain(NullLoggerFactory.Instance, Options.Create(options), new HttpClient(Mirror), time);

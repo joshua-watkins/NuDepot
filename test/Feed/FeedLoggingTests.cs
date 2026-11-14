@@ -113,7 +113,7 @@ public sealed class FeedLoggingTests(ITestOutputHelper output) : IDisposable
         await client.GetAsync("health", TestContext.Current.CancellationToken);
 
         Assert.Contains(
-            "Requests without a key or user may do what None may. Users: off. Repository signing: off. Mirrors: off. Read-only mode: off.",
+            "Requests without a key or user may do what None may. Users: off. Repository signing: off. Mirrors: off. Read-only mode: off. Rate limits: 2000 requests at once and 200 a second for each client.",
             Logs.Messages(LogLevel.Information));
     }
 

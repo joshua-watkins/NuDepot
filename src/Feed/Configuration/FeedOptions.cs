@@ -37,6 +37,11 @@ public class FeedOptions
     public List<string> TrustedProxies { get; set; } = [];
 
     /// <summary>
+    /// How many requests each client may send.
+    /// </summary>
+    public RateLimitingOptions RateLimiting { get; set; } = new();
+
+    /// <summary>
     /// If enabled, the database will be updated at app startup by running
     /// Entity Framework migrations. This is not recommended in production.
     /// </summary>

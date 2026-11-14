@@ -123,7 +123,8 @@ internal partial class PackageService(ILogger<PackageService> logger, IPackageDa
             // Another download may have mirrored it while this one waited.
             return result is PackageIndexingResult.Success or PackageIndexingResult.PackageAlreadyExists;
         }
-        catch (Exception e) when (!(e is OperationCanceledException && cancellationToken.IsCancellationRequested))
+        // A request refused because the mirrors are asked too often gets 429 Too Many Requests, not "not found".
+        catch (Exception e) when (e is not MirrorsBusyException && !(e is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
             Log.MirrorFailed(Logger, e, id, version);
 

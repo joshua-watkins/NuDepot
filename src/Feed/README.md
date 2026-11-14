@@ -30,6 +30,11 @@ with `Users:AnonymousReads` off, make the feed private. See [the configuration g
 The feed reads `X-Forwarded-Proto` and `X-Forwarded-For` from a reverse proxy, unless
 `Feed:UseForwardedHeaders` is false. Applications that handle forwarded headers themselves should turn it off.
 
+The feed limits how many requests each client sends, before routing, so the application's own pages count too: a
+signed-in user wherever they send from, and anyone else by their address. Requests over a limit get
+`429 Too Many Requests`. Applications that limit requests themselves, or whose reverse proxy does, can turn it off
+with `Feed:RateLimiting:IsEnabled`. See [the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#rate-limits).
+
 `AddNuDepotFeed()` is `services.AddNuDepot().AddFeed()`, and `UseNuDepotFeed()` is
 `app.UseNuDepot().UseFeed()`. Use the builders for users who sign in with passkeys, and the API keys they create,
 or to add [NuDepot.Gallery](https://www.nuget.org/packages/NuDepot.Gallery) to the same application:
