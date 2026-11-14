@@ -15,7 +15,7 @@ namespace NuDepot.Feed.Users;
 /// gets options with a challenge, then sends back what the authenticator signed. Between the steps,
 /// the options are kept on the user's row, so each user has one ceremony in progress at a time.
 /// </summary>
-public class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<UserOptions> options)
+internal class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<UserOptions> options)
 {
     private const string ServerName = "NuDepot";
     private const string ExpiredError = "The passkey request expired. Try again.";
@@ -242,45 +242,4 @@ public class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<
             Origins = origins,
         });
     }
-}
-
-/// <summary>
-/// The outcome of a passkey ceremony: the user, or why it failed.
-/// </summary>
-public record PasskeyResult(User? User, string? Error)
-{
-    /// <summary>
-    /// A ceremony that succeeded.
-    /// </summary>
-    /// <param name="user">The user, or null if the account was deleted during the ceremony.</param>
-    /// <returns>The result.</returns>
-    public static PasskeyResult Succeeded(User? user) => new(user, user == null ? "The account no longer exists." : null);
-
-    /// <summary>
-    /// A ceremony that failed.
-    /// </summary>
-    /// <param name="error">Why it failed, to show the user.</param>
-    /// <returns>The result.</returns>
-    public static PasskeyResult Failed(string error) => new(null, error);
-}
-
-/// <summary>
-/// The kinds of passkey ceremony.
-/// </summary>
-public enum PasskeyCeremony
-{
-    /// <summary>
-    /// Creating an account with its first passkey.
-    /// </summary>
-    SignUp,
-
-    /// <summary>
-    /// Adding a passkey to the signed-in user's account.
-    /// </summary>
-    AddPasskey,
-
-    /// <summary>
-    /// Signing in with a passkey.
-    /// </summary>
-    SignIn,
 }

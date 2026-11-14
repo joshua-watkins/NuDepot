@@ -9,7 +9,7 @@ namespace NuDepot.Gallery.Slices;
 /// </summary>
 /// <param name="repositorySignatures">Reads the certificates the feed signs packages with.</param>
 /// <param name="feed">The feed the website shows.</param>
-public class UploadModel(IRepositorySignaturesClient repositorySignatures, FeedConnection feed)
+internal class UploadModel(IRepositorySignaturesClient repositorySignatures, FeedConnection feed)
 {
     private IRepositorySignaturesClient RepositorySignatures { get; } = repositorySignatures;
     private FeedConnection Feed { get; } = feed;
@@ -120,21 +120,3 @@ public class UploadModel(IRepositorySignaturesClient repositorySignatures, FeedC
         ];
     }
 }
-
-/// <summary>
-/// How to push a package with one tool.
-/// </summary>
-/// <param name="Name">The tool's name.</param>
-/// <param name="Content">The command's lines.</param>
-/// <param name="Documentation">The tool's documentation.</param>
-public record PushInstructions(string Name, IReadOnlyList<string> Content, string Documentation);
-
-/// <summary>
-/// A certificate the feed signs packages with.
-/// </summary>
-/// <param name="Fingerprint">The lowercase hex SHA-256 fingerprint that NuGet's trusted signers use.</param>
-/// <param name="Subject">The certificate's subject.</param>
-/// <param name="NotBefore">When the certificate becomes valid.</param>
-/// <param name="NotAfter">When the certificate expires.</param>
-/// <param name="IsSelfSigned">Whether the certificate signed itself, so clients have to allow an untrusted root.</param>
-public record SigningCertificateModel(string Fingerprint, string? Subject, DateTimeOffset NotBefore, DateTimeOffset NotAfter, bool IsSelfSigned);

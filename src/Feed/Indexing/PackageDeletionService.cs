@@ -20,7 +20,7 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="locks">The packages' locks, so a version isn't deleted while it's pushed.</param>
 /// <param name="options">The feed's options.</param>
 /// <param name="httpContextAccessor">The request, whose client is logged with what it changes.</param>
-public partial class PackageDeletionService(ILogger<PackageDeletionService> logger, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, IHttpContextAccessor httpContextAccessor) : IPackageDeletionService
+internal partial class PackageDeletionService(ILogger<PackageDeletionService> logger, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, IHttpContextAccessor httpContextAccessor) : IPackageDeletionService
 {
     private ILogger Logger { get; } = logger;
     private IPackageDatabase Packages { get; } = packages;

@@ -289,7 +289,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
         // Make the package look like it was indexed before the catalog existed.
         using (IServiceScope scope = app.Services.CreateScope())
         {
-            NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+            NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
             await context.CatalogEntries.ExecuteDeleteAsync();
             await context.Packages.ExecuteUpdateAsync(setters => setters.SetProperty(p => p.PackageHash, (string?)null));
 

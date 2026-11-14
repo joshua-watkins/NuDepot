@@ -100,16 +100,16 @@ public class DatabaseSearchServiceTests
 
         // SQLite deletes an in-memory database when its last connection closes.
         private SqliteConnection KeepAlive { get; }
-        private NuDepotContext Context { get; }
+        private NuDepotDbContext Context { get; }
 
-        protected readonly DatabaseSearchService _target;
+        private protected readonly DatabaseSearchService _target;
 
         public FactsBase()
         {
             KeepAlive = new SqliteConnection(ConnectionString);
             KeepAlive.Open();
 
-            using (NuDepotContext context = CreateContext())
+            using (NuDepotDbContext context = CreateContext())
             {
                 context
                     .RunMigrationsAsync(default)
@@ -132,19 +132,19 @@ public class DatabaseSearchServiceTests
             GC.SuppressFinalize(this);
         }
 
-        protected NuDepotContext CreateContext()
+        private protected NuDepotDbContext CreateContext()
         {
-            DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()
+            DbContextOptions<NuDepotDbContext> options = new DbContextOptionsBuilder<NuDepotDbContext>()
                 .UseSqlite(ConnectionString)
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options;
 
-            return new NuDepotContext(options);
+            return new NuDepotDbContext(options);
         }
 
         protected async Task AddAsync(Package package)
         {
-            using NuDepotContext context = CreateContext();
+            using NuDepotDbContext context = CreateContext();
 
             await context.Packages.ExecuteInsertAsync(package, default);
         }

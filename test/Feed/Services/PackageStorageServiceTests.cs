@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Storage;
@@ -333,14 +334,14 @@ public class PackageStorageServiceTests
         };
 
         protected readonly Mock<IStorageService> _storage;
-        protected readonly PackageStorageService _target;
+        private protected readonly PackageStorageService _target;
 
         protected readonly Dictionary<string, (Stream Content, string ContentType)> _puts;
 
         public FactsBase()
         {
             _storage = new Mock<IStorageService>();
-            _target = new PackageStorageService(Mock.Of<ILogger<PackageStorageService>>(), _storage.Object);
+            _target = new PackageStorageService(NullLogger<PackageStorageService>.Instance, _storage.Object);
 
             _puts = [];
         }

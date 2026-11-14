@@ -10,7 +10,6 @@ using NuDepot.Core;
 using NuDepot.Core.Hosting;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Extensions;
-using NuDepot.Feed.Indexing;
 using System.Net;
 using Xunit.Abstractions;
 
@@ -152,12 +151,7 @@ internal sealed class NuDepotTestApplication : IDisposable
             nuDepotServices.AddUsers();
 
         // Make time deterministic for testing purposes. Tests can move it forward with the clock.
-        Mock<SystemTime> time = new();
-        time
-            .Setup(t => t.UtcNow)
-            .Returns(() => new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc) + Clock.Advanced);
-
-        builder.Services.AddSingleton(time.Object);
+        builder.Services.AddSingleton<SystemTime>(new FixedTime(Clock));
         builder.Services.Configure<CookieAuthenticationOptions>(
             NuDepotAuthenticationSchemes.User,
             options => options.TimeProvider = Clock);
@@ -197,32 +191,5 @@ internal sealed class NuDepotTestApplication : IDisposable
         }
 
         return app;
-    }
-}
-
-internal static class NuDepotTestApplicationExtensions
-{
-    public static async Task AddPackageAsync(this NuDepotTestApplication app, Stream package, CancellationToken cancellationToken = default)
-    {
-        IServiceScopeFactory scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
-
-        using IServiceScope scope = scopeFactory.CreateScope();
-        IPackageIndexingService indexer = scope.ServiceProvider.GetRequiredService<IPackageIndexingService>();
-
-        PackageIndexingResult result = await indexer.IndexAsync(package, cancellationToken);
-        if (result != PackageIndexingResult.Success)
-            throw new InvalidOperationException($"Unexpected indexing result {result}");
-    }
-
-    public static async Task AddSymbolPackageAsync(this NuDepotTestApplication app, Stream symbolPackage, CancellationToken cancellationToken = default)
-    {
-        IServiceScopeFactory scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
-
-        using IServiceScope scope = scopeFactory.CreateScope();
-        ISymbolIndexingService indexer = scope.ServiceProvider.GetRequiredService<ISymbolIndexingService>();
-
-        SymbolIndexingResult result = await indexer.IndexAsync(symbolPackage, cancellationToken);
-        if (result != SymbolIndexingResult.Success)
-            throw new InvalidOperationException($"Unexpected indexing result {result}");
     }
 }

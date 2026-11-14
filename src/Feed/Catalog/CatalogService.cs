@@ -11,7 +11,7 @@ using System.Text.Json;
 namespace NuDepot.Feed.Catalog;
 
 /// <inheritdoc />
-public partial class CatalogService(ILogger<CatalogService> logger, NuDepotContext context, IUrlGenerator url, IPackageStorageService storage, SystemTime time) : ICatalogService
+internal partial class CatalogService(ILogger<CatalogService> logger, NuDepotDbContext context, IUrlGenerator url, IPackageStorageService storage, SystemTime time) : ICatalogService
 {
     /// <summary>
     /// The most catalog items in a page, the same as nuget.org.
@@ -30,7 +30,7 @@ public partial class CatalogService(ILogger<CatalogService> logger, NuDepotConte
     private static readonly SemaphoreSlim CommitLock = new(1, 1);
 
     private ILogger Logger { get; } = logger;
-    private NuDepotContext Context { get; } = context;
+    private NuDepotDbContext Context { get; } = context;
     private IUrlGenerator Url { get; } = url;
     private IPackageStorageService Storage { get; } = storage;
     private SystemTime Time { get; } = time;

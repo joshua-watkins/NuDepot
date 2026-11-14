@@ -1,5 +1,4 @@
 using NuDepot.Feed.Catalog;
-using NuDepot.Feed.Endpoints;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -23,40 +22,4 @@ internal partial class ServerJsonContext : JsonSerializerContext
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     });
-}
-
-/// <summary>
-/// Source generated JSON serialization for the administration endpoints' requests and responses,
-/// which use camel case property names like other ASP.NET Core web APIs.
-/// </summary>
-[JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
-[JsonSerializable(typeof(DeprecationRequest))]
-[JsonSerializable(typeof(AdvisoryRequest))]
-[JsonSerializable(typeof(AdvisoryRequest[]))]
-[JsonSerializable(typeof(AdminUserResponse[]))]
-[JsonSerializable(typeof(RoleRequest))]
-[JsonSerializable(typeof(SigningResponse))]
-[JsonSerializable(typeof(FeedStatusResponse))]
-[JsonSerializable(typeof(HealthResponse))]
-internal partial class AdminJsonContext : JsonSerializerContext
-{
-}
-
-/// <summary>
-/// Source generated JSON serialization for the account endpoints' requests and responses.
-/// Passkey options use Fido2's own serialization.
-/// </summary>
-[JsonSourceGenerationOptions(JsonSerializerDefaults.Web, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-[JsonSerializable(typeof(AccountResponse))]
-[JsonSerializable(typeof(PasskeyCreationRequest))]
-[JsonSerializable(typeof(SignInRequest))]
-[JsonSerializable(typeof(PasskeyResponse[]))]
-[JsonSerializable(typeof(ApiKeyCreationRequest))]
-[JsonSerializable(typeof(ApiKeyResponse))]
-[JsonSerializable(typeof(ApiKeyResponse[]))]
-[JsonSerializable(typeof(SessionResponse[]))]
-[JsonSerializable(typeof(Fido2NetLib.AuthenticatorAttestationRawResponse))]
-[JsonSerializable(typeof(Fido2NetLib.AuthenticatorAssertionRawResponse))]
-internal partial class AccountJsonContext : JsonSerializerContext
-{
 }

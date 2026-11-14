@@ -6,7 +6,7 @@ namespace NuDepot.Feed.Search;
 /// A parsed search query: free text terms and field filters, like <c>json tags:serialization author:"Jane Doe"</c>.
 /// See: https://learn.microsoft.com/en-us/nuget/consume-packages/finding-and-choosing-packages#search-syntax
 /// </summary>
-public class SearchQuery
+internal class SearchQuery
 {
     /// <summary>
     /// The filter fields this server understands. Owners aren't modeled, so "owner" matches authors.
@@ -136,7 +136,3 @@ public class SearchQuery
             .Trim();
     }
 }
-
-/// <param name="Field">The normalized field: id, packageid, version, title, tags, authors, description or summary.</param>
-/// <param name="Value">The value the field must match.</param>
-public sealed record SearchFilter(string Field, string Value);

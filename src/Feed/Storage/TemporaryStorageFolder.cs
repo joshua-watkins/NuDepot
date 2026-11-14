@@ -4,7 +4,7 @@ namespace NuDepot.Feed.Storage;
 /// The folder that file storage uses when <see cref="Configuration.StorageOptions.Temporary"/> is set.
 /// Each run of the application gets a new folder, which is deleted when the application stops.
 /// </summary>
-public sealed class TemporaryStorageFolder : IDisposable
+internal sealed class TemporaryStorageFolder : IDisposable
 {
     private Lazy<string> LazyPath { get; } = new(() =>
     {

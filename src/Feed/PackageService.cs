@@ -13,7 +13,7 @@ namespace NuDepot.Feed;
 /// <param name="db">The package database.</param>
 /// <param name="upstream">The upstream feed.</param>
 /// <param name="indexer">Adds packages from the upstream feed.</param>
-public partial class PackageService(ILogger<PackageService> logger, IPackageDatabase db, IUpstreamClient upstream, IPackageIndexingService indexer) : IPackageService
+internal partial class PackageService(ILogger<PackageService> logger, IPackageDatabase db, IUpstreamClient upstream, IPackageIndexingService indexer) : IPackageService
 {
     private ILogger Logger { get; } = logger;
     private IPackageDatabase Db { get; } = db;

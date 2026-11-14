@@ -101,7 +101,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         // The stored package, its hash and the catalog all describe the re-signed package.
         using (IServiceScope scope = app.Services.CreateScope())
         {
-            Package package = await scope.ServiceProvider.GetRequiredService<NuDepotContext>().Packages.SingleAsync(p => p.Id == "Generated.Signed");
+            Package package = await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SingleAsync(p => p.Id == "Generated.Signed");
             Assert.Equal(Convert.ToBase64String(SHA512.HashData(resigned)), package.PackageHash);
             Assert.Equal(resigned.Length, package.PackageSize);
             Assert.Equal(newFingerprint, package.RepositorySignatureFingerprint);
@@ -301,7 +301,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         }
 
         using IServiceScope scope = mirror.Services.CreateScope();
-        Package package = await scope.ServiceProvider.GetRequiredService<NuDepotContext>().Packages.SingleAsync(p => p.Id == "Mirrored.Signed");
+        Package package = await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SingleAsync(p => p.Id == "Mirrored.Signed");
         Assert.Equal(Convert.ToBase64String(SHA512.HashData(refreshed)), package.PackageHash);
         Assert.Equal(rotated, package.RepositorySignatureFingerprint);
         Assert.False(package.IsRepositorySigned);
@@ -326,7 +326,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         // A package can only have one repository signature, so it's stored and served as it was.
         Assert.Equal(signed, await client.GetByteArrayAsync(PackageUrl));
         using IServiceScope scope = app.Services.CreateScope();
-        Package package = await scope.ServiceProvider.GetRequiredService<NuDepotContext>().Packages.SingleAsync(p => p.Id == "Generated.Signed");
+        Package package = await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SingleAsync(p => p.Id == "Generated.Signed");
         Assert.False(package.IsRepositorySigned);
         Assert.Equal(CertificateFingerprint.Of(otherSigner), package.RepositorySignatureFingerprint);
         Assert.NotEqual(await app.Services.GetRequiredService<IRepositorySigningService>().GetSigningFingerprintAsync(default), package.RepositorySignatureFingerprint);
@@ -422,7 +422,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
         // Like when data protection's keys are lost.
         using (IServiceScope scope = app.Services.CreateScope())
         {
-            NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+            NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
             await context.SigningCertificates.ExecuteUpdateAsync(setters => setters.SetProperty(c => c.ProtectedPrivateKey, [1, 2, 3]));
         }
 
@@ -441,7 +441,7 @@ public sealed class GeneratedSigningCertificateTests(ITestOutputHelper output) :
 
         // The key that encrypted the certificate's private key, stored in the database.
         using IServiceScope scope = app.Services.CreateScope();
-        string key = (await scope.ServiceProvider.GetRequiredService<NuDepotContext>().DataProtectionKeys.SingleAsync()).Xml!;
+        string key = (await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().DataProtectionKeys.SingleAsync()).Xml!;
 
         Assert.Contains("<encryption algorithm=\"AES_256_CBC\" />", key);
         Assert.Contains("<validation algorithm=\"HMACSHA512\" />", key);

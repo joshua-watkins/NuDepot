@@ -6,7 +6,7 @@ namespace NuDepot.Feed.Extensions;
 /// <summary>
 /// Extensions to <see cref="HttpRequest"/> for the feed's endpoints.
 /// </summary>
-public static class HttpRequestExtensions
+internal static class HttpRequestExtensions
 {
     /// <summary>
     /// The header NuGet clients send API keys in.

@@ -11,7 +11,7 @@ namespace NuDepot.Feed.Upstream;
 /// </summary>
 /// <param name="logger">The logger.</param>
 /// <param name="httpClient">The HTTP client used to download the file.</param>
-public partial class PackageDownloadsJsonSource(ILogger<PackageDownloadsJsonSource> logger, HttpClient httpClient) : IPackageDownloadsSource
+internal partial class PackageDownloadsJsonSource(ILogger<PackageDownloadsJsonSource> logger, HttpClient httpClient) : IPackageDownloadsSource
 {
     /// <summary>
     /// The URL of nuget.org's download counts file.

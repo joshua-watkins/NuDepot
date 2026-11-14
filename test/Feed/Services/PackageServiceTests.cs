@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Indexing;
@@ -435,7 +436,7 @@ public class PackageServiceTests
         protected readonly Mock<IPackageIndexingService> _indexer;
 
         protected readonly CancellationToken _cancellationToken = CancellationToken.None;
-        protected readonly PackageService _target;
+        private protected readonly PackageService _target;
 
         protected FactsBase()
         {
@@ -444,7 +445,7 @@ public class PackageServiceTests
             _indexer = new Mock<IPackageIndexingService>();
 
             _target = new PackageService(
-                Mock.Of<ILogger<PackageService>>(),
+                NullLogger<PackageService>.Instance,
                 _db.Object,
                 _upstream.Object,
                 _indexer.Object);

@@ -24,7 +24,7 @@ internal sealed class ConfigureDataProtectionKeys(ILoggerFactory loggerFactory, 
         if (options.XmlRepository != null)
             return;
 
-        options.XmlRepository = new EntityFrameworkCoreXmlRepository<NuDepotContext>(services, loggerFactory);
+        options.XmlRepository = new EntityFrameworkCoreXmlRepository<NuDepotDbContext>(services, loggerFactory);
         if (options.XmlEncryptor == null && OperatingSystem.IsWindows())
             options.XmlEncryptor = new DpapiXmlEncryptor(protectToLocalMachine: true, loggerFactory);
 

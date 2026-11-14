@@ -6,7 +6,7 @@ namespace NuDepot.Feed.Entities.Converters;
 /// <summary>
 /// Stores a URI as its string.
 /// </summary>
-public class UriToStringConverter : ValueConverter<Uri?, string?>
+internal class UriToStringConverter : ValueConverter<Uri?, string?>
 {
     /// <summary>
     /// The converter.

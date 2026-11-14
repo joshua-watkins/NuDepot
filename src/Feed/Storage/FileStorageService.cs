@@ -7,7 +7,7 @@ namespace NuDepot.Feed.Storage;
 /// <summary>
 /// Stores content on disk.
 /// </summary>
-public class FileStorageService : IStorageService
+internal class FileStorageService : IStorageService
 {
     // See: https://github.com/dotnet/corefx/blob/master/src/Common/src/CoreLib/System/IO/Stream.cs#L35
     private const int DefaultCopyBufferSize = 81920;

@@ -18,7 +18,7 @@ namespace NuDepot.Feed.Upstream.Clients;
 /// its headers.</param>
 /// <param name="downloadTimeout">The time a package's content may take to download, after its headers, or null
 /// for no limit.</param>
-public partial class V3UpstreamClient(ILogger<V3UpstreamClient> logger, NuGetClient client, string name = "upstream", TimeSpan? requestTimeout = null, TimeSpan? downloadTimeout = null) : IUpstreamClient
+internal partial class V3UpstreamClient(ILogger<V3UpstreamClient> logger, NuGetClient client, string name = "upstream", TimeSpan? requestTimeout = null, TimeSpan? downloadTimeout = null) : IUpstreamClient
 {
     private ILogger Logger { get; } = logger;
     private NuGetClient Client { get; } = client;

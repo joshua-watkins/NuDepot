@@ -6,7 +6,7 @@ namespace NuDepot.Feed.Entities;
 /// generated when the feed first needs it that year, and expires at the end of the year. A certificate replaced
 /// early, like after its key leaked, is revoked.
 /// </summary>
-public class SigningCertificate
+internal class SigningCertificate
 {
     /// <summary>
     /// The row's key.

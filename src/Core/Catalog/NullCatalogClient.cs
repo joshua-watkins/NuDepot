@@ -5,7 +5,7 @@ namespace NuDepot.Core.Catalog;
 /// <summary>
 /// A catalog client for a feed without a catalog. Its catalog is always empty.
 /// </summary>
-public class NullCatalogClient : ICatalogClient
+internal class NullCatalogClient : ICatalogClient
 {
     /// <inheritdoc />
     public Task<CatalogIndex> GetIndexAsync(CancellationToken cancellationToken = default)

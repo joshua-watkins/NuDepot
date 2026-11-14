@@ -8,15 +8,15 @@ namespace NuDepot.Feed.Entities;
 /// The feed is a library without a host, so the tools can't get the context from its services.
 /// The migrations are SQLite's, so the context uses SQLite. The tools don't open the database.
 /// </summary>
-public class NuDepotContextDesignTimeFactory : IDesignTimeDbContextFactory<NuDepotContext>
+internal class NuDepotDbContextDesignTimeFactory : IDesignTimeDbContextFactory<NuDepotDbContext>
 {
     /// <inheritdoc />
-    public NuDepotContext CreateDbContext(string[] args)
+    public NuDepotDbContext CreateDbContext(string[] args)
     {
-        DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()
+        DbContextOptions<NuDepotDbContext> options = new DbContextOptionsBuilder<NuDepotDbContext>()
             .UseSqlite("Data Source=nuget.db")
             .Options;
 
-        return new NuDepotContext(options);
+        return new NuDepotDbContext(options);
     }
 }

@@ -4,7 +4,7 @@ namespace NuDepot.Feed.Entities;
 /// A key that signs the users' sign-in cookies, which are JWTs. The feed generates one when it first needs it. Its
 /// private key is encrypted by ASP.NET Core data protection, like generated signing certificates' are.
 /// </summary>
-public class SessionSigningKey
+internal class SessionSigningKey
 {
     /// <summary>
     /// The row's key.

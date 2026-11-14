@@ -11,7 +11,7 @@ namespace NuDepot.Feed.ServiceIndex;
 /// <param name="url">Generates the feed's URLs.</param>
 /// <param name="vulnerabilities">Whether the feed has known vulnerabilities to list.</param>
 /// <param name="signing">Whether the feed signs packages.</param>
-public class NuDepotServiceIndex(IUrlGenerator url, IVulnerabilityService vulnerabilities, IRepositorySigningService signing) : IServiceIndexService
+internal class NuDepotServiceIndex(IUrlGenerator url, IVulnerabilityService vulnerabilities, IRepositorySigningService signing) : IServiceIndexService
 {
     private IUrlGenerator Url { get; } = url;
     private IVulnerabilityService Vulnerabilities { get; } = vulnerabilities;

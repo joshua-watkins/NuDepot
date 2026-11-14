@@ -7,7 +7,7 @@ using NuGet.Versioning;
 namespace NuDepot.Feed.Metadata;
 
 /// <inheritdoc />
-public class DefaultPackageMetadataService(IPackageService packages, ICatalogService catalog, IVulnerabilityService vulnerabilities, RegistrationBuilder builder) : IPackageMetadataService
+internal class DefaultPackageMetadataService(IPackageService packages, ICatalogService catalog, IVulnerabilityService vulnerabilities, RegistrationBuilder builder) : IPackageMetadataService
 {
     private IPackageService Packages { get; } = packages;
     private ICatalogService Catalog { get; } = catalog;

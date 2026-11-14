@@ -8,7 +8,7 @@ namespace NuDepot.Feed.Validation;
 /// Validates the feed's options. Whether the application uses what the options turn on is checked
 /// when it starts, by <see cref="ValidateFeedPipeline"/>.
 /// </summary>
-public class ValidateFeedOptions : IValidateOptions<FeedOptions>
+internal class ValidateFeedOptions : IValidateOptions<FeedOptions>
 {
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, FeedOptions options)

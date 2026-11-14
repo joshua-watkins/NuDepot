@@ -10,7 +10,7 @@ using NuDepot.Feed.Entities;
 
 namespace NuDepot.Feed.Migrations
 {
-    [DbContext(typeof(NuDepotContext))]
+    [DbContext(typeof(NuDepotDbContext))]
     [Migration("20261027153957_AddCatalogVulnerabilitiesAndDeprecation")]
     partial class AddCatalogVulnerabilitiesAndDeprecation
     {

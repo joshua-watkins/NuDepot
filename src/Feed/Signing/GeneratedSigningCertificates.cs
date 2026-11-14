@@ -12,26 +12,6 @@ using System.Security.Cryptography.X509Certificates;
 namespace NuDepot.Feed.Signing;
 
 /// <summary>
-/// The size of the RSA keys of generated signing certificates. Tests use smaller keys, which generate faster.
-/// </summary>
-/// <param name="Bits">The key size, in bits.</param>
-internal sealed record GeneratedCertificateKeySize(int Bits)
-{
-    /// <summary>
-    /// The size the feed uses.
-    /// </summary>
-    public static GeneratedCertificateKeySize Default { get; } = new(8192);
-}
-
-/// <summary>
-/// The outcome of replacing this year's generated certificate early.
-/// </summary>
-/// <param name="Fingerprint">The new certificate's fingerprint.</param>
-/// <param name="ExpiresAt">When the new certificate expires.</param>
-/// <param name="Revoked">The fingerprints of the certificates it replaced.</param>
-internal sealed record SigningCertificateRotation(string Fingerprint, DateTimeOffset ExpiresAt, IReadOnlyList<string> Revoked);
-
-/// <summary>
 /// Self-signed signing certificates the feed generates, one for each year, when signing is on without a configured
 /// certificate (<see cref="Configuration.RepositorySigningOptions.GeneratesCertificates"/>). They're RSA keys signed with SHA-512, stored
 /// in the database with their private keys encrypted by ASP.NET Core data protection.
@@ -100,7 +80,7 @@ internal sealed partial class GeneratedSigningCertificates(ILogger<GeneratedSign
 
         DateTime now = Time.GetUtcNow().UtcDateTime;
         using IServiceScope scope = Scopes.CreateScope();
-        NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+        NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
 
         var rows = await context.SigningCertificates
             .Where(c => c.ExpiresAt > now && c.RevokedAt == null)
@@ -118,7 +98,7 @@ internal sealed partial class GeneratedSigningCertificates(ILogger<GeneratedSign
             return cached;
 
         using IServiceScope scope = Scopes.CreateScope();
-        NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+        NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
 
         string lowercase = fingerprint.ToLowerInvariant();
         byte[]? certificate = await context.SigningCertificates
@@ -143,7 +123,7 @@ internal sealed partial class GeneratedSigningCertificates(ILogger<GeneratedSign
         {
             DateTimeOffset now = Time.GetUtcNow();
             using IServiceScope scope = Scopes.CreateScope();
-            NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+            NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
 
             // The key is generated first, so the transaction isn't held while it is.
             SigningCertificate row = Create(now.Year, now);
@@ -192,7 +172,7 @@ internal sealed partial class GeneratedSigningCertificates(ILogger<GeneratedSign
     private async Task<Signer> PrepareAsync(DateTimeOffset now, Signer? previous, CancellationToken cancellationToken)
     {
         using IServiceScope scope = Scopes.CreateScope();
-        NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+        NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
 
         // The newest of this year's certificates that wasn't revoked, and can be decrypted.
         List<SigningCertificate> rows = await context.SigningCertificates
@@ -233,7 +213,7 @@ internal sealed partial class GeneratedSigningCertificates(ILogger<GeneratedSign
         return new(now.Year, fingerprint, certificate, now);
     }
 
-    private async Task<SigningCertificate> GenerateAsync(NuDepotContext context, int year, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<SigningCertificate> GenerateAsync(NuDepotDbContext context, int year, DateTimeOffset now, CancellationToken cancellationToken)
     {
         SigningCertificate row = Create(year, now);
         await context.SigningCertificates.ExecuteInsertAsync(row, cancellationToken);

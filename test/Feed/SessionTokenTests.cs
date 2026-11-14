@@ -110,7 +110,7 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
 
         using (IServiceScope scope = app.Services.CreateScope())
         {
-            Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<NuDepotContext>().SessionSigningKeys.CountAsync());
+            Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().SessionSigningKeys.CountAsync());
         }
 
         // A new instance loads the key from the database, like the feed does when it starts again.
@@ -139,7 +139,7 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
         using (IServiceScope scope = app.Services.CreateScope())
         {
             await scope.ServiceProvider
-                .GetRequiredService<NuDepotContext>()
+                .GetRequiredService<NuDepotDbContext>()
                 .SessionSigningKeys
                 .ExecuteUpdateAsync(setters => setters.SetProperty(k => k.ProtectedPrivateKey, [1, 2, 3]));
         }
@@ -158,7 +158,7 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
         Assert.Single(keys.ValidationKeys);
         using (IServiceScope scope = app.Services.CreateScope())
         {
-            Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<NuDepotContext>().SessionSigningKeys.CountAsync());
+            Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().SessionSigningKeys.CountAsync());
         }
     }
 

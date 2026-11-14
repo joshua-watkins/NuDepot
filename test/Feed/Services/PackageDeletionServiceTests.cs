@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using NuDepot.Feed.Catalog;
@@ -35,7 +36,7 @@ public class PackageDeletionServiceTests
             .Returns(Options);
 
         Target = new PackageDeletionService(
-            Mock.Of<ILogger<PackageDeletionService>>(),
+            NullLogger<PackageDeletionService>.Instance,
             Packages.Object,
             Storage.Object,
             Mock.Of<ICatalogService>(),

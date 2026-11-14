@@ -5,7 +5,7 @@ namespace NuDepot.Feed.Entities.Converters;
 /// <summary>
 /// Compares string arrays by their items, so Entity Framework notices when an item changes.
 /// </summary>
-public class StringArrayComparer : ValueComparer<string[]>
+internal class StringArrayComparer : ValueComparer<string[]>
 {
     /// <summary>
     /// The comparer.

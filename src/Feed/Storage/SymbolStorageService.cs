@@ -4,7 +4,7 @@ namespace NuDepot.Feed.Storage;
 /// Stores symbol files, by the key the symbol server looks them up by.
 /// </summary>
 /// <param name="storage">Where files are stored.</param>
-public class SymbolStorageService(IStorageService storage) : ISymbolStorageService
+internal class SymbolStorageService(IStorageService storage) : ISymbolStorageService
 {
     private const string SymbolsPathPrefix = "symbols";
     private const string PdbContentType = "binary/octet-stream";

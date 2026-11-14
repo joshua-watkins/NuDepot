@@ -8,7 +8,7 @@ namespace NuDepot.Feed.Metadata;
 /// Builds the package metadata (registration) resource's responses.
 /// </summary>
 /// <param name="url">Generates the feed's URLs.</param>
-public class RegistrationBuilder(IUrlGenerator url)
+internal class RegistrationBuilder(IUrlGenerator url)
 {
     /// <summary>
     /// The most versions a registration index lists itself. A package with more is split into pages of

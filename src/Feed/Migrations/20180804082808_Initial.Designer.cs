@@ -8,7 +8,7 @@ using NuDepot.Feed.Entities;
 
 namespace NuDepot.Feed.Migrations
 {
-    [DbContext(typeof(NuDepotContext))]
+    [DbContext(typeof(NuDepotDbContext))]
     [Migration("20180804082808_Initial")]
     partial class Initial
     {

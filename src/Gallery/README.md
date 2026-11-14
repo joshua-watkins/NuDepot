@@ -29,6 +29,8 @@ The pages are [Razor Slices](https://github.com/DamianEdwards/RazorSlices) in th
 minimal API endpoints in `WebsiteEndpoints`. Each slice's model is next to it, like `Package.cshtml` and
 `PackageModel.cs`: the endpoint loads the model from the feed with its `LoadAsync`, then renders the slice with it.
 `_Layout.cshtml` is the slices' shared layout, with `LayoutModel`.
+Each slice also has a small internal class that creates it, like `Upload.cs`: Razor Slices would generate these, but
+only as public classes, so the generator is off in `Gallery.csproj`. A new slice needs one too.
 
 Hosted with a feed whose users sign in, the gallery also manages the feed, as far as the signed-in user's role
 allows: uploads on `Upload`, unlisting, deleting, deprecations and vulnerabilities in `Package`'s Manage section,

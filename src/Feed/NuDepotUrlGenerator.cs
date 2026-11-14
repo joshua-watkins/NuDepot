@@ -13,7 +13,7 @@ namespace NuDepot.Feed;
 /// <param name="httpContextAccessor">The current request.</param>
 /// <param name="linkGenerator">Generates URLs from routes.</param>
 /// <param name="options">The feed's options.</param>
-public class NuDepotUrlGenerator(IHttpContextAccessor httpContextAccessor, LinkGenerator linkGenerator, IOptions<FeedOptions> options) : IUrlGenerator
+internal class NuDepotUrlGenerator(IHttpContextAccessor httpContextAccessor, LinkGenerator linkGenerator, IOptions<FeedOptions> options) : IUrlGenerator
 {
     private IHttpContextAccessor HttpContextAccessor { get; } = httpContextAccessor;
     private LinkGenerator LinkGenerator { get; } = linkGenerator;

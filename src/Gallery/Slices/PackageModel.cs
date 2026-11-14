@@ -14,7 +14,7 @@ namespace NuDepot.Gallery.Slices;
 /// <summary>
 /// The model of <see cref="Package"/>, a package's details page.
 /// </summary>
-public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
+internal class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 {
     // A readme is written by the package's author, so its raw HTML isn't rendered: it could run script in the
     // gallery, as whoever reads it.
@@ -447,11 +447,3 @@ public class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
         public DateTime LastUpdated { get; init; }
     }
 }
-
-/// <summary>
-/// How to install a package with one tool.
-/// </summary>
-/// <param name="Name">The tool's name.</param>
-/// <param name="Prefix">The prompt shown before the command.</param>
-/// <param name="Content">The command's lines.</param>
-public record InstallInstructions(string Name, string Prefix, IReadOnlyList<string> Content);

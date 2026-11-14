@@ -8,7 +8,7 @@ namespace NuDepot.Feed.Search;
 /// Builds the search resource's responses.
 /// </summary>
 /// <param name="url">Generates the feed's URLs.</param>
-public class SearchResponseBuilder(IUrlGenerator url) : ISearchResponseBuilder
+internal class SearchResponseBuilder(IUrlGenerator url) : ISearchResponseBuilder
 {
     private IUrlGenerator Url { get; } = url;
 

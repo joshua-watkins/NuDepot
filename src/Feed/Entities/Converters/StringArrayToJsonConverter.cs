@@ -8,7 +8,7 @@ namespace NuDepot.Feed.Entities.Converters;
 /// <summary>
 /// Stores a string array in one column, as a JSON array.
 /// </summary>
-public class StringArrayToJsonConverter : ValueConverter<string[]?, string?>
+internal class StringArrayToJsonConverter : ValueConverter<string[]?, string?>
 {
     /// <summary>
     /// The converter.

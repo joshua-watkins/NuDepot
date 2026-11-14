@@ -324,7 +324,7 @@ internal static partial class AccountEndpoints
         if (string.IsNullOrEmpty(name))
             return defaultName;
 
-        return name.Length > NuDepotContext.MaxCredentialNameLength ? name[..NuDepotContext.MaxCredentialNameLength] : name;
+        return name.Length > NuDepotDbContext.MaxCredentialNameLength ? name[..NuDepotDbContext.MaxCredentialNameLength] : name;
     }
 
     private static ApiKeyResponse ToResponse(UserApiKey apiKey, string? key) => new()

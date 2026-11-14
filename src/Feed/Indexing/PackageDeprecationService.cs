@@ -13,7 +13,7 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="packages">The package database.</param>
 /// <param name="catalog">The catalog that records the change.</param>
 /// <param name="httpContextAccessor">The request, whose client is logged with what it changes.</param>
-public partial class PackageDeprecationService(ILogger<PackageDeprecationService> logger, IPackageDatabase packages, ICatalogService catalog, IHttpContextAccessor httpContextAccessor) : IPackageDeprecationService
+internal partial class PackageDeprecationService(ILogger<PackageDeprecationService> logger, IPackageDatabase packages, ICatalogService catalog, IHttpContextAccessor httpContextAccessor) : IPackageDeprecationService
 {
     private ILogger Logger { get; } = logger;
     private IPackageDatabase Packages { get; } = packages;

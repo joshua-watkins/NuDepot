@@ -693,7 +693,7 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
     private static async Task SetRoleAsync(NuDepotTestApplication app, string userName, FeedRole role)
     {
         using IServiceScope scope = app.Services.CreateScope();
-        NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+        NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
 
         await context.Users
             .Where(u => u.UserName == userName)

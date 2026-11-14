@@ -9,7 +9,7 @@ namespace NuDepot.Feed.Storage;
 /// </summary>
 /// <param name="logger">The logger.</param>
 /// <param name="storage">Where files are stored.</param>
-public partial class PackageStorageService(ILogger<PackageStorageService> logger, IStorageService storage) : IPackageStorageService
+internal partial class PackageStorageService(ILogger<PackageStorageService> logger, IStorageService storage) : IPackageStorageService
 {
     private const string PackagesPathPrefix = "packages";
 

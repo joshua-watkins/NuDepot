@@ -8,7 +8,7 @@ using NuDepot.Feed.Entities;
 
 namespace NuDepot.Feed.Migrations
 {
-    [DbContext(typeof(NuDepotContext))]
+    [DbContext(typeof(NuDepotDbContext))]
     [Migration("20200109071618_AddReleaseNotesStringColumn")]
     partial class AddReleaseNotesStringColumn
     {

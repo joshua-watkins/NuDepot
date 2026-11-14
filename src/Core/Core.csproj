@@ -25,4 +25,8 @@
 		</PackageReference>
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- The tests use the library's internal types. -->
+		<InternalsVisibleTo Include="$(AssemblyName).Tests" />
+	</ItemGroup>
 </Project>

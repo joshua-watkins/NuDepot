@@ -31,14 +31,14 @@ namespace NuDepot.Feed.Signing;
 /// <param name="url">Generates the service index URL that the signatures record.</param>
 /// <param name="time">The current time, which signatures expire by.</param>
 /// <param name="locks">The feed's package locks, and when mirrored packages were last downloaded again.</param>
-public partial class PackageResigner(ILogger<PackageResigner> logger, IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, TimeProvider time, PackageLocks locks)
+internal partial class PackageResigner(ILogger<PackageResigner> logger, IRepositorySigningService signing, NuDepotDbContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, TimeProvider time, PackageLocks locks)
 {
     // A mirrored package whose upstream copy is also expired is only downloaded again after this long.
     private static readonly TimeSpan UpstreamRetryInterval = TimeSpan.FromHours(1);
 
     private ILogger Logger { get; } = logger;
     private IRepositorySigningService Signing { get; } = signing;
-    private NuDepotContext Context { get; } = context;
+    private NuDepotDbContext Context { get; } = context;
     private IPackageDatabase Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;
     private ICatalogService Catalog { get; } = catalog;

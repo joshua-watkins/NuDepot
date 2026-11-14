@@ -5,7 +5,7 @@ namespace NuDepot.Gallery;
 /// them. A package's author controls them, so a "javascript:" URL would run script in the gallery, as whoever clicks
 /// it.
 /// </summary>
-public static class SafeUrls
+internal static class SafeUrls
 {
     private static readonly string[] SafeSchemes = ["http", "https", "mailto"];
 

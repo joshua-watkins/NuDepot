@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using NuDepot.Feed.Entities;
@@ -89,7 +88,7 @@ internal sealed partial class SessionSigningKeys(ILogger<SessionSigningKeys> log
     private async Task<LoadedKeys> LoadOrCreateAsync(CancellationToken cancellationToken)
     {
         using IServiceScope scope = Scopes.CreateScope();
-        NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+        NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
 
         List<SessionSigningKey> rows = await context.SessionSigningKeys
             .OrderByDescending(k => k.Key)
@@ -157,14 +156,4 @@ internal sealed partial class SessionSigningKeys(ILogger<SessionSigningKeys> log
         [LoggerMessage(Level = LogLevel.Warning, Message = "The key {KeyId} that signs sign-in cookies can't be decrypted")]
         public static partial void KeyNotDecrypted(ILogger logger, Exception exception, string keyId);
     }
-}
-
-/// <summary>
-/// Loads the keys that sign sign-in cookies when the application starts.
-/// </summary>
-internal sealed class SessionSigningKeysLoader(SessionSigningKeys keys) : IHostedService
-{
-    public Task StartAsync(CancellationToken cancellationToken) => keys.LoadAsync(cancellationToken);
-
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

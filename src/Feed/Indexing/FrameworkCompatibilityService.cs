@@ -7,7 +7,7 @@ namespace NuDepot.Feed.Indexing;
 /// <summary>
 /// Finds the target frameworks a package's framework is compatible with, so searches can filter by framework.
 /// </summary>
-public class FrameworkCompatibilityService : IFrameworkCompatibilityService
+internal class FrameworkCompatibilityService : IFrameworkCompatibilityService
 {
     private const string AnyFramework = "any";
 

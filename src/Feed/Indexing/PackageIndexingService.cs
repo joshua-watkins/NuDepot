@@ -28,7 +28,7 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="locks">The packages' locks, so a version is pushed once at a time.</param>
 /// <param name="options">The feed's options.</param>
 /// <param name="httpContextAccessor">The request, whose client is logged with what it changes.</param>
-public partial class PackageIndexingService(ILogger<PackageIndexingService> logger, IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, IHttpContextAccessor httpContextAccessor) : IPackageIndexingService
+internal partial class PackageIndexingService(ILogger<PackageIndexingService> logger, IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, IHttpContextAccessor httpContextAccessor) : IPackageIndexingService
 {
     private ILogger Logger { get; } = logger;
     private IPackageDatabase Packages { get; } = packages;

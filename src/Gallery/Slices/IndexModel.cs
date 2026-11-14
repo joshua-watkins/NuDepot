@@ -7,7 +7,7 @@ namespace NuDepot.Gallery.Slices;
 /// <summary>
 /// The model of <see cref="Index"/>, the search page.
 /// </summary>
-public class IndexModel(ISearchClient search, FeedConnection feed)
+internal class IndexModel(ISearchClient search, FeedConnection feed)
 {
     private ISearchClient Search { get; } = search;
     private FeedConnection Feed { get; } = feed;

@@ -1,7 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Sqlite.Infrastructure.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -27,13 +26,8 @@ public class HostIntegrationTests
         if (!OperatingSystem.IsWindows())
             return;
 
-        // Like WebApplication on Windows: the Event Log keeps warnings, unless the settings say otherwise.
-        using ServiceProvider before = BuildLogging("Windows", uncomment: false, logging => logging
-            .AddEventLog()
-            .AddFilter<EventLogLoggerProvider>(level => level >= LogLevel.Warning));
-        using ServiceProvider after = BuildLogging("Windows", uncomment: true, logging => logging
-            .AddEventLog()
-            .AddFilter<EventLogLoggerProvider>(level => level >= LogLevel.Warning));
+        using ServiceProvider before = BuildLogging("Windows", uncomment: false, AddEventLog);
+        using ServiceProvider after = BuildLogging("Windows", uncomment: true, AddEventLog);
 
         Assert.False(IsLogged(before, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Information));
         Assert.True(IsLogged(before, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Warning));
@@ -91,6 +85,15 @@ public class HostIntegrationTests
             .BuildServiceProvider();
     }
 
+    // Like WebApplication on Windows: the Event Log keeps warnings, unless the settings say otherwise.
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void AddEventLog(ILoggingBuilder logging)
+    {
+        logging
+            .AddEventLog()
+            .AddFilter<EventLogLoggerProvider>(level => level >= LogLevel.Warning);
+    }
+
     private static bool IsLogged(IServiceProvider services, string category, LogLevel level)
         => services
             .GetRequiredService<ILoggerFactory>()
@@ -136,7 +139,7 @@ public class HostIntegrationTests
             { ConnectionStringKey, "..." }
         });
 
-        Assert.NotNull(provider.GetRequiredService<NuDepotContext>());
+        Assert.NotNull(provider.GetRequiredService<NuDepotDbContext>());
     }
 
     [Fact]
@@ -147,7 +150,7 @@ public class HostIntegrationTests
             { ConnectionStringKey, "..." }
         });
 
-        Assert.True(provider.GetRequiredService<NuDepotContext>().Database.IsSqlite());
+        Assert.True(provider.GetRequiredService<NuDepotDbContext>().Database.IsSqlite());
     }
 
     [Fact]
@@ -160,7 +163,7 @@ public class HostIntegrationTests
 
         using (IServiceScope scope = provider.CreateScope())
         {
-            NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+            NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
             await context.RunMigrationsAsync(default);
             await context.VulnerabilityAdvisories.ExecuteInsertAsync(
                 new VulnerabilityAdvisory
@@ -174,7 +177,7 @@ public class HostIntegrationTests
 
         using (IServiceScope scope = provider.CreateScope())
         {
-            NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+            NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
             Assert.Equal(1, await context.VulnerabilityAdvisories.CountAsync());
         }
     }
@@ -194,7 +197,7 @@ public class HostIntegrationTests
             await using (provider)
             {
                 using IServiceScope scope = provider.CreateScope();
-                NuDepotContext context = scope.ServiceProvider.GetRequiredService<NuDepotContext>();
+                NuDepotDbContext context = scope.ServiceProvider.GetRequiredService<NuDepotDbContext>();
                 await context.RunMigrationsAsync(default);
             }
 
@@ -281,12 +284,11 @@ public class HostIntegrationTests
         using IServiceScope scope = provider.CreateScope();
 
         // One query with a row for every combination of a package's dependencies, types and frameworks grows quickly.
-        SqliteOptionsExtension sqlite = scope.ServiceProvider
-            .GetRequiredService<NuDepotContext>()
-            .GetService<IDbContextOptions>()
-            .FindExtension<SqliteOptionsExtension>()!;
+        RelationalOptionsExtension relational = RelationalOptionsExtension.Extract(scope.ServiceProvider
+            .GetRequiredService<NuDepotDbContext>()
+            .GetService<IDbContextOptions>());
 
-        Assert.Equal(QuerySplittingBehavior.SplitQuery, sqlite.QuerySplittingBehavior);
+        Assert.Equal(QuerySplittingBehavior.SplitQuery, relational.QuerySplittingBehavior);
     }
 
     [Fact]

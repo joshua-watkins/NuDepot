@@ -8,7 +8,7 @@ using NuDepot.Feed.Entities;
 
 namespace NuDepot.Feed.Migrations
 {
-    [DbContext(typeof(NuDepotContext))]
+    [DbContext(typeof(NuDepotDbContext))]
     [Migration("20210919190849_RemoveReleaseNotesMaxLength")]
     partial class RemoveReleaseNotesMaxLength
     {

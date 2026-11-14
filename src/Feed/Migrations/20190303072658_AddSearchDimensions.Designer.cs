@@ -8,7 +8,7 @@ using NuDepot.Feed.Entities;
 
 namespace NuDepot.Feed.Migrations
 {
-    [DbContext(typeof(NuDepotContext))]
+    [DbContext(typeof(NuDepotDbContext))]
     [Migration("20190303072658_AddSearchDimensions")]
     partial class AddSearchDimensions
     {

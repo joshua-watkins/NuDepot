@@ -340,7 +340,7 @@ public static class FeedServiceCollectionExtensions
     private static void AddDatabase(IServiceCollection services)
     {
         services.TryAddSingleton<SqliteInMemoryDatabases>();
-        services.AddDbContext<NuDepotContext>((provider, options) =>
+        services.AddDbContext<NuDepotDbContext>((provider, options) =>
         {
             string? connectionString = provider.GetRequiredService<IOptionsSnapshot<FeedOptions>>().Value.Database.ConnectionString;
 

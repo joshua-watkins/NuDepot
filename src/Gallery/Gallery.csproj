@@ -41,6 +41,18 @@
 		<RazorSlice Include="Slices\**\*.cshtml" Exclude="Slices\**\_ViewImports.cshtml" />
 	</ItemGroup>
 
+	<!--
+		Razor Slices generates a public class for each slice, which can't take the gallery's internal models, so
+		its generator is off, and Slices has an internal class for each slice instead, like Slices\Upload.cs.
+	-->
+	<Target Name="NuDepotInternalSliceProxies" AfterTargets="ResolveRazorSlicesInputs">
+		<ItemGroup>
+			<RazorGenerate>
+				<GenerateRazorSlice>false</GenerateRazorSlice>
+			</RazorGenerate>
+		</ItemGroup>
+	</Target>
+
 	<ItemGroup>
 		<Content Remove="wwwroot\**" />
 		<EmbeddedResource Include="wwwroot\**" />

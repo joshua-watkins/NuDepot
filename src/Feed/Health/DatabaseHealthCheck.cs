@@ -8,14 +8,14 @@ namespace NuDepot.Feed.Health;
 /// Checks that the package database answers.
 /// </summary>
 /// <param name="context">The package database.</param>
-internal sealed class DatabaseHealthCheck(NuDepotContext context) : IHealthCheck
+internal sealed class DatabaseHealthCheck(NuDepotDbContext context) : IHealthCheck
 {
     /// <summary>
     /// The check's name.
     /// </summary>
     public const string Name = "database";
 
-    private NuDepotContext Context { get; } = context;
+    private NuDepotDbContext Context { get; } = context;
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {

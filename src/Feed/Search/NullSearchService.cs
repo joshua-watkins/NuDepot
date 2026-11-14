@@ -5,7 +5,7 @@ namespace NuDepot.Feed.Search;
 /// <summary>
 /// A minimal search service implementation, used for advanced scenarios.
 /// </summary>
-public class NullSearchService : ISearchService
+internal class NullSearchService : ISearchService
 {
     private static readonly IReadOnlyList<string> EmptyStringList = [];
 

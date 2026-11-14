@@ -5,7 +5,7 @@ using Xunit;
 
 namespace NuDepot.Core.Tests;
 
-public class RawPackageContentTests(ProtocolFixture fixture) : IClassFixture<ProtocolFixture>
+public class RawPackageContentClientTests(ProtocolFixture fixture) : IClassFixture<ProtocolFixture>
 {
     private RawPackageContentClient Target { get; } = fixture.ContentClient;
 

@@ -3,7 +3,7 @@ namespace NuDepot.Feed;
 /// <summary>
 /// The names of the feed's routes, which its URLs are generated from.
 /// </summary>
-public class Routes
+internal class Routes
 {
     /// <summary>
     /// The service index.

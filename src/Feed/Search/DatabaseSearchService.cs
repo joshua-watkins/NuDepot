@@ -12,14 +12,14 @@ namespace NuDepot.Feed.Search;
 /// Searches the package database. Filters like prerelease and package type run in the database;
 /// text matching and relevance ranking run in memory over each matching package's latest version.
 /// </summary>
-public class DatabaseSearchService(NuDepotContext context, IFrameworkCompatibilityService frameworks, IVulnerabilityService vulnerabilities, ISearchResponseBuilder searchBuilder) : ISearchService
+internal class DatabaseSearchService(NuDepotDbContext context, IFrameworkCompatibilityService frameworks, IVulnerabilityService vulnerabilities, ISearchResponseBuilder searchBuilder) : ISearchService
 {
     /// <summary>
     /// The most dependents returned for a package, ordered by their total downloads.
     /// </summary>
     public const int MaxDependents = 20;
 
-    private NuDepotContext Context { get; } = context;
+    private NuDepotDbContext Context { get; } = context;
     private IFrameworkCompatibilityService Frameworks { get; } = frameworks;
     private IVulnerabilityService Vulnerabilities { get; } = vulnerabilities;
     private ISearchResponseBuilder SearchBuilder { get; } = searchBuilder;

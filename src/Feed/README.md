@@ -81,7 +81,7 @@ The important folders are:
 * Catalog - The append-only record of package changes, served as the catalog resource
 * Vulnerabilities - Known vulnerabilities, served to NuGet Audit
 * Authentication - API keys and their roles. Each endpoint requires a `FeedPermissions`. The API keys of
-  the options, one for each role, decide what anonymous requests may do; see `FeedAccess` and
+  the options, one for each role, decide what anonymous requests may do; see `FeedPolicies` and
   [the configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#require-an-api-key)
 * Users - People who sign in with passkeys (`AddUsers()`), and the API keys they create
 * Signing - Repository signing of pushed packages
@@ -192,6 +192,5 @@ Use `CertificateThumbprint` (with `CertificateStoreLocation` and `CertificateSto
 starts, so a missing file or a wrong password stops it. See the
 [configuration guide](https://github.com/joshua-watkins/NuDepot/blob/main/docs/configuration.md#repository-signing).
 
-The signing code is in `Signing`: `RepositorySigningService` signs, `ConfiguredSigningCertificate` and
-`GeneratedSigningCertificates` provide the certificates, and `PackageResigner` re-signs packages as they're
-downloaded.
+The signing code is in `Signing`. An application can replace how packages are signed, by registering its own
+`IRepositorySigningService`, or where the certificate comes from, with its own `ISigningCertificateSource`.

@@ -15,7 +15,7 @@ namespace NuDepot.Feed.Signing;
 /// <param name="logger">The logger.</param>
 /// <param name="options">The signing options.</param>
 /// <param name="certificates">The configured certificate, or the generated ones.</param>
-public sealed partial class RepositorySigningService(ILogger<RepositorySigningService> logger, IOptions<RepositorySigningOptions> options, ISigningCertificateSource certificates) : IRepositorySigningService, IDisposable
+internal sealed partial class RepositorySigningService(ILogger<RepositorySigningService> logger, IOptions<RepositorySigningOptions> options, ISigningCertificateSource certificates) : IRepositorySigningService, IDisposable
 {
     private ILogger Logger { get; } = logger;
     private RepositorySigningOptions Options { get; } = options.Value;

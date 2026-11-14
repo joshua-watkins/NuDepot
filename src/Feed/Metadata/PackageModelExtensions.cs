@@ -9,7 +9,7 @@ namespace NuDepot.Feed.Metadata;
 /// Converts the package entity into the protocol's models. Shared by the package metadata,
 /// search and catalog resources so they describe packages the same way.
 /// </summary>
-public static class PackageModelExtensions
+internal static class PackageModelExtensions
 {
     /// <summary>
     /// The deprecation reasons the protocol defines.

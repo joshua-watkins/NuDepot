@@ -10,19 +10,3 @@ public class SearchOptions
     /// </summary>
     public SearchType Type { get; set; } = SearchType.Database;
 }
-
-/// <summary>
-/// What the feed's searches query.
-/// </summary>
-public enum SearchType
-{
-    /// <summary>
-    /// Searches query the database.
-    /// </summary>
-    Database,
-
-    /// <summary>
-    /// Searches find nothing.
-    /// </summary>
-    Null,
-}

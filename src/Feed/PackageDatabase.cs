@@ -11,9 +11,9 @@ namespace NuDepot.Feed;
 /// Stores packages' state in the feed's database.
 /// </summary>
 /// <param name="context">The package database.</param>
-public class PackageDatabase(NuDepotContext context) : IPackageDatabase
+internal class PackageDatabase(NuDepotDbContext context) : IPackageDatabase
 {
-    private NuDepotContext Context { get; } = context;
+    private NuDepotDbContext Context { get; } = context;
 
     /// <inheritdoc />
     public async Task<PackageAddResult> AddAsync(Package package, CancellationToken cancellationToken)
@@ -25,7 +25,7 @@ public class PackageDatabase(NuDepotContext context) : IPackageDatabase
             return PackageAddResult.Success;
         }
         catch (DbUpdateException e)
-            when (NuDepotContext.IsUniqueConstraintViolationException(e))
+            when (NuDepotDbContext.IsUniqueConstraintViolationException(e))
         {
             return PackageAddResult.PackageAlreadyExists;
         }

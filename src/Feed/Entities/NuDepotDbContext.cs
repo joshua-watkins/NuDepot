@@ -10,7 +10,7 @@ namespace NuDepot.Feed.Entities;
 /// The package database, in SQLite at <see cref="Configuration.DatabaseOptions.ConnectionString"/>.
 /// Settings that only apply to one provider are behind checks like <see cref="SqliteDatabaseFacadeExtensions.IsSqlite"/>.
 /// </summary>
-public class NuDepotContext(DbContextOptions<NuDepotContext> options) : DbContext(options), IDataProtectionKeyContext
+internal class NuDepotDbContext(DbContextOptions<NuDepotDbContext> options) : DbContext(options), IDataProtectionKeyContext
 {
     /// <summary>
     /// The longest string a column holds, unless it has its own limit.

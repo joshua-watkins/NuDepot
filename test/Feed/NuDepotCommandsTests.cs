@@ -8,13 +8,6 @@ using Xunit.Abstractions;
 
 namespace NuDepot.Feed.Tests;
 
-/// <summary>
-/// The commands write to the console and set the process's exit code, so these tests don't run alongside others that
-/// might.
-/// </summary>
-[CollectionDefinition(nameof(ConsoleCollection), DisableParallelization = true)]
-public class ConsoleCollection;
-
 [Collection(nameof(ConsoleCollection))]
 public sealed class NuDepotCommandsTests(ITestOutputHelper output) : IDisposable
 {
@@ -89,7 +82,7 @@ public sealed class NuDepotCommandsTests(ITestOutputHelper output) : IDisposable
 
         using IServiceScope scope = app.Services.CreateScope();
         Package package = await scope.ServiceProvider
-            .GetRequiredService<NuDepotContext>()
+            .GetRequiredService<NuDepotDbContext>()
             .Packages
             .SingleAsync();
         Assert.Equal(1234, package.Downloads);
@@ -106,7 +99,7 @@ public sealed class NuDepotCommandsTests(ITestOutputHelper output) : IDisposable
         Assert.True(await app.Host.TryRunCommandAsync(["import", "downloads"]));
 
         using IServiceScope scope = app.Services.CreateScope();
-        Assert.Equal(0, await scope.ServiceProvider.GetRequiredService<NuDepotContext>().Packages.SumAsync(p => p.Downloads));
+        Assert.Equal(0, await scope.ServiceProvider.GetRequiredService<NuDepotDbContext>().Packages.SumAsync(p => p.Downloads));
     }
 
     [Fact]

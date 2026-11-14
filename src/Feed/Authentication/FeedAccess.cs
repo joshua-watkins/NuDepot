@@ -9,7 +9,7 @@ namespace NuDepot.Feed.Authentication;
 /// <summary>
 /// Decides what a request may do on the feed, from its API key or signed-in user.
 /// </summary>
-public class FeedAccess(IOptionsMonitor<FeedOptions> options, IOptionsMonitor<UserOptions> users)
+internal class FeedAccess(IOptionsMonitor<FeedOptions> options, IOptionsMonitor<UserOptions> users)
 {
     private IOptionsMonitor<FeedOptions> Options { get; } = options;
     private IOptionsMonitor<UserOptions> Users { get; } = users;

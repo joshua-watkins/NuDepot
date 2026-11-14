@@ -10,12 +10,12 @@ namespace NuDepot.Feed.Upstream;
 /// <param name="logger">The logger.</param>
 /// <param name="context">The package database.</param>
 /// <param name="downloadsSource">Where the download counts come from.</param>
-public partial class DownloadsImporter(ILogger<DownloadsImporter> logger, NuDepotContext context, IPackageDownloadsSource downloadsSource)
+internal partial class DownloadsImporter(ILogger<DownloadsImporter> logger, NuDepotDbContext context, IPackageDownloadsSource downloadsSource)
 {
     private const int BatchSize = 200;
 
     private ILogger Logger { get; } = logger;
-    private NuDepotContext Context { get; } = context;
+    private NuDepotDbContext Context { get; } = context;
     private IPackageDownloadsSource DownloadsSource { get; } = downloadsSource;
 
     /// <summary>

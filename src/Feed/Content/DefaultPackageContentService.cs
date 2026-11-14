@@ -12,7 +12,7 @@ namespace NuDepot.Feed.Content;
 /// <param name="packages">Finds packages.</param>
 /// <param name="storage">Where packages are stored.</param>
 /// <param name="resigner">Re-signs packages signed with an older certificate as they're downloaded.</param>
-public class DefaultPackageContentService(IPackageService packages, IPackageStorageService storage, PackageResigner resigner) : IPackageContentService
+internal class DefaultPackageContentService(IPackageService packages, IPackageStorageService storage, PackageResigner resigner) : IPackageContentService
 {
     private IPackageService Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;

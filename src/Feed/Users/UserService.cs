@@ -19,7 +19,7 @@ namespace NuDepot.Feed.Users;
 /// <summary>
 /// The feed's users, their passkeys and their API keys.
 /// </summary>
-public partial class UserService(ILogger<UserService> logger, NuDepotContext context, SystemTime time, IOptionsMonitor<UserOptions> options, IHttpContextAccessor httpContextAccessor)
+internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext context, SystemTime time, IOptionsMonitor<UserOptions> options, IHttpContextAccessor httpContextAccessor)
 {
     /// <summary>
     /// The start of every user API key, which tells them apart from configured keys.
@@ -47,7 +47,7 @@ public partial class UserService(ILogger<UserService> logger, NuDepotContext con
     private static readonly TimeSpan PreviousTokenLifetime = TimeSpan.FromMinutes(1);
 
     private ILogger Logger { get; } = logger;
-    private NuDepotContext Context { get; } = context;
+    private NuDepotDbContext Context { get; } = context;
     private SystemTime Time { get; } = time;
     private IOptionsMonitor<UserOptions> Options { get; } = options;
     private IHttpContextAccessor HttpContextAccessor { get; } = httpContextAccessor;
@@ -137,7 +137,7 @@ public partial class UserService(ILogger<UserService> logger, NuDepotContext con
         {
             await Context.Users.ExecuteInsertAsync(user, cancellationToken);
         }
-        catch (DbUpdateException e) when (NuDepotContext.IsUniqueConstraintViolationException(e))
+        catch (DbUpdateException e) when (NuDepotDbContext.IsUniqueConstraintViolationException(e))
         {
             return null;
         }
@@ -719,70 +719,4 @@ public partial class UserService(ILogger<UserService> logger, NuDepotContext con
         [LoggerMessage(Level = LogLevel.Warning, Message = "{Actor} deleted the user {UserName}")]
         public static partial void UserDeleted(ILogger logger, string actor, string userName);
     }
-}
-
-/// <summary>
-/// The user of a valid session, and the session's new token if the cookie should be replaced.
-/// </summary>
-public record SessionValidation(User? User, string? NewToken)
-{
-    /// <summary>
-    /// The result for a request without a valid session.
-    /// </summary>
-    public static readonly SessionValidation SignedOut = new(null, null);
-}
-
-/// <summary>
-/// A user, for the administration page.
-/// </summary>
-/// <param name="Key">The user's key.</param>
-/// <param name="UserName">The user's name.</param>
-/// <param name="Role">The user's role.</param>
-/// <param name="CreatedAt">When the account was created, in UTC.</param>
-/// <param name="Passkeys">How many passkeys the user has.</param>
-/// <param name="ApiKeys">How many API keys the user has.</param>
-/// <param name="Sessions">How many browsers the user is signed in on.</param>
-/// <param name="LastSignedInAt">When the user last signed in with a passkey, in UTC.</param>
-public record UserSummary(int Key, string UserName, FeedRole Role, DateTime CreatedAt, int Passkeys, int ApiKeys, int Sessions, DateTime? LastSignedInAt);
-
-/// <summary>
-/// The outcome of changing or deleting a user.
-/// </summary>
-public enum UserChangeResult
-{
-    /// <summary>
-    /// The user was changed or deleted.
-    /// </summary>
-    Changed,
-
-    /// <summary>
-    /// There's no such user.
-    /// </summary>
-    NotFound,
-
-    /// <summary>
-    /// The user is the feed's last Admin, who can't be deleted or given another role.
-    /// </summary>
-    LastAdmin,
-}
-
-/// <summary>
-/// The outcome of deleting a passkey.
-/// </summary>
-public enum PasskeyDeletionResult
-{
-    /// <summary>
-    /// The passkey was deleted.
-    /// </summary>
-    Deleted,
-
-    /// <summary>
-    /// The user doesn't have the passkey.
-    /// </summary>
-    NotFound,
-
-    /// <summary>
-    /// The passkey is the user's last, which they need to sign in.
-    /// </summary>
-    LastPasskey,
 }

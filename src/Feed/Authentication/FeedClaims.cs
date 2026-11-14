@@ -7,7 +7,7 @@ namespace NuDepot.Feed.Authentication;
 /// <summary>
 /// The claims the feed issues for API keys and users. <see cref="FeedAccess"/> only trusts roles the feed issued.
 /// </summary>
-public static class FeedClaims
+internal static class FeedClaims
 {
     /// <summary>
     /// The identity of a configured API key.

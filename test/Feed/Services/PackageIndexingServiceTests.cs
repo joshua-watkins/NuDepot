@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using NuDepot.Feed.Catalog;
@@ -307,7 +308,7 @@ public sealed class PackageIndexingServiceTests : IDisposable
             .ReturnsAsync((RepositorySignatureDetails?)null);
 
         return new PackageIndexingService(
-            Mock.Of<ILogger<PackageIndexingService>>(),
+            NullLogger<PackageIndexingService>.Instance,
             Packages.Object,
             Storage.Object,
             Search.Object,

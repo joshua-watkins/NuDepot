@@ -5,7 +5,7 @@ namespace NuDepot.Feed.Extensions;
 /// <summary>
 /// Extensions to <see cref="Stream"/>.
 /// </summary>
-public static class StreamExtensions
+internal static class StreamExtensions
 {
     // See: https://github.com/dotnet/corefx/blob/master/src/Common/src/CoreLib/System/IO/Stream.cs#L35
     private const int DefaultCopyBufferSize = 81920;

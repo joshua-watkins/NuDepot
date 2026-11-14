@@ -9,7 +9,7 @@ namespace NuDepot.Feed;
 /// Maps the feed's endpoints. Each one requires the <see cref="FeedPermissions"/> for what it does.
 /// The account endpoints are mapped separately, by <see cref="MapAccountRoutes"/>.
 /// </summary>
-public static class NuDepotEndpointBuilder
+internal static class NuDepotEndpointBuilder
 {
     /// <summary>
     /// Maps every NuGet V3 endpoint. <c>UseFeed()</c> calls it.

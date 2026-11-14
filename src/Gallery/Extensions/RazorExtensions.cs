@@ -5,7 +5,7 @@ namespace NuDepot.Gallery.Extensions;
 /// <summary>
 /// Formatting for the website's pages.
 /// </summary>
-public static class RazorExtensions
+internal static class RazorExtensions
 {
     /// <summary>
     /// Formats a count the short way, like "1.2k".

@@ -62,24 +62,3 @@ public interface IRepositorySigningService
     /// <returns>The signature, or null if the package doesn't have a repository signature.</returns>
     Task<RepositorySignatureDetails?> GetRepositorySignatureAsync(Stream package, CancellationToken cancellationToken);
 }
-
-/// <summary>
-/// A package's repository signature.
-/// </summary>
-/// <param name="Fingerprint">The lowercase hex SHA-256 fingerprint of the certificate that made it.</param>
-/// <param name="ExpiresAt">When it stops being valid: when its certificate expires. Null if it's timestamped, so it stays valid.</param>
-public sealed record RepositorySignatureDetails(string Fingerprint, DateTimeOffset? ExpiresAt);
-
-/// <summary>
-/// The result of repository signing a package.
-/// </summary>
-/// <param name="SignedPackage">The signed package, or null if the package wasn't changed. The caller disposes it.</param>
-/// <param name="IsRepositorySigned">Whether the package now carries this server's repository signature.</param>
-/// <param name="Fingerprint">The fingerprint of the certificate that made this server's repository signature, if it has one.</param>
-public sealed record RepositorySigningResult(Stream? SignedPackage, bool IsRepositorySigned, string? Fingerprint = null)
-{
-    /// <summary>
-    /// The result for a package that wasn't signed.
-    /// </summary>
-    public static readonly RepositorySigningResult Unsigned = new(null, false);
-}

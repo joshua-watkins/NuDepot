@@ -155,7 +155,7 @@ internal static class AdminEndpoints
         }
 
         // Every generated certificate, including the expired and revoked ones, which clients may still have trusted.
-        NuDepotContext context = services.GetRequiredService<NuDepotContext>();
+        NuDepotDbContext context = services.GetRequiredService<NuDepotDbContext>();
         var rows = await context.SigningCertificates
             .OrderByDescending(c => c.Key)
             .Select(c => new { c.Certificate, c.RevokedAt })

@@ -2,8 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace NuDepot.Core.Models;
 
-/// This class is based off https://github.com/NuGet/NuGet.Services.Metadata/blob/64af0b59c5a79e0143f0808b39946df9f16cb2e7/src/NuGet.Protocol.Catalog/Models/PackageDetailsCatalogLeaf.cs
-
 /// <summary>
 /// A "package details" catalog leaf. Represents a single package create or update event.
 /// <see cref="PackageDetailsCatalogLeaf"/>s can be discovered from a <see cref="CatalogPage"/>.
@@ -182,22 +180,4 @@ public class PackageDetailsCatalogLeaf : CatalogLeaf
     /// </summary>
     [JsonPropertyName("vulnerabilities")]
     public List<PackageVulnerability>? Vulnerabilities { get; set; }
-}
-
-/// <summary>
-/// A package type in a <see cref="PackageDetailsCatalogLeaf"/>.
-/// </summary>
-public class CatalogPackageType
-{
-    /// <summary>
-    /// The package type's name, like "Dependency" or "DotnetTool".
-    /// </summary>
-    [JsonPropertyName("name")]
-    public string Name { get; set; } = null!;
-
-    /// <summary>
-    /// Only present if the author explicitly specified a version in the nuspec.
-    /// </summary>
-    [JsonPropertyName("version")]
-    public string? Version { get; set; }
 }

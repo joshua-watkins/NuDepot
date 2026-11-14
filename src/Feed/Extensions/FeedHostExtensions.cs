@@ -27,7 +27,7 @@ public static class FeedHostExtensions
         if (options.Value.RunMigrationsAtStartup)
         {
             using IServiceScope scope = host.Services.CreateScope();
-            NuDepotContext? context = scope.ServiceProvider.GetService<NuDepotContext>();
+            NuDepotDbContext? context = scope.ServiceProvider.GetService<NuDepotDbContext>();
             if (context != null)
             {
                 await context.RunMigrationsAsync(cancellationToken);

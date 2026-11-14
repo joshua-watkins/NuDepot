@@ -206,7 +206,7 @@ public class FileStorageServiceTests
     {
         protected readonly string _storePath;
         protected readonly Mock<IOptionsSnapshot<FeedOptions>> _options;
-        protected readonly FileStorageService _target;
+        private protected readonly FileStorageService _target;
 
         public FactsBase()
         {

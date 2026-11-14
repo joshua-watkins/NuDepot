@@ -8,7 +8,7 @@ namespace NuDepot.Feed.Storage;
 /// when each mirrored package was last downloaded from upstream again. Each feed has its own, so feeds hosted in the
 /// same process don't wait for each other.
 /// </summary>
-public sealed class PackageLocks : IDisposable
+internal sealed class PackageLocks : IDisposable
 {
     // Packages share these locks by their hash, so the locks don't grow with the feed.
     private SemaphoreSlim[] Locks { get; } = [.. Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1))];

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NuDepot.Core;
 using NuDepot.Core.Models;
@@ -213,7 +214,7 @@ public class V3UpstreamClientTests
     public class FactsBase
     {
         protected readonly Mock<NuGetClient> _client;
-        protected readonly V3UpstreamClient _target;
+        private protected readonly V3UpstreamClient _target;
 
         protected readonly string _id = "Foo";
         protected readonly NuGetVersion _version = new("1.2.3-prerelease+semver2");
@@ -223,7 +224,7 @@ public class V3UpstreamClientTests
         {
             _client = new Mock<NuGetClient>();
             _target = new V3UpstreamClient(
-                Mock.Of<ILogger<V3UpstreamClient>>(),
+                NullLogger<V3UpstreamClient>.Instance,
                 _client.Object);
         }
     }

@@ -14,7 +14,7 @@ public class PackageDatabaseTests
         [Fact]
         public async Task ReturnsPackageAlreadyExistsOnUniqueConstraintViolation()
         {
-            using NuDepotContext context = CreateContext();
+            using NuDepotDbContext context = CreateContext();
             PackageDatabase target = new(context);
 
             PackageAddResult result = await target.AddAsync(CreatePackage("Package", "1.0.0"), default);
@@ -217,7 +217,7 @@ public class PackageDatabaseTests
 
             Assert.True(await _target.HardDeletePackageAsync("Dependent.Package", NuGetVersion.Parse("1.0.0"), default));
 
-            using NuDepotContext context = CreateContext();
+            using NuDepotDbContext context = CreateContext();
             Assert.False(await context.PackageDependencies.AnyAsync());
         }
     }
@@ -233,7 +233,7 @@ public class PackageDatabaseTests
         [Fact]
         public async Task ReturnsTrueIfEveryPackageIsSigned()
         {
-            using (NuDepotContext context = CreateContext())
+            using (NuDepotDbContext context = CreateContext())
             {
                 await context.Packages.ExecuteUpdateAsync(setters => setters.SetProperty(p => p.IsRepositorySigned, true));
             }
@@ -252,16 +252,16 @@ public class PackageDatabaseTests
 
         // SQLite deletes an in-memory database when its last connection closes.
         private SqliteConnection KeepAlive { get; }
-        private NuDepotContext Context { get; }
+        private NuDepotDbContext Context { get; }
 
-        protected readonly PackageDatabase _target;
+        private protected readonly PackageDatabase _target;
 
         public FactsBase()
         {
             KeepAlive = new SqliteConnection(ConnectionString);
             KeepAlive.Open();
 
-            using (NuDepotContext context = CreateContext())
+            using (NuDepotDbContext context = CreateContext())
             {
                 context
                     .RunMigrationsAsync(default)
@@ -288,14 +288,14 @@ public class PackageDatabaseTests
             GC.SuppressFinalize(this);
         }
 
-        protected NuDepotContext CreateContext()
+        private protected NuDepotDbContext CreateContext()
         {
-            DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()
+            DbContextOptions<NuDepotDbContext> options = new DbContextOptionsBuilder<NuDepotDbContext>()
                 .UseSqlite(ConnectionString)
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options;
 
-            return new NuDepotContext(options);
+            return new NuDepotDbContext(options);
         }
 
         /// <summary>
@@ -303,7 +303,7 @@ public class PackageDatabaseTests
         /// </summary>
         protected async Task<Package> FindAsync(string packageId)
         {
-            using NuDepotContext context = CreateContext();
+            using NuDepotDbContext context = CreateContext();
 
             return await context.Packages.SingleAsync(p => p.Id == packageId);
         }

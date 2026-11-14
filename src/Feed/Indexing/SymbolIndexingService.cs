@@ -16,7 +16,7 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="logger">The logger.</param>
 /// <param name="packages">The package database.</param>
 /// <param name="storage">Where symbols are stored.</param>
-public partial class SymbolIndexingService(ILogger<SymbolIndexingService> logger, IPackageDatabase packages, ISymbolStorageService storage) : ISymbolIndexingService
+internal partial class SymbolIndexingService(ILogger<SymbolIndexingService> logger, IPackageDatabase packages, ISymbolStorageService storage) : ISymbolIndexingService
 {
     private static readonly HashSet<string> ValidSymbolPackageContentExtensions =
     [

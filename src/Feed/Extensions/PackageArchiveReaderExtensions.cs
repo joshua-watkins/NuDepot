@@ -8,7 +8,7 @@ namespace NuDepot.Feed.Extensions;
 /// <summary>
 /// Reads what the feed needs from a package.
 /// </summary>
-public static class PackageArchiveReaderExtensions
+internal static class PackageArchiveReaderExtensions
 {
     /// <summary>
     /// Whether the package has a README file.

@@ -7,7 +7,7 @@ namespace NuDepot.Feed.Extensions;
 /// endpoints of its users, with <c>MapUsers()</c>. Whether the application added users is in
 /// <see cref="Configuration.UserOptions.IsEnabled"/>.
 /// </summary>
-public sealed class FeedPipeline
+internal sealed class FeedPipeline
 {
     /// <summary>
     /// Whether the application maps the feed's endpoints.

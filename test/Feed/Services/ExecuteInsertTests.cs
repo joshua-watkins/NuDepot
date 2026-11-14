@@ -11,7 +11,7 @@ public sealed class ExecuteInsertTests : IDisposable
 {
     // SQLite deletes an in-memory database when its last connection closes.
     private SqliteConnection KeepAlive { get; }
-    private NuDepotContext Context { get; }
+    private NuDepotDbContext Context { get; }
 
     public ExecuteInsertTests()
     {
@@ -20,12 +20,12 @@ public sealed class ExecuteInsertTests : IDisposable
         KeepAlive = new SqliteConnection(connectionString);
         KeepAlive.Open();
 
-        DbContextOptions<NuDepotContext> options = new DbContextOptionsBuilder<NuDepotContext>()
+        DbContextOptions<NuDepotDbContext> options = new DbContextOptionsBuilder<NuDepotDbContext>()
             .UseSqlite(connectionString)
             .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
             .Options;
 
-        Context = new NuDepotContext(options);
+        Context = new NuDepotDbContext(options);
         Context
             .RunMigrationsAsync(default)
             .GetAwaiter()

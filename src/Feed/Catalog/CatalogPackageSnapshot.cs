@@ -8,7 +8,7 @@ namespace NuDepot.Feed.Catalog;
 /// A package's state when it was added to the catalog. Stored as JSON in <see cref="CatalogEntry.Content"/>.
 /// Embedded icons and licenses are stored as flags because their URLs depend on the server's address.
 /// </summary>
-public class CatalogPackageSnapshot
+internal class CatalogPackageSnapshot
 {
     /// <summary>
     /// The package's authors, separated by commas.

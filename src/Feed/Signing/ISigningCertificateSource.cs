@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace NuDepot.Feed.Signing;
@@ -40,17 +39,4 @@ public interface ISigningCertificateSource
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>The certificate, without its private key, or null if it isn't one of the source's.</returns>
     Task<X509Certificate2?> FindCertificateAsync(string fingerprint, CancellationToken cancellationToken);
-}
-
-/// <summary>
-/// Certificate fingerprints, the way the repository signatures resource and NuGet's trusted signers write them.
-/// </summary>
-public static class CertificateFingerprint
-{
-    /// <summary>
-    /// Gets a certificate's fingerprint.
-    /// </summary>
-    /// <param name="certificate">The certificate.</param>
-    /// <returns>The lowercase hex SHA-256 hash of the DER-encoded certificate.</returns>
-    public static string Of(X509Certificate2 certificate) => Convert.ToHexStringLower(SHA256.HashData(certificate.RawData));
 }

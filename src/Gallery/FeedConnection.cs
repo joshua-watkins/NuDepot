@@ -16,7 +16,7 @@ namespace NuDepot.Gallery;
 /// The website's connection to the NuGet feed it displays. The website only talks
 /// to the feed through the NuGet V3 protocol.
 /// </summary>
-public class FeedConnection
+internal class FeedConnection
 {
     private const string DefaultServiceIndexPath = "v3/index.json";
 

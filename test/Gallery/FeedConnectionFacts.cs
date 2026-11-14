@@ -11,7 +11,7 @@ namespace NuDepot.Gallery.Tests;
 
 public class FeedConnectionFacts
 {
-    public static FeedConnection CreateRemoteFeed(string serviceIndexUrl = "https://feed.test/v3/index.json")
+    internal static FeedConnection CreateRemoteFeed(string serviceIndexUrl = "https://feed.test/v3/index.json")
     {
         return new FeedConnection(
             Options.Create(new GalleryOptions { ServiceIndexUrl = serviceIndexUrl }),

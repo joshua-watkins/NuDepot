@@ -5,7 +5,7 @@ namespace NuDepot.Feed.Entities;
 /// relisted, deprecated or had its vulnerabilities changed, or a record of its deletion.
 /// Entries are only ever appended.
 /// </summary>
-public class CatalogEntry
+internal class CatalogEntry
 {
     /// <summary>
     /// The type of an entry that snapshots a package version.
