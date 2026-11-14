@@ -429,9 +429,12 @@ public static class FeedServiceCollectionExtensions
         string? assemblyName = assembly.GetName().Name;
         string assemblyVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 
-        HttpClient client = new(new HttpClientHandler
+        // The client lasts as long as the application, so its connections are replaced every few minutes, to follow
+        // changes to the mirrors' DNS records.
+        HttpClient client = new(new SocketsHttpHandler
         {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            AutomaticDecompression = DecompressionMethods.All,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
         });
 
         client.DefaultRequestHeaders.Add("User-Agent", $"{assemblyName}/{assemblyVersion}");

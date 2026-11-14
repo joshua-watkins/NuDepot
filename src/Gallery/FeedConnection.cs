@@ -175,9 +175,13 @@ internal class FeedConnection
 
     private HttpClient CreateHttpClient(string? apiKey)
     {
-        HttpMessageHandler handler = new HttpClientHandler
+        HttpMessageHandler handler = new SocketsHttpHandler
         {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            AutomaticDecompression = DecompressionMethods.All,
+
+            // The client lasts as long as the application, so its connections are replaced every few minutes, to
+            // follow changes to the feed's DNS records.
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
 
             // The browser's cookies are forwarded instead.
             UseCookies = false,

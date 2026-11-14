@@ -22,6 +22,14 @@ public class NuGetClient
     /// Initializes a new instance of the <see cref="NuGetClient"/> class
     /// for mocking.
     /// </summary>
+    // Clients made with a URL share one HttpClient, so making many doesn't use up sockets. Its connections are replaced
+    // every few minutes, to follow changes to the feeds' DNS records.
+    private static readonly HttpClient SharedHttpClient = new(new SocketsHttpHandler
+    {
+        AutomaticDecompression = DecompressionMethods.All,
+        PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+    });
+
     protected NuGetClient()
     {
         ContentClient = null!;
@@ -40,12 +48,7 @@ public class NuGetClient
     /// </param>
     public NuGetClient(string serviceIndexUrl)
     {
-        HttpClient httpClient = new(new HttpClientHandler
-        {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-        });
-
-        NuGetClientFactory clientFactory = new(httpClient, serviceIndexUrl);
+        NuGetClientFactory clientFactory = new(SharedHttpClient, serviceIndexUrl);
 
         ContentClient = clientFactory.CreatePackageContentClient();
         MetadataClient = clientFactory.CreatePackageMetadataClient();
