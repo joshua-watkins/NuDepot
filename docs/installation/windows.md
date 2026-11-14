@@ -76,6 +76,7 @@ NuDepot's commands, like `rotate signing-certificate`, use the service's setting
 PowerShell prompt, since only administrators may read the settings:
 
 ```powershell
+& "C:\Program Files\NuDepot\NuDepot.exe" import packages D:\packages
 & "C:\Program Files\NuDepot\NuDepot.exe" rotate signing-certificate
 & "C:\Program Files\NuDepot\NuDepot.exe" --help
 ```

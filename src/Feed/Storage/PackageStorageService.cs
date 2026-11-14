@@ -1,11 +1,15 @@
 using Microsoft.Extensions.Logging;
 using NuDepot.Feed.Entities;
+using NuDepot.Feed.Extensions;
 using NuGet.Versioning;
+using System.Text;
 
 namespace NuDepot.Feed.Storage;
 
 /// <summary>
-/// Stores packages' files: the package, its nuspec, README, icon and license.
+/// Stores packages' files: the package, its nuspec, README, icon and license. The packages folder is laid out like a
+/// NuGet folder feed, which <c>nuget add</c> makes: <c>{id}/{version}/{id}.{version}.nupkg</c>, with its
+/// <c>.nupkg.sha512</c> hash and <c>{id}.nuspec</c>, all lowercase, so NuGet clients can read it as a package source.
 /// </summary>
 /// <param name="logger">The logger.</param>
 /// <param name="storage">Where files are stored.</param>
@@ -20,6 +24,7 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
     private const string LicenseMarkDownContentType = "text/markdown";
     private const string ReadmeContentType = "text/markdown";
     private const string IconContentType = "image/xyz";
+    private const string HashContentType = "text/plain";
 
     private ILogger Logger { get; } = logger;
     private IStorageService Storage { get; } = storage;
@@ -108,11 +113,65 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
             }
         }
 
+        // The hash comes last: it tells NuGet the package's files are all there.
+        string hash = package.PackageHash ?? await HashOfStoredPackageAsync(packagePath, cancellationToken)
+            ?? throw new InvalidOperationException($"Package {lowercasedId} {lowercasedNormalizedVersion} wasn't stored.");
+        await WriteHashAsync(lowercasedId, lowercasedNormalizedVersion, hash, cancellationToken);
+
         Log.FinishedStoring(Logger, lowercasedId, lowercasedNormalizedVersion);
     }
 
     /// <inheritdoc />
-    public async Task ReplacePackageStreamAsync(string id, NuGetVersion version, Stream packageStream, CancellationToken cancellationToken)
+    public async Task<bool> WriteMissingHashAsync(string id, NuGetVersion version, string? hash, CancellationToken cancellationToken)
+    {
+        string lowercasedId = id.ToLowerInvariant();
+        string lowercasedNormalizedVersion = version
+            .ToNormalizedString()
+            .ToLowerInvariant();
+
+        using (Stream? existing = await GetOrNullAsync(HashPath(lowercasedId, lowercasedNormalizedVersion), cancellationToken))
+        {
+            if (existing != null)
+                return false;
+        }
+
+        hash ??= await HashOfStoredPackageAsync(PackagePath(lowercasedId, lowercasedNormalizedVersion), cancellationToken);
+        if (hash == null)
+            return false;
+
+        await WriteHashAsync(lowercasedId, lowercasedNormalizedVersion, hash, cancellationToken);
+        return true;
+    }
+
+    // Writes the package's hash file, like NuGet's folder feeds have: the nupkg's SHA-512 in base64, without a newline.
+    private async Task WriteHashAsync(string lowercasedId, string lowercasedNormalizedVersion, string hash, CancellationToken cancellationToken)
+    {
+        using MemoryStream content = new(Encoding.ASCII.GetBytes(hash));
+        await Storage.ReplaceAsync(HashPath(lowercasedId, lowercasedNormalizedVersion), content, HashContentType, cancellationToken);
+    }
+
+    // The stored package's hash, or null if it isn't stored.
+    private async Task<string?> HashOfStoredPackageAsync(string packagePath, CancellationToken cancellationToken)
+    {
+        using Stream? stored = await GetOrNullAsync(packagePath, cancellationToken);
+        return stored == null ? null : (await stored.ComputeSha512Async(cancellationToken)).Hash;
+    }
+
+    // The file's content, or null if it isn't stored. File storage throws for missing files, others return null.
+    private async Task<Stream?> GetOrNullAsync(string path, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await Storage.GetAsync(path, cancellationToken);
+        }
+        catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ReplacePackageStreamAsync(string id, NuGetVersion version, Stream packageStream, string hash, CancellationToken cancellationToken)
     {
         string lowercasedId = id.ToLowerInvariant();
         string lowercasedNormalizedVersion = version
@@ -122,6 +181,7 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
 
         Log.ReplacingPackage(Logger, lowercasedId, lowercasedNormalizedVersion, packagePath);
         await Storage.ReplaceAsync(packagePath, packageStream, PackageContentType, cancellationToken);
+        await WriteHashAsync(lowercasedId, lowercasedNormalizedVersion, hash, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -172,6 +232,8 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
         string readmePath = ReadmePath(lowercasedId, lowercasedNormalizedVersion);
         string iconPath = IconPath(lowercasedId, lowercasedNormalizedVersion);
 
+        // Without its hash, NuGet no longer sees the package, while the other files go.
+        await Storage.DeleteAsync(HashPath(lowercasedId, lowercasedNormalizedVersion), cancellationToken);
         await Storage.DeleteAsync(packagePath, cancellationToken);
         await Storage.DeleteAsync(nuspecPath, cancellationToken);
         await Storage.DeleteAsync(readmePath, cancellationToken);
@@ -227,6 +289,15 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
             lowercasedId,
             lowercasedNormalizedVersion,
             $"{lowercasedId}.{lowercasedNormalizedVersion}.nupkg");
+    }
+
+    private static string HashPath(string lowercasedId, string lowercasedNormalizedVersion)
+    {
+        return Path.Combine(
+            PackagesPathPrefix,
+            lowercasedId,
+            lowercasedNormalizedVersion,
+            $"{lowercasedId}.{lowercasedNormalizedVersion}.nupkg.sha512");
     }
 
     private string NuspecPath(string lowercasedId, string lowercasedNormalizedVersion)

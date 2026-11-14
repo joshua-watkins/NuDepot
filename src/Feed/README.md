@@ -77,7 +77,7 @@ The methods are in the `Microsoft.Extensions.DependencyInjection`, `Microsoft.As
 
 The Windows and Linux hosts in `pub` run the feed with the gallery. To run it during development,
 start the Windows host (`pub/Windows`). Hosts can also support the feed's command line commands, like
-`import downloads`, with `NuDepotCommands`.
+`import packages`, with `NuDepotCommands`.
 The important folders are:
 
 * Endpoints - The NuGet V3 API endpoints, as minimal APIs

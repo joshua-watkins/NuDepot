@@ -710,6 +710,14 @@ Relative paths are relative to the settings folder. See
 connection string can say. As environment variables, these are `Feed__Database__ConnectionString`,
 `Feed__Storage__Path` and `Feed__Search__Type`.
 
+The `packages` folder is laid out like a NuGet folder feed, the kind `nuget add` makes:
+`{id}/{version}/{id}.{version}.nupkg`, with its `.nupkg.sha512` hash and `{id}.nuspec`, all lowercase, beside NuDepot's
+copies of the package's readme, icon and license. NuGet clients can use the folder as a package source, like a
+read-only share for builds while the service is down. It lists unlisted packages too, since folder feeds can't hide
+them, and it doesn't have deprecations or vulnerabilities. Don't add packages to it yourself: the feed only serves
+packages in its database. To add a folder's packages, [import them](import/local-feeds.md). Packages stored without
+a hash file, like by a pre-release NuDepot, get one when the service starts.
+
 The database uses SQLite's [write-ahead log](https://sqlite.org/wal.html), so reads don't wait for pushes. It keeps
 recent changes in `nudepot.db-wal` and `nudepot.db-shm` beside the database, so keep the database on a local disk,
 not a network share. To back it up while the service runs, copy it with SQLite's own backup, like

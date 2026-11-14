@@ -56,11 +56,35 @@ internal partial class PackageIndexingService(ILogger<PackageIndexingService> lo
         if (contents == null)
             return PackageIndexingResult.InvalidPackage;
 
-        PackageIndexingResult result = await IndexWithLockAsync(packageStream, contents, allowOverwrite, cancellationToken);
+        PackageIndexingResult result = await IndexWithLockAsync(packageStream, contents, allowOverwrite, serviceIndexUrl: null, cancellationToken);
         if (result == PackageIndexingResult.Success)
             Log.Pushed(Logger, Actor, contents.Package.Id, contents.Package.NormalizedVersionString);
 
         return result;
+    }
+
+    /// <summary>
+    /// Imports a package from a file, like the "import packages" command, outside a request. It never replaces a
+    /// package the feed has.
+    /// </summary>
+    /// <param name="packageStream">The package.</param>
+    /// <param name="mirrored">Whether the package is a mirror's, like nuget.org's, rather than one of the feed's own.</param>
+    /// <param name="serviceIndexUrl">The feed's service index URL, which repository signatures record. Needed when signing is on.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>The result, and the package's ID and version, if it's a valid package.</returns>
+    internal async Task<(PackageIndexingResult Result, Package? Package)> ImportAsync(Stream packageStream, bool mirrored, string? serviceIndexUrl, CancellationToken cancellationToken)
+    {
+        using PackageContents? contents = await ReadOrNullAsync(packageStream, cancellationToken);
+        if (contents == null)
+            return (PackageIndexingResult.InvalidPackage, null);
+
+        Package package = contents.Package;
+        package.IsMirrored = mirrored;
+        PackageIndexingResult result = await IndexWithLockAsync(packageStream, contents, allowOverwrite: false, serviceIndexUrl, cancellationToken);
+        if (result == PackageIndexingResult.Success)
+            Log.Imported(Logger, package.Id, package.NormalizedVersionString);
+
+        return (result, package);
     }
 
     /// <inheritdoc />
@@ -79,10 +103,11 @@ internal partial class PackageIndexingService(ILogger<PackageIndexingService> lo
         }
 
         package.IsMirrored = true;
-        return await IndexWithLockAsync(packageStream, contents, allowOverwrite: false, cancellationToken);
+        return await IndexWithLockAsync(packageStream, contents, allowOverwrite: false, serviceIndexUrl: null, cancellationToken);
     }
 
-    private async Task<PackageIndexingResult> IndexWithLockAsync(Stream packageStream, PackageContents contents, bool allowOverwrite, CancellationToken cancellationToken)
+    // Without a service index URL, it's the request's.
+    private async Task<PackageIndexingResult> IndexWithLockAsync(Stream packageStream, PackageContents contents, bool allowOverwrite, string? serviceIndexUrl, CancellationToken cancellationToken)
     {
         // Pushes of the same version wait for each other, so the second finds the first's package.
         Package package = contents.Package;
@@ -90,7 +115,7 @@ internal partial class PackageIndexingService(ILogger<PackageIndexingService> lo
         await packageLock.WaitAsync(cancellationToken);
         try
         {
-            return await IndexAsync(packageStream, contents, allowOverwrite, cancellationToken);
+            return await IndexAsync(packageStream, contents, allowOverwrite, serviceIndexUrl, cancellationToken);
         }
         finally
         {
@@ -98,7 +123,7 @@ internal partial class PackageIndexingService(ILogger<PackageIndexingService> lo
         }
     }
 
-    private async Task<PackageIndexingResult> IndexAsync(Stream packageStream, PackageContents contents, bool allowOverwrite, CancellationToken cancellationToken)
+    private async Task<PackageIndexingResult> IndexAsync(Stream packageStream, PackageContents contents, bool allowOverwrite, string? serviceIndexUrl, CancellationToken cancellationToken)
     {
         Package package = contents.Package;
 
@@ -122,7 +147,7 @@ internal partial class PackageIndexingService(ILogger<PackageIndexingService> lo
         Log.Validated(Logger, package.Id, package.NormalizedVersionString);
 
         RepositorySigningResult signing = Signing.IsEnabled
-            ? await Signing.SignAsync(packageStream, Url.GetServiceIndexUrl(), cancellationToken)
+            ? await Signing.SignAsync(packageStream, serviceIndexUrl ?? Url.GetServiceIndexUrl(), cancellationToken)
             : RepositorySigningResult.Unsigned;
 
         using (signing.SignedPackage)
@@ -315,6 +340,9 @@ internal partial class PackageIndexingService(ILogger<PackageIndexingService> lo
 
         [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} pushed package {PackageId} {PackageVersion}")]
         public static partial void Pushed(ILogger logger, string actor, string packageId, string packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Imported package {PackageId} {PackageVersion}")]
+        public static partial void Imported(ILogger logger, string packageId, string packageVersion);
 
         [LoggerMessage(Level = LogLevel.Warning, Message = "{Actor} is replacing package {PackageId} {PackageVersion}, which is deleted permanently")]
         public static partial void Replacing(ILogger logger, string actor, string packageId, string packageVersion);

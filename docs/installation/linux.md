@@ -90,6 +90,7 @@ NuDepot's commands, like `rotate signing-certificate`, use the service's setting
 so the files they create belong to it:
 
 ```sh
+sudo -u nudepot /usr/share/nudepot/NuDepot import packages /srv/packages
 sudo -u nudepot /usr/share/nudepot/NuDepot rotate signing-certificate
 /usr/share/nudepot/NuDepot --help
 ```

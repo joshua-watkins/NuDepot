@@ -12,7 +12,7 @@ Windows service or a Linux systemd service, and comes with a gallery website for
 ## Use NuDepot
 
 * [Push and restore packages, and load symbols](using.md)
-* [Import packages](import/nugetserver.md) from NuGet.Server, a [local feed](import/local-feeds.md), or [nuget.org](import/nugetorg.md)
+* Import packages from [a folder](import/local-feeds.md), like a local feed, from [NuGet.Server](import/nugetserver.md), or from [nuget.org](import/nugetorg.md)
 
 ## Configure NuDepot
 

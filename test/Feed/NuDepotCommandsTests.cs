@@ -102,6 +102,127 @@ public sealed class NuDepotCommandsTests(ITestOutputHelper output) : IDisposable
     }
 
     [Fact]
+    public async Task ImportsTheFoldersPackagesAndSymbols()
+    {
+        Console.SetOut(Out);
+        using NuDepotTestApplication app = new(output);
+        string folder = CreateFolder(new()
+        {
+            ["import.flat.1.0.0.nupkg"] = TestPackages.Create("Import.Flat", "1.0.0"),
+            [Path.Combine("import.nested", "2.0.0", "import.nested.2.0.0.nupkg")] = TestPackages.Create("Import.Nested", "2.0.0"),
+            [Path.Combine("build", TestResources.Package)] = TestResources.GetResourceStream(TestResources.Package),
+            [Path.Combine("build", TestResources.SymbolPackage)] = TestResources.GetResourceStream(TestResources.SymbolPackage),
+            ["old.1.0.0.symbols.nupkg"] = TestPackages.Create("Old", "1.0.0"),
+            ["broken.nupkg"] = new MemoryStream("not a package"u8.ToArray()),
+        });
+
+        Assert.True(await app.Host.TryRunCommandAsync(["import", "packages", folder]));
+
+        // The package that isn't valid fails the command, but not the others.
+        string imported = Out.ToString();
+        Assert.Equal(1, Environment.ExitCode);
+        Assert.Contains("Added Import.Flat 1.0.0", imported);
+        Assert.Contains("Added Import.Nested 2.0.0", imported);
+        Assert.Contains("Added TestData 1.2.3", imported);
+        Assert.Contains($"Added symbols {Path.Combine("build", TestResources.SymbolPackage)}", imported);
+        Assert.Contains("Not a valid package: broken.nupkg", imported);
+        Assert.Contains("Packages: 3 added, 0 already there, 1 failed.", imported);
+        Assert.Contains("Ignored 1 old-style .symbols.nupkg packages", imported);
+        Assert.Equal(["Import.Flat", "Import.Nested", "TestData"], await PackageIdsAsync(app, mirrored: false));
+
+        // Importing again skips them.
+        Out.GetStringBuilder().Clear();
+        Assert.True(await app.Host.TryRunCommandAsync(["import", "packages", folder]));
+        Assert.Contains("Packages: 0 added, 3 already there, 1 failed.", Out.ToString());
+    }
+
+    [Fact]
+    public async Task ImportsMirroredPackages()
+    {
+        Console.SetOut(Out);
+        using NuDepotTestApplication app = new(output);
+        string folder = CreateFolder(new() { ["mirrored.1.0.0.nupkg"] = TestPackages.Create("Mirrored", "1.0.0") });
+
+        Assert.True(await app.Host.TryRunCommandAsync(["import", "packages", "--mirrored", folder]));
+
+        Assert.Equal(0, Environment.ExitCode);
+        Assert.Equal(["Mirrored"], await PackageIdsAsync(app, mirrored: true));
+    }
+
+    [Theory]
+    [InlineData(null, "Give the folder to import")]
+    [InlineData("packages", "Give the folder's full path, rather than 'packages'")]
+    [InlineData("missing", "doesn't exist, or NuDepot can't read it")]
+    public async Task ImportNeedsAFolder(string? folder, string error)
+    {
+        Console.SetError(Error);
+        using NuDepotTestApplication app = new(output);
+        if (folder == "missing")
+            folder = Path.Combine(Path.GetTempPath(), "NuDepotTests", Guid.NewGuid().ToString("N"));
+
+        Assert.True(await app.Host.TryRunCommandAsync(folder == null ? ["import", "packages"] : ["import", "packages", folder]));
+
+        Assert.Equal(1, Environment.ExitCode);
+        Assert.Contains(error, Error.ToString());
+    }
+
+    [Fact]
+    public async Task ImportsIntoAFeedThatSignsWithItsAddress()
+    {
+        Console.SetOut(Out);
+        Console.SetError(Error);
+        using NuDepotTestApplication app = new(
+            output,
+            configuration: new Dictionary<string, string> { ["RepositorySigning:IsEnabled"] = "true" },
+            configureServices: services => services.AddSingleton(new Signing.GeneratedCertificateKeySize(2048)));
+        string folder = CreateFolder(new() { ["signed.1.0.0.nupkg"] = TestPackages.Create("Signed", "1.0.0") });
+
+        // The signatures record the feed's address, which only requests have.
+        Assert.True(await app.Host.TryRunCommandAsync(["import", "packages", folder]));
+        Assert.Equal(1, Environment.ExitCode);
+        Assert.Contains("Give it with --service-index", Error.ToString());
+
+        Environment.ExitCode = 0;
+        Assert.True(await app.Host.TryRunCommandAsync(["import", "packages", folder, "--service-index", "https://nuget.example.com/v3/index.json"]));
+        Assert.Equal(0, Environment.ExitCode);
+
+        using IServiceScope scope = app.Services.CreateScope();
+        Assert.True(await scope.ServiceProvider
+            .GetRequiredService<NuDepotDbContext>()
+            .Packages
+            .Select(p => p.IsRepositorySigned)
+            .SingleAsync(TestContext.Current.CancellationToken));
+    }
+
+    // A folder with the files, in a temporary folder.
+    private static string CreateFolder(Dictionary<string, Stream> files)
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "NuDepotTests", Guid.NewGuid().ToString("N"), "import");
+        foreach ((string name, Stream content) in files)
+        {
+            string path = Path.Combine(folder, name);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            using (content)
+            using (FileStream file = File.Create(path))
+                content.CopyTo(file);
+        }
+
+        return folder;
+    }
+
+    private static async Task<List<string>> PackageIdsAsync(NuDepotTestApplication app, bool mirrored)
+    {
+        using IServiceScope scope = app.Services.CreateScope();
+        return await scope.ServiceProvider
+            .GetRequiredService<NuDepotDbContext>()
+            .Packages
+            .Where(p => p.IsMirrored == mirrored)
+            .Select(p => p.Id)
+            .OrderBy(id => id)
+            .ToListAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task RotatingNeedsAGeneratedCertificate()
     {
         Console.SetError(Error);

@@ -1,36 +1,26 @@
 # Import NuGet.Server packages
 
-[NuGet.Server](https://github.com/NuGet/NuGet.Server) is a lightweight standalone NuGet server. It is strongly recommended that you upgrade to NuDepot if you use NuGet.Server. Feel free to open a [GitHub issue](https://github.com/joshua-watkins/NuDepot/issues) if you need help migrating.
+[NuGet.Server](https://github.com/NuGet/NuGet.Server) is a lightweight standalone NuGet server. It is strongly
+recommended that you upgrade to NuDepot if you use NuGet.Server. Feel free to open a
+[GitHub issue](https://github.com/joshua-watkins/NuDepot/issues) if you need help migrating.
 
 ## Steps
 
-Make sure that you've installed [nuget.exe](https://www.nuget.org/downloads). In PowerShell, run:
+NuGet.Server keeps its packages in the `Packages` folder next to its `Web.config`, or the folder its `packagesPath`
+setting names. Import that folder with NuDepot's [`import packages` command](local-feeds.md), with its full path. If
+NuGet.Server runs on another machine, copy the folder to the NuDepot server first.
 
-```ps1
-$source = "<NuGet.Server package source>"
-$destination = "<NuDepot package source>"
+On Windows, from an elevated PowerShell prompt:
+
+```powershell
+& "C:\Program Files\NuDepot\NuDepot.exe" import packages C:\inetpub\NuGet.Server\Packages
 ```
 
-If you've [configured NuDepot to require an API Key](../configuration.md#require-an-api-key), set it using [the `setapikey` command](https://docs.microsoft.com/en-us/nuget/reference/cli-reference/cli-ref-setapikey):
+On Linux, after copying the folder somewhere the service's user can read:
 
-```ps1
-& nuget.exe setapikey "MY-API-KEY" -Source $destination
+```sh
+sudo -u nudepot /usr/share/nudepot/NuDepot import packages /srv/nuget-server-packages
 ```
 
-Now run the following PowerShell script:
-
-```ps1
-if (!(Test-Path "Web.config")) {
-  throw "Please run this script in the same directory as NuGet.Server's Web.config file"
-}
-
-(& nuget.exe list -AllVersions -Source $source).Split([Environment]::NewLine) | % {
-  $id = $_.Split(" ")[0].Trim()
-  $version = $_.Split(" ")[1].Trim()
-
-  $path = [IO.Path]::Combine("Packages", $id, $version, "${id}.${version}.nupkg")
-
-  Write-Host "nuget.exe push -Source $destination ""$path"""
-  & nuget.exe push -Source $destination $path
-}
-```
+NuDepot reads the packages themselves, so it doesn't matter how NuGet.Server laid out the folder. Packages NuDepot
+already has are skipped, so you can import again later, like just before you switch your clients over.

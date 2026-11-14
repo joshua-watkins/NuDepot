@@ -376,6 +376,8 @@ public static class FeedServiceCollectionExtensions
         services.TryAddSingleton(HttpClientFactory);
 
         services.TryAddScoped<DownloadsImporter>();
+        services.TryAddTransient<PackageImporter>();
+        services.TryAddTransient<PackageIndexingService>();
 
         services.TryAddTransient<IPackageContentService, DefaultPackageContentService>();
         services.TryAddTransient<IPackageDeletionService, PackageDeletionService>();
@@ -393,6 +395,7 @@ public static class FeedServiceCollectionExtensions
         services.TryAddTransient<PackageResigner>();
         services.TryAddSingleton<PackageLocks>();
         services.TryAddSingleton<FeedRateLimiter>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, MissingHashFilesWriter>());
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton(GeneratedCertificateKeySize.Default);
         services.TryAddSingleton<ConfiguredSigningCertificate>();

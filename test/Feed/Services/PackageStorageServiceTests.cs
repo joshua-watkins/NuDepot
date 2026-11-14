@@ -87,6 +87,9 @@ public class PackageStorageServiceTests
             Assert.True(_puts.ContainsKey(IconPath));
             Assert.Equal("My icon", await ToStringAsync(_puts[IconPath].Content));
             Assert.Equal("image/xyz", _puts[IconPath].ContentType);
+
+            // Like NuGet's folder feeds: the package's hash, in base64, without a newline.
+            _storage.Verify(s => s.ReplaceAsync(HashPath, It.Is<Stream>(c => Encoding.ASCII.GetString(((MemoryStream)c).ToArray()) == _package.PackageHash), "text/plain", TestContext.Current.CancellationToken), Times.Once);
         }
 
         [Fact]
@@ -318,6 +321,7 @@ public class PackageStorageServiceTests
             CancellationToken cancellationToken = CancellationToken.None;
             await _target.DeleteAsync(_package.Id, _package.Version, cancellationToken);
 
+            _storage.Verify(s => s.DeleteAsync(HashPath, cancellationToken), Times.Once);
             _storage.Verify(s => s.DeleteAsync(PackagePath, cancellationToken), Times.Once);
             _storage.Verify(s => s.DeleteAsync(NuspecPath, cancellationToken), Times.Once);
             _storage.Verify(s => s.DeleteAsync(ReadmePath, cancellationToken), Times.Once);
@@ -329,7 +333,8 @@ public class PackageStorageServiceTests
         protected readonly Package _package = new()
         {
             Id = "My.Package",
-            Version = new NuGetVersion("1.2.3")
+            Version = new NuGetVersion("1.2.3"),
+            PackageHash = "bXkgcGFja2FnZQ==",
         };
 
         protected readonly Mock<IStorageService> _storage;
@@ -349,6 +354,7 @@ public class PackageStorageServiceTests
         protected static string NuspecPath => Path.Combine("packages", "my.package", "1.2.3", "my.package.nuspec");
         protected static string ReadmePath => Path.Combine("packages", "my.package", "1.2.3", "readme");
         protected static string IconPath => Path.Combine("packages", "my.package", "1.2.3", "icon");
+        protected static string HashPath => Path.Combine("packages", "my.package", "1.2.3", "my.package.1.2.3.nupkg.sha512");
 
         protected static Stream StringStream(string input)
         {

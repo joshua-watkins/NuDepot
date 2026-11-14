@@ -219,7 +219,7 @@ internal partial class PackageResigner(ILogger<PackageResigner> logger, IReposit
             (hash, size) = await replacement.ComputeSha512Async(cancellationToken);
 
             replacement.Position = 0;
-            await Storage.ReplacePackageStreamAsync(id, version, replacement, cancellationToken);
+            await Storage.ReplacePackageStreamAsync(id, version, replacement, hash, cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {

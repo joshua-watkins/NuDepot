@@ -10,7 +10,7 @@ namespace NuDepot.Feed.Storage;
 public interface IPackageStorageService
 {
     /// <summary>
-    /// Persist a package's content to storage. This operation MUST fail if a package
+    /// Persist a package's content to storage, and its hash file last. This operation MUST fail if a package
     /// with the same id/version but different content has already been stored.
     /// </summary>
     /// <param name="package">The package's metadata.</param>
@@ -24,14 +24,26 @@ public interface IPackageStorageService
     Task SavePackageContentAsync(Package package, Stream packageStream, Stream nuspecStream, Stream? readmeStream, Stream? iconStream, Stream? licenseStream, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Replace a package's nupkg, like when it's re-signed. Its other files stay the same.
+    /// Replace a package's nupkg, like when it's re-signed. Its other files stay the same, except its hash.
     /// </summary>
     /// <param name="id">The package's id.</param>
     /// <param name="version">The package's version.</param>
     /// <param name="packageStream">The package's new nupkg stream.</param>
+    /// <param name="hash">The new nupkg's SHA-512 hash, in base64.</param>
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>A task that completes when the new nupkg is stored.</returns>
-    Task ReplacePackageStreamAsync(string id, NuGetVersion version, Stream packageStream, CancellationToken cancellationToken);
+    Task ReplacePackageStreamAsync(string id, NuGetVersion version, Stream packageStream, string hash, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Store a package's hash file, which NuGet's folder feeds have, if it doesn't have one, like a package stored
+    /// before the feed wrote them.
+    /// </summary>
+    /// <param name="id">The package's id.</param>
+    /// <param name="version">The package's version.</param>
+    /// <param name="hash">The nupkg's SHA-512 hash, in base64, or null to compute it from the stored nupkg.</param>
+    /// <param name="cancellationToken">A token to cancel the task.</param>
+    /// <returns>Whether the hash file was written, rather than already there, or the package not stored.</returns>
+    Task<bool> WriteMissingHashAsync(string id, NuGetVersion version, string? hash, CancellationToken cancellationToken);
 
     /// <summary>
     /// Retrieve a package's nupkg stream.
