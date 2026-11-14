@@ -18,10 +18,6 @@ public class NuGetClient
     private ISearchClient SearchClient { get; }
     private IAutocompleteClient AutocompleteClient { get; }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="NuGetClient"/> class
-    /// for mocking.
-    /// </summary>
     // Clients made with a URL share one HttpClient, so making many doesn't use up sockets. Its connections are replaced
     // every few minutes, to follow changes to the feeds' DNS records.
     private static readonly HttpClient SharedHttpClient = new(new SocketsHttpHandler
@@ -30,6 +26,10 @@ public class NuGetClient
         PooledConnectionLifetime = TimeSpan.FromMinutes(2),
     });
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NuGetClient"/> class
+    /// for mocking.
+    /// </summary>
     protected NuGetClient()
     {
         ContentClient = null!;
