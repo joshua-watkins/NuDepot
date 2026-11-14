@@ -50,8 +50,9 @@ The server is also available as libraries for your own ASP.NET Core application:
 | `pub/Windows.Setup` | The Windows installer. |
 | `pub/Linux` | The Linux systemd service and its release archive. See its [README](pub/Linux/README.md). |
 | `test` | The tests of each library. |
+| `build` | `release.ps1`, which builds a release. See [Building a release](pub/Windows/README.md#building-a-release). |
 
-Build and test the whole solution: `dotnet build NuDepot.slnx -p:Platform=x64` and `dotnet test NuDepot.slnx`.
+Build and test the whole solution: `dotnet build NuDepot.slnx -p:Platform=x64` and `dotnet test --solution NuDepot.slnx -p:Platform=x64`.
 
 [NuGet]: https://learn.microsoft.com/nuget/what-is-nuget
 [symbol]: https://learn.microsoft.com/windows/win32/debug/symbol-servers-and-symbol-stores

@@ -5,8 +5,8 @@
 
 	<!--
 		The libraries are published as NuGet packages, so applications can host the feed and the gallery
-		themselves. Pack them with "dotnet pack NuDepot.slnx -c Release -p:Version=1.2.3". Their version is the
-		services' (see the repository's Directory.Build.props).
+		themselves. build/release.ps1 packs them with the release, with the services' version (see the repository's
+		Directory.Build.props).
 	-->
 	<PropertyGroup>
 		<Authors>NuDepot</Authors>

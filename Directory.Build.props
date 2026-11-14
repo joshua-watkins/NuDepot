@@ -10,12 +10,12 @@
 	</PropertyGroup>
 
 	<!--
-		One version for the services, their installer and archive, and the NuGet packages. Each release gets a higher
-		one: set it here, or with -p:Version=1.2.3 when building the release. The installer only upgrades an installed
-		NuDepot that has a lower version, and Windows Installer compares only the first three parts.
+		One version for the services, their installer and archive, and the NuGet packages. Releases are built by
+		build/release.ps1, which sets it to the build's date and time, like 26.11.14.26100. Everyday builds, like
+		Visual Studio's, keep this placeholder, so they build incrementally and are never mistaken for a release.
 	-->
 	<PropertyGroup>
-		<VersionPrefix>0.1.0</VersionPrefix>
+		<VersionPrefix>0.0.0</VersionPrefix>
 	</PropertyGroup>
 
 </Project>

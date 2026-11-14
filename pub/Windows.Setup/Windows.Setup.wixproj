@@ -7,8 +7,11 @@
 		-->
 		<InstallerPlatform>$(NuDepotArchitecture)</InstallerPlatform>
 		<OutputName>NuDepot-$(InstallerPlatform)</OutputName>
-		<!-- Some .NET runtime files are versioned without a language; that's expected for a self-contained app. -->
-		<SuppressIces>ICE60</SuppressIces>
+		<!--
+			Some .NET runtime files are versioned without a language; that's expected for a self-contained app (ICE60).
+			The installer replaces an installed NuDepot of the same version, which releases built the same day share (ICE61).
+		-->
+		<SuppressIces>ICE60;ICE61</SuppressIces>
 		<AcceptEula>wix7</AcceptEula>
 	</PropertyGroup>
 

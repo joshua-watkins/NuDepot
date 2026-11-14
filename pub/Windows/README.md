@@ -24,20 +24,31 @@ too, and relative paths in the settings are relative to it. The settings are rea
 
 `NuDepotService.cs` sets this up. The Linux service has a copy, so change both.
 
-## Building the installer
+## Building a release
 
-Give each release a higher version than the last, with `-p:Version`. The installer only replaces an installed NuDepot
-with a lower version, and Windows Installer only compares the first three parts, so `1.2.3` and `1.2.3.4` count as the
-same. Without `-p:Version`, it's the `VersionPrefix` in the repository's `Directory.Build.props`.
-
-Build releases from clean `obj` and `bin` folders, especially after updating packages: the per-platform builds can keep
-old assemblies otherwise.
+`build/release.ps1` builds a release: both installers, both Linux archives and the NuGet packages, into
+`artifacts/<version>`. It cleans the build folders first, so no assemblies from an earlier build get in, runs the
+tests, and checks every output has the release's version. Close Visual Studio before running it.
 
 ```powershell
-dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=x64 -p:Version=1.2.3
+pwsh build/release.ps1
+```
+
+The version is the build's date and time in UTC, like `26.11.14.26100`: the year, month and day, then the seconds since
+midnight divided by two. The installer replaces an installed NuDepot with the same or a lower version, and refuses to
+replace a higher one. Windows Installer only compares the first three parts, so releases from the same day replace
+each other whichever was built first.
+
+## Building the installer
+
+Building the installer by itself, like for trying it out, gives it the placeholder version, `0.0.0`. It won't replace
+a release that's installed.
+
+```powershell
+dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=x64
 # Output: pub/Windows.Setup/bin/x64/Release/en-US/NuDepot-x64.msi
 
-dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=ARM64 -p:Version=1.2.3
+dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=ARM64
 # Output: pub/Windows.Setup/bin/ARM64/Release/en-US/NuDepot-arm64.msi
 ```
 

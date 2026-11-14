@@ -7,7 +7,11 @@
            Scope="perMachine">
     <SummaryInformation Description="!(loc.Description)" />
 
-    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
+    <!--
+      Windows Installer only compares the first three parts of a version, the release's date, so a release built later
+      the same day, or the same release installed again, replaces the installed one instead of installing beside it.
+    -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="!(loc.DowngradeError)" />
     <MediaTemplate EmbedCab="yes" />
 
     <!--
