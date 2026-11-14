@@ -52,8 +52,7 @@ internal class FileStorageService : IStorageService
     public async Task<StoragePutResult> PutAsync(string path, Stream content, string contentType, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(content);
-        if (string.IsNullOrEmpty(contentType))
-            throw new ArgumentException("Content type is required", nameof(contentType));
+        ArgumentException.ThrowIfNullOrEmpty(contentType);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -169,8 +168,7 @@ internal class FileStorageService : IStorageService
 
     private string GetFullPath(string path)
     {
-        if (string.IsNullOrEmpty(path))
-            throw new ArgumentException("Path is required", nameof(path));
+        ArgumentException.ThrowIfNullOrEmpty(path);
 
         string fullPath = Path.GetFullPath(Path.Combine(StorePath, path));
 

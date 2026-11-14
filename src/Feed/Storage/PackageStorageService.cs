@@ -27,9 +27,9 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
     /// <inheritdoc />
     public async Task SavePackageContentAsync(Package package, Stream packageStream, Stream nuspecStream, Stream? readmeStream, Stream? iconStream, Stream? licenseStream, CancellationToken cancellationToken = default)
     {
-        package = package ?? throw new ArgumentNullException(nameof(package));
-        packageStream = packageStream ?? throw new ArgumentNullException(nameof(packageStream));
-        nuspecStream = nuspecStream ?? throw new ArgumentNullException(nameof(nuspecStream));
+        ArgumentNullException.ThrowIfNull(package);
+        ArgumentNullException.ThrowIfNull(packageStream);
+        ArgumentNullException.ThrowIfNull(nuspecStream);
 
         string lowercasedId = package.Id.ToLowerInvariant();
         string lowercasedNormalizedVersion = package.NormalizedVersionString.ToLowerInvariant();

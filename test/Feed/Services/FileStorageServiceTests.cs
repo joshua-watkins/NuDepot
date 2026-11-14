@@ -83,6 +83,16 @@ public class FileStorageServiceTests
     public class PutAsync : FactsBase
     {
         [Fact]
+        public async Task NeedsAPathAndAContentType()
+        {
+            using Stream content = StringStream("Hello world");
+
+            await Assert.ThrowsAsync<ArgumentException>(() => _target.PutAsync("", content, "text/plain", TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<ArgumentException>(() => _target.PutAsync("test.txt", content, "", TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _target.PutAsync(null!, content, "text/plain", TestContext.Current.CancellationToken));
+        }
+
+        [Fact]
         public async Task SavesContent()
         {
             StoragePutResult result;
