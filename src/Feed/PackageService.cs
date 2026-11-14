@@ -9,16 +9,16 @@ namespace NuDepot.Feed;
 /// <summary>
 /// Finds packages on the feed, or on its upstream feed when mirroring.
 /// </summary>
+/// <param name="logger">The logger.</param>
 /// <param name="db">The package database.</param>
 /// <param name="upstream">The upstream feed.</param>
 /// <param name="indexer">Adds packages from the upstream feed.</param>
-/// <param name="logger">The logger.</param>
-public partial class PackageService(IPackageDatabase db, IUpstreamClient upstream, IPackageIndexingService indexer, ILogger<PackageService> logger) : IPackageService
+public partial class PackageService(ILogger<PackageService> logger, IPackageDatabase db, IUpstreamClient upstream, IPackageIndexingService indexer) : IPackageService
 {
+    private ILogger Logger { get; } = logger;
     private IPackageDatabase Db { get; } = db;
     private IUpstreamClient Upstream { get; } = upstream;
     private IPackageIndexingService Indexer { get; } = indexer;
-    private ILogger<PackageService> Logger { get; } = logger;
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<NuGetVersion>> FindPackageVersionsAsync(string id, CancellationToken cancellationToken)

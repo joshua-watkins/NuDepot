@@ -6,12 +6,12 @@ namespace NuDepot.Gallery;
 /// Who's visiting the gallery, and what they may do on the feed. Only signed-in users manage the feed from the
 /// gallery: without users, the feed is managed with NuGet clients and the feed's API keys. Each request has its own.
 /// </summary>
-/// <param name="feed">The feed the gallery shows.</param>
 /// <param name="logger">The logger.</param>
-public sealed partial class Visitor(FeedConnection feed, ILogger<Visitor> logger)
+/// <param name="feed">The feed the gallery shows.</param>
+public sealed partial class Visitor(ILogger<Visitor> logger, FeedConnection feed)
 {
+    private ILogger Logger { get; } = logger;
     private FeedConnection Feed { get; } = feed;
-    private ILogger<Visitor> Logger { get; } = logger;
     private HashSet<string> Permissions { get; } = new(StringComparer.Ordinal);
 
     /// <summary>

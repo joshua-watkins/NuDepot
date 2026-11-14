@@ -55,8 +55,8 @@ public class PackageDownloadsJsonSourceTests
 
     private static PackageDownloadsJsonSource CreateSource(string json)
         => new(
-            new HttpClient(new StaticResponseHandler(json)),
-            NullLogger<PackageDownloadsJsonSource>.Instance);
+            NullLogger<PackageDownloadsJsonSource>.Instance,
+            new HttpClient(new StaticResponseHandler(json)));
 
     private class StaticResponseHandler(string content) : HttpMessageHandler
     {

@@ -8,10 +8,10 @@ namespace NuDepot.Feed;
 /// Captures <see cref="OperationCanceledException" /> and converts to HTTP 409 Conflict response.
 /// Based off: https://github.com/aspnet/AspNetCore/blob/28157e62597bf0e043bc7e937e44c5ec81946b83/src/Middleware/Diagnostics/src/DeveloperExceptionPage/DeveloperExceptionPageMiddleware.cs
 /// </summary>
-public partial class OperationCancelledMiddleware(RequestDelegate next, ILogger<OperationCancelledMiddleware> logger)
+public partial class OperationCancelledMiddleware(ILogger<OperationCancelledMiddleware> logger, RequestDelegate next)
 {
-    private RequestDelegate Next { get; } = next;
     private ILogger Logger { get; } = logger;
+    private RequestDelegate Next { get; } = next;
 
     /// <summary>
     /// Runs the rest of the pipeline. A request whose operation was cancelled gets a 409 Conflict response instead of an error.

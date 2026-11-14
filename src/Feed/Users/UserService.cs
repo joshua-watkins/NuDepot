@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -18,7 +19,7 @@ namespace NuDepot.Feed.Users;
 /// <summary>
 /// The feed's users, their passkeys and their API keys.
 /// </summary>
-public partial class UserService(NuDepotContext context, SystemTime time, IOptionsMonitor<UserOptions> options, ILogger<UserService> logger)
+public partial class UserService(ILogger<UserService> logger, NuDepotContext context, SystemTime time, IOptionsMonitor<UserOptions> options, IHttpContextAccessor httpContextAccessor)
 {
     /// <summary>
     /// The start of every user API key, which tells them apart from configured keys.
@@ -45,10 +46,15 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     // How long a session's previous token is still accepted after it's replaced.
     private static readonly TimeSpan PreviousTokenLifetime = TimeSpan.FromMinutes(1);
 
+    private ILogger Logger { get; } = logger;
     private NuDepotContext Context { get; } = context;
     private SystemTime Time { get; } = time;
     private IOptionsMonitor<UserOptions> Options { get; } = options;
-    private ILogger<UserService> Logger { get; } = logger;
+    private IHttpContextAccessor HttpContextAccessor { get; } = httpContextAccessor;
+
+    // Who's making the change, and from where, for the logs.
+    private string Actor => FeedActor.Describe(HttpContextAccessor.HttpContext);
+    private string Address => HttpContextAccessor.HttpContext is { } context ? FeedActor.Address(context) : "an unknown address";
 
     /// <summary>
     /// Whether a user name can be used for a new account: letters, digits, '.', '_', '-' and '@',
@@ -164,7 +170,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         user.CreatedAt = now;
         user.Passkeys.Add(passkey);
 
-        Log.UserCreated(Logger, user.UserName, user.Role);
+        Log.UserCreated(Logger, Actor, user.UserName, user.Role);
     }
 
     // Passkey ceremonies
@@ -278,6 +284,8 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     {
         passkey.UserKey = userKey;
         await Context.UserPasskeys.ExecuteInsertAsync(passkey, cancellationToken);
+
+        Log.PasskeyAdded(Logger, Actor, passkey.Name);
     }
 
     /// <summary>
@@ -319,7 +327,11 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .Where(p => p.Key == passkeyKey && p.UserKey == userKey && Context.UserPasskeys.Count(o => o.UserKey == userKey) > 1)
             .ExecuteDeleteAsync(cancellationToken);
 
-        return deleted == 1 ? PasskeyDeletionResult.Deleted : PasskeyDeletionResult.LastPasskey;
+        if (deleted != 1)
+            return PasskeyDeletionResult.LastPasskey;
+
+        Log.PasskeyDeleted(Logger, Actor, passkey.Name);
+        return PasskeyDeletionResult.Deleted;
     }
 
     // API keys
@@ -355,6 +367,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
 
         await Context.UserApiKeys.ExecuteInsertAsync(apiKey, cancellationToken);
 
+        Log.ApiKeyCreated(Logger, Actor, name, apiKey.Prefix);
         return (apiKey, key);
     }
 
@@ -371,7 +384,11 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .Where(k => k.UserKey == userKey && k.Key == apiKeyKey)
             .ExecuteDeleteAsync(cancellationToken);
 
-        return deleted > 0;
+        if (deleted == 0)
+            return false;
+
+        Log.ApiKeyDeleted(Logger, Actor, apiKeyKey);
+        return true;
     }
 
     /// <summary>
@@ -409,8 +426,9 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     /// Start a session for a browser that signed in.
     /// </summary>
     /// <returns>The session, and its first token for the cookie. Only the token's hash is stored.</returns>
-    public async Task<(UserSession Session, string Token)> CreateSessionAsync(int userKey, CancellationToken cancellationToken)
+    public async Task<(UserSession Session, string Token)> CreateSessionAsync(User user, CancellationToken cancellationToken)
     {
+        int userKey = user.Key;
         DateTime now = Time.UtcNow;
         string token = CreateSessionToken();
         UserSession session = new()
@@ -424,6 +442,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
 
         await Context.UserSessions.ExecuteInsertAsync(session, cancellationToken);
 
+        Log.SignedIn(Logger, user.UserName, Address);
         return (session, token);
     }
 
@@ -486,9 +505,13 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     /// <param name="cancellationToken">A token to cancel the task.</param>
     /// <returns>A task that completes when the session is deleted.</returns>
     public async Task DeleteSessionAsync(int sessionKey, CancellationToken cancellationToken)
-        => await Context.UserSessions
-        .Where(s => s.Key == sessionKey)
-        .ExecuteDeleteAsync(cancellationToken);
+    {
+        await Context.UserSessions
+            .Where(s => s.Key == sessionKey)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        Log.SignedOut(Logger, Actor);
+    }
 
     /// <summary>
     /// Gets the user's signed-in browsers that haven't expired, most recently used first.
@@ -512,7 +535,11 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .Where(s => s.UserKey == userKey && s.Key == sessionKey)
             .ExecuteDeleteAsync(cancellationToken);
 
-        return deleted > 0;
+        if (deleted == 0)
+            return false;
+
+        Log.SessionDeleted(Logger, Actor, sessionKey);
+        return true;
     }
 
     // Replaces the session's current token, whose hash is currentHash. The previous token becomes the one the browser
@@ -579,7 +606,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
             .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.Role, role), cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        Log.RoleChanged(Logger, user.UserName, user.Role, role);
+        Log.RoleChanged(Logger, Actor, user.UserName, user.Role, role);
         return UserChangeResult.Changed;
     }
 
@@ -602,7 +629,7 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
         await Context.Users.Where(u => u.Key == userKey).ExecuteDeleteAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        Log.UserDeleted(Logger, user.UserName);
+        Log.UserDeleted(Logger, Actor, user.UserName);
         return UserChangeResult.Changed;
     }
 
@@ -612,12 +639,15 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     /// <returns>False if there's no such user.</returns>
     public async Task<bool> DeleteSessionsAsync(int userKey, CancellationToken cancellationToken)
     {
-        if (await FindAsync(userKey, cancellationToken) == null)
+        User? user = await FindAsync(userKey, cancellationToken);
+        if (user == null)
             return false;
 
         await Context.UserSessions
             .Where(s => s.UserKey == userKey)
             .ExecuteDeleteAsync(cancellationToken);
+
+        Log.SessionsRevoked(Logger, Actor, user.UserName);
         return true;
     }
 
@@ -627,12 +657,15 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
     /// <returns>False if there's no such user.</returns>
     public async Task<bool> DeleteApiKeysAsync(int userKey, CancellationToken cancellationToken)
     {
-        if (await FindAsync(userKey, cancellationToken) == null)
+        User? user = await FindAsync(userKey, cancellationToken);
+        if (user == null)
             return false;
 
         await Context.UserApiKeys
             .Where(k => k.UserKey == userKey)
             .ExecuteDeleteAsync(cancellationToken);
+
+        Log.ApiKeysRevoked(Logger, Actor, user.UserName);
         return true;
     }
 
@@ -647,17 +680,44 @@ public partial class UserService(NuDepotContext context, SystemTime time, IOptio
 
     private static partial class Log
     {
-        [LoggerMessage(Level = LogLevel.Information, Message = "Created user {UserName} with the {Role} role")]
-        public static partial void UserCreated(ILogger logger, string userName, FeedRole role);
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} created the user {UserName}, with the {Role} role")]
+        public static partial void UserCreated(ILogger logger, string actor, string userName, FeedRole role);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{UserName} signed in from {Address}")]
+        public static partial void SignedIn(ILogger logger, string userName, string address);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} signed out")]
+        public static partial void SignedOut(ILogger logger, string actor);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} signed out another browser, with the session {SessionId}")]
+        public static partial void SessionDeleted(ILogger logger, string actor, int sessionId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} added the passkey {PasskeyName}")]
+        public static partial void PasskeyAdded(ILogger logger, string actor, string passkeyName);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} removed the passkey {PasskeyName}")]
+        public static partial void PasskeyDeleted(ILogger logger, string actor, string passkeyName);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} created the API key {ApiKeyName}, which starts with {ApiKeyPrefix}")]
+        public static partial void ApiKeyCreated(ILogger logger, string actor, string apiKeyName, string apiKeyPrefix);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} revoked their API key {ApiKeyId}")]
+        public static partial void ApiKeyDeleted(ILogger logger, string actor, int apiKeyId);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "{Actor} signed {UserName} out of every browser")]
+        public static partial void SessionsRevoked(ILogger logger, string actor, string userName);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "{Actor} revoked all of {UserName}'s API keys")]
+        public static partial void ApiKeysRevoked(ILogger logger, string actor, string userName);
 
         [LoggerMessage(Level = LogLevel.Warning, Message = "A sign-in cookie for {UserName} was used after it was replaced, so it was copied. The session was revoked")]
         public static partial void CopiedSessionRevoked(ILogger logger, string userName);
 
-        [LoggerMessage(Level = LogLevel.Information, Message = "Changed {UserName}'s role from {OldRole} to {Role}")]
-        public static partial void RoleChanged(ILogger logger, string userName, FeedRole oldRole, FeedRole role);
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} changed {UserName}'s role from {OldRole} to {Role}")]
+        public static partial void RoleChanged(ILogger logger, string actor, string userName, FeedRole oldRole, FeedRole role);
 
-        [LoggerMessage(Level = LogLevel.Warning, Message = "Deleted the user {UserName}")]
-        public static partial void UserDeleted(ILogger logger, string userName);
+        [LoggerMessage(Level = LogLevel.Warning, Message = "{Actor} deleted the user {UserName}")]
+        public static partial void UserDeleted(ILogger logger, string actor, string userName);
     }
 }
 

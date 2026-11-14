@@ -7,9 +7,9 @@ namespace NuDepot.Feed.Storage;
 /// <summary>
 /// Stores packages' files: the package, its nuspec, README, icon and license.
 /// </summary>
-/// <param name="storage">Where files are stored.</param>
 /// <param name="logger">The logger.</param>
-public partial class PackageStorageService(IStorageService storage, ILogger<PackageStorageService> logger) : IPackageStorageService
+/// <param name="storage">Where files are stored.</param>
+public partial class PackageStorageService(ILogger<PackageStorageService> logger, IStorageService storage) : IPackageStorageService
 {
     private const string PackagesPathPrefix = "packages";
 
@@ -21,8 +21,8 @@ public partial class PackageStorageService(IStorageService storage, ILogger<Pack
     private const string ReadmeContentType = "text/markdown";
     private const string IconContentType = "image/xyz";
 
+    private ILogger Logger { get; } = logger;
     private IStorageService Storage { get; } = storage;
-    private ILogger<PackageStorageService> Logger { get; } = logger;
 
     /// <inheritdoc />
     public async Task SavePackageContentAsync(Package package, Stream packageStream, Stream nuspecStream, Stream? readmeStream, Stream? iconStream, Stream? licenseStream, CancellationToken cancellationToken = default)

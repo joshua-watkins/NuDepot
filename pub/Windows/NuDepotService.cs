@@ -64,6 +64,10 @@ internal static partial class NuDepotService
             ["Feed:PackageDetailsUriTemplate"] = "packages/{id}/{version}",
             ["Logging:LogLevel:Default"] = "Information",
             ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning",
+
+            // ASP.NET Core's authentication logs each request without a valid key at Information, in the category of the
+            // feed's handler. The feed's own warnings about keys and refused requests stay.
+            ["Logging:LogLevel:NuDepot.Feed.Authentication"] = "Warning",
         };
         builder.Configuration.Sources.Insert(0, new MemoryConfigurationSource { InitialData = settings });
 

@@ -11,17 +11,17 @@ namespace NuDepot.Feed.Upstream.Clients;
 /// <summary>
 /// The mirroring client for a NuGet server that uses the V3 protocol.
 /// </summary>
-/// <param name="client">The upstream feed's client.</param>
 /// <param name="logger">The logger.</param>
+/// <param name="client">The upstream feed's client.</param>
 /// <param name="name">The mirror's name, for the logs.</param>
 /// <param name="requestTimeout">The time a request may take to answer, or null for no limit. A download's answer is
 /// its headers.</param>
 /// <param name="downloadTimeout">The time a package's content may take to download, after its headers, or null
 /// for no limit.</param>
-public partial class V3UpstreamClient(NuGetClient client, ILogger<V3UpstreamClient> logger, string name = "upstream", TimeSpan? requestTimeout = null, TimeSpan? downloadTimeout = null) : IUpstreamClient
+public partial class V3UpstreamClient(ILogger<V3UpstreamClient> logger, NuGetClient client, string name = "upstream", TimeSpan? requestTimeout = null, TimeSpan? downloadTimeout = null) : IUpstreamClient
 {
+    private ILogger Logger { get; } = logger;
     private NuGetClient Client { get; } = client;
-    private ILogger<V3UpstreamClient> Logger { get; } = logger;
     private string Name { get; } = name;
     private TimeSpan? RequestTimeout { get; } = requestTimeout;
     private TimeSpan? DownloadTimeout { get; } = downloadTimeout;

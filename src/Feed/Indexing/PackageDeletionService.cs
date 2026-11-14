@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
@@ -11,20 +13,25 @@ namespace NuDepot.Feed.Indexing;
 /// <summary>
 /// Deletes packages, by unlisting them or removing them, and records the change in the catalog.
 /// </summary>
+/// <param name="logger">The logger.</param>
 /// <param name="packages">The package database.</param>
 /// <param name="storage">Where packages are stored.</param>
 /// <param name="catalog">The catalog that records the change.</param>
 /// <param name="locks">The packages' locks, so a version isn't deleted while it's pushed.</param>
 /// <param name="options">The feed's options.</param>
-/// <param name="logger">The logger.</param>
-public partial class PackageDeletionService(IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, ILogger<PackageDeletionService> logger) : IPackageDeletionService
+/// <param name="httpContextAccessor">The request, whose client is logged with what it changes.</param>
+public partial class PackageDeletionService(ILogger<PackageDeletionService> logger, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, IHttpContextAccessor httpContextAccessor) : IPackageDeletionService
 {
+    private ILogger Logger { get; } = logger;
     private IPackageDatabase Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;
     private ICatalogService Catalog { get; } = catalog;
     private PackageLocks Locks { get; } = locks;
     private FeedOptions Options { get; } = options.Value;
-    private ILogger<PackageDeletionService> Logger { get; } = logger;
+    private IHttpContextAccessor HttpContextAccessor { get; } = httpContextAccessor;
+
+    // Who's changing the feed, for the logs.
+    private string Actor => FeedActor.Describe(HttpContextAccessor.HttpContext);
 
     /// <inheritdoc />
     public async Task<bool> TryDeletePackageAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
@@ -48,7 +55,7 @@ public partial class PackageDeletionService(IPackageDatabase packages, IPackageS
             return false;
         }
 
-        Log.Unlisted(Logger, id, version);
+        Log.Unlisted(Logger, Actor, id, version);
 
         await AddToCatalogAsync(id, version, cancellationToken);
 
@@ -66,6 +73,8 @@ public partial class PackageDeletionService(IPackageDatabase packages, IPackageS
 
             return false;
         }
+
+        Log.Relisted(Logger, Actor, id, version);
 
         await AddToCatalogAsync(id, version, cancellationToken);
 
@@ -102,6 +111,7 @@ public partial class PackageDeletionService(IPackageDatabase packages, IPackageS
         bool found = await Packages.HardDeletePackageAsync(id, version, cancellationToken);
         if (found)
         {
+            Log.HardDeleted(Logger, Actor, id, version);
             await Catalog.AddPackageDeleteAsync(id, version, cancellationToken);
         }
         else
@@ -128,8 +138,14 @@ public partial class PackageDeletionService(IPackageDatabase packages, IPackageS
         [LoggerMessage(Level = LogLevel.Warning, Message = "Could not find package {PackageId} {PackageVersion}")]
         public static partial void NotFound(ILogger logger, string packageId, NuGetVersion packageVersion);
 
-        [LoggerMessage(Level = LogLevel.Information, Message = "Unlisted package {PackageId} {PackageVersion}")]
-        public static partial void Unlisted(ILogger logger, string packageId, NuGetVersion packageVersion);
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} unlisted package {PackageId} {PackageVersion}")]
+        public static partial void Unlisted(ILogger logger, string actor, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} relisted package {PackageId} {PackageVersion}")]
+        public static partial void Relisted(ILogger logger, string actor, string packageId, NuGetVersion packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "{Actor} permanently deleted package {PackageId} {PackageVersion}")]
+        public static partial void HardDeleted(ILogger logger, string actor, string packageId, NuGetVersion packageVersion);
 
         [LoggerMessage(Level = LogLevel.Information, Message = "Relisting package {PackageId} {PackageVersion}...")]
         public static partial void Relisting(ILogger logger, string packageId, NuGetVersion packageVersion);

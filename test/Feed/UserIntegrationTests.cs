@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Tests.Support;
@@ -607,9 +608,58 @@ public sealed class UserIntegrationTests(ITestOutputHelper output) : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private NuDepotTestApplication CreateApp(Dictionary<string, string>? configuration = null)
+    [Fact]
+    public async Task AccountChangesAreLoggedWithWhoMadeThem()
     {
-        NuDepotTestApplication app = new(Output, configuration: configuration, users: true);
+        LogRecorder logs = new();
+        NuDepotTestApplication app = CreateApp(logs: logs);
+        (HttpClient? alice, TestAuthenticator? authenticator) = await SignUpAsync(app, "alice");
+        await SignUpAsync(app, "bob");
+
+        string key = await CreateApiKeyAsync(alice, "Build server");
+        using HttpClient client = app.CreateClient();
+        Assert.Equal(HttpStatusCode.Created, (await SendWithKeyAsync(client, key, "Logged.Package", userName: "alice")).StatusCode);
+        int apiKeyId = (await alice.GetFromJsonAsync<JsonElement>("api/account/apikeys"))[0].GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/account/apikeys/{apiKeyId}")).StatusCode);
+
+        int bobId = (await alice.GetFromJsonAsync<JsonElement>("api/admin/users"))[1].GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync($"api/admin/users/{bobId}/sessions")).StatusCode);
+
+        // A page from another site, and a sign-in that's sent again.
+        using HttpRequestMessage crossSite = new(HttpMethod.Post, "api/account/apikeys") { Content = JsonContent.Create(new { name = "Stolen" }) };
+        crossSite.Headers.Add("Origin", "http://evil.example");
+        Assert.Equal(HttpStatusCode.Unauthorized, (await alice.SendAsync(crossSite)).StatusCode);
+        using HttpClient browser = app.CreateBrowserClient();
+        string options = await PostAsync(browser, "api/account/signin/options", new { userName = "alice" });
+        string assertion = authenticator.GetAssertion(options);
+        Assert.Equal(HttpStatusCode.NoContent, (await browser.PostAsync("api/account/signin", Json(assertion))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync("api/account/signin", Json(assertion))).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await alice.PostAsync("api/account/signout", null)).StatusCode);
+
+        IReadOnlyList<string> information = logs.Messages(LogLevel.Information);
+        IReadOnlyList<string> warnings = logs.Messages(LogLevel.Warning);
+        Assert.Contains(information, m => m.StartsWith("An anonymous client (", StringComparison.Ordinal) && m.EndsWith("created the user alice, with the Admin role", StringComparison.Ordinal));
+        Assert.Contains(information, m => m.StartsWith("alice signed in from ", StringComparison.Ordinal));
+        Assert.Contains(information, m => m.StartsWith("alice (", StringComparison.Ordinal) && m.EndsWith($"created the API key Build server, which starts with {key[..10]}", StringComparison.Ordinal));
+        Assert.Contains(information, m => m.StartsWith("alice's API key (", StringComparison.Ordinal) && m.EndsWith("pushed package Logged.Package 1.0.0", StringComparison.Ordinal));
+        Assert.Contains(information, m => m.StartsWith("alice (", StringComparison.Ordinal) && m.EndsWith($"revoked their API key {apiKeyId}", StringComparison.Ordinal));
+        Assert.Contains(warnings, m => m.StartsWith("alice (", StringComparison.Ordinal) && m.EndsWith("signed bob out of every browser", StringComparison.Ordinal));
+        Assert.Contains(warnings, m => m.StartsWith("Ignored the sign-in cookie of POST /api/account/apikeys from ", StringComparison.Ordinal) && m.EndsWith("http://evil.example, sent it", StringComparison.Ordinal));
+        Assert.Contains(warnings, m => m.StartsWith("A passkey sign-in from ", StringComparison.Ordinal));
+        Assert.Contains(information, m => m.StartsWith("alice (", StringComparison.Ordinal) && m.EndsWith("signed out", StringComparison.Ordinal));
+
+        // Keys aren't logged.
+        Assert.DoesNotContain(logs.Entries, entry => entry.Message.Contains(key, StringComparison.Ordinal));
+    }
+
+    private NuDepotTestApplication CreateApp(Dictionary<string, string>? configuration = null, LogRecorder? logs = null)
+    {
+        NuDepotTestApplication app = new(
+            Output,
+            configuration: configuration,
+            users: true,
+            configureServices: logs == null ? null : services => services.AddSingleton<ILoggerProvider>(logs));
         Disposables.Add(app);
         return app;
     }

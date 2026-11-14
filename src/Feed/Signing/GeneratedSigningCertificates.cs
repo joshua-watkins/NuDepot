@@ -43,21 +43,21 @@ internal sealed record SigningCertificateRotation(string Fingerprint, DateTimeOf
 /// protection's keys changed, a new one replaces it. The database is checked for a newer certificate every minute,
 /// so a replacement made by the "rotate signing-certificate" command is picked up.
 /// </remarks>
+/// <param name="logger">The logger.</param>
 /// <param name="scopes">Creates the scopes the database is used in.</param>
 /// <param name="dataProtection">Encrypts the certificates' private keys.</param>
 /// <param name="time">The current time.</param>
 /// <param name="keySize">The size of the certificates' keys.</param>
-/// <param name="logger">The logger.</param>
-internal sealed partial class GeneratedSigningCertificates(IServiceScopeFactory scopes, IDataProtectionProvider dataProtection, TimeProvider time, GeneratedCertificateKeySize keySize, ILogger<GeneratedSigningCertificates> logger) : ISigningCertificateSource, IDisposable
+internal sealed partial class GeneratedSigningCertificates(ILogger<GeneratedSigningCertificates> logger, IServiceScopeFactory scopes, IDataProtectionProvider dataProtection, TimeProvider time, GeneratedCertificateKeySize keySize) : ISigningCertificateSource, IDisposable
 {
     private const string ProtectorPurpose = "NuDepot.Feed.Signing.GeneratedSigningCertificates";
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMinutes(1);
 
+    private ILogger Logger { get; } = logger;
     private IServiceScopeFactory Scopes { get; } = scopes;
     private IDataProtector Protector { get; } = dataProtection.CreateProtector(ProtectorPurpose);
     private TimeProvider Time { get; } = time;
     private int KeySize { get; } = keySize.Bits;
-    private ILogger<GeneratedSigningCertificates> Logger { get; } = logger;
     private SemaphoreSlim Lock { get; } = new(1, 1);
     private ConcurrentDictionary<string, X509Certificate2> PublicCertificates { get; } = new(StringComparer.OrdinalIgnoreCase);
     private Signer? Current { get; set; }

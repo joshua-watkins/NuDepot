@@ -28,7 +28,7 @@ public class CatalogProcessorTests
         Catalog.AddPage("page1", Leaf("C", "1.0.0", T3), Leaf("A", "1.0.0", T3, delete: true));
     }
 
-    private CatalogProcessor Target => new(Cursor, Catalog, Leaves, Options, NullLogger<CatalogProcessor>.Instance);
+    private CatalogProcessor Target => new(NullLogger<CatalogProcessor>.Instance, Cursor, Catalog, Leaves, Options);
 
     [Fact]
     public async Task ProcessesEveryLeafInOrderAndMovesTheCursor()

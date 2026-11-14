@@ -22,7 +22,7 @@ namespace NuDepot.Feed.Authentication;
 /// <item>Keys users create only work in credentials, with the user's name, and only if the application uses <c>MapUsers()</c>.</item>
 /// </list>
 /// </summary>
-internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, FeedAccess access) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+internal sealed partial class ApiKeyAuthenticationHandler(ILoggerFactory logger, IOptionsMonitor<AuthenticationSchemeOptions> options, UrlEncoder encoder, FeedAccess access) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = NuDepotAuthenticationSchemes.ApiKey;
 
@@ -59,7 +59,13 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
             }
         }
 
-        // The request continues as anonymous, so an unknown key can still do what anyone may.
+        // Someone guessing keys shows up in the logs, without the keys they tried. The request continues as
+        // anonymous, so an unknown key can still do what anyone may.
+        if (credentials is ({ } name, _))
+            Log.InvalidCredentials(Logger, FeedActor.Address(Context), name);
+        else
+            Log.InvalidApiKey(Logger, FeedActor.Address(Context));
+
         return AuthenticateResult.Fail("The API key isn't valid.");
     }
 
@@ -99,5 +105,14 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
             return null;
 
         return (credentials[..separator], credentials[(separator + 1)..]);
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "{Address} sent an API key that isn't valid")]
+        public static partial void InvalidApiKey(ILogger logger, string address);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "{Address} sent credentials that aren't valid, for {UserName}")]
+        public static partial void InvalidCredentials(ILogger logger, string address, string userName);
     }
 }

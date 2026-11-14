@@ -13,10 +13,10 @@ namespace NuDepot.Feed.Indexing;
 /// <summary>
 /// Adds pushed symbol packages to the feed, for packages it has.
 /// </summary>
+/// <param name="logger">The logger.</param>
 /// <param name="packages">The package database.</param>
 /// <param name="storage">Where symbols are stored.</param>
-/// <param name="logger">The logger.</param>
-public partial class SymbolIndexingService(IPackageDatabase packages, ISymbolStorageService storage, ILogger<SymbolIndexingService> logger) : ISymbolIndexingService
+public partial class SymbolIndexingService(ILogger<SymbolIndexingService> logger, IPackageDatabase packages, ISymbolStorageService storage) : ISymbolIndexingService
 {
     private static readonly HashSet<string> ValidSymbolPackageContentExtensions =
     [
@@ -28,9 +28,9 @@ public partial class SymbolIndexingService(IPackageDatabase packages, ISymbolSto
         ".p7s"
     ];
 
+    private ILogger Logger { get; } = logger;
     private IPackageDatabase Packages { get; } = packages;
     private ISymbolStorageService Storage { get; } = storage;
-    private ILogger<SymbolIndexingService> Logger { get; } = logger;
 
     /// <inheritdoc />
     public async Task<SymbolIndexingResult> IndexAsync(Stream stream, CancellationToken cancellationToken)

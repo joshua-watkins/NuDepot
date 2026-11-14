@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -306,6 +307,7 @@ public sealed class PackageIndexingServiceTests : IDisposable
             .ReturnsAsync((RepositorySignatureDetails?)null);
 
         return new PackageIndexingService(
+            Mock.Of<ILogger<PackageIndexingService>>(),
             Packages.Object,
             Storage.Object,
             Search.Object,
@@ -315,7 +317,7 @@ public sealed class PackageIndexingServiceTests : IDisposable
             new SystemTime(),
             Locks,
             options,
-            Mock.Of<ILogger<PackageIndexingService>>());
+            new HttpContextAccessor());
     }
 
     // A package with a nuspec and one other entry.

@@ -37,11 +37,11 @@ public sealed class CatalogServiceTests : IDisposable
             .GetResult();
 
         Target = new CatalogService(
+            NullLogger<CatalogService>.Instance,
             Context,
             Mock.Of<IUrlGenerator>(),
             Mock.Of<IPackageStorageService>(),
-            new SystemTime(),
-            NullLogger<CatalogService>.Instance);
+            new SystemTime());
     }
 
     public void Dispose()

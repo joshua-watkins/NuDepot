@@ -683,22 +683,51 @@ found when requests needed them. Admins see each check's details on the gallery'
 
 ## Logging
 
-On Linux, the service logs to systemd's journal at the `Information` level, and `Warning` for ASP.NET Core. On
-Windows, it logs warnings and errors to the Event Log (Application log, source `NuDepot`). Change the levels with the
-[`Logging` section](https://learn.microsoft.com/aspnet/core/fundamentals/logging/#configure-logging). The Event Log
-has its own:
+On Linux, the service logs verbosely to systemd's journal: NuDepot's `Information` lines, and ASP.NET Core's warnings
+and errors. On Windows, it logs only warnings and errors to the Event Log (Application log, source `NuDepot`). Both
+`appsettings.json` templates have a `Logging` section to uncomment, which switches: verbose logging to the Event Log
+on Windows,
 
 ```json
 {
     "Logging": {
-        "LogLevel": {
-            "Default": "Warning"
-        },
         "EventLog": {
             "LogLevel": {
-                "Default": "Information"
+                "Default": "Warning",
+                "NuDepot": "Information",
+                "NuDepot.Feed.Authentication": "Warning"
             }
         }
     }
 }
 ```
+
+and only warnings and errors in the journal on Linux:
+
+```json
+{
+    "Logging": {
+        "LogLevel": {
+            "NuDepot": "Warning"
+        }
+    }
+}
+```
+
+The Event Log's levels replace the others for it, so keep its `Default` at `Warning`: at `Information`, it would also
+keep a line for each of ASP.NET Core's requests. See
+[Configure logging](https://learn.microsoft.com/aspnet/core/fundamentals/logging/#configure-logging) for the rest.
+
+What the feed logs:
+
+| Level | What |
+| --- | --- |
+| `Information` | When it starts, what requests without a key may do and which features are on. Who pushed, unlisted, relisted, deprecated or undeprecated a package, and who changed a vulnerability advisory. Users signing up, signing in and out, adding and removing passkeys, and creating and revoking API keys. Changes to users' roles. |
+| `Warning` | An open feed, and API keys that are short or still the examples. API keys and credentials that aren't valid, and requests refused because the key or user's role may not do what they asked. Failed passkey sign-ins, sign-in cookies sent by pages from other sites, and copied cookies. Packages permanently deleted or replaced, users deleted, and users signed out of every browser or their API keys revoked by an Admin. |
+| `Error` | Pushes, signing and mirror downloads that failed. |
+
+"Who" is a user, like `alice`, a user's API key, like `alice's API key`, one of the feed's keys, like
+`The ReadWrite API key`, or `An anonymous client`, with the client's address. Keys themselves are never logged.
+
+On Windows, turn on verbose logging, as above, to keep who changed what in the Event Log too. It also keeps each step of
+a push, a few lines each.

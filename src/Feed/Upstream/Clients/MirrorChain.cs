@@ -26,19 +26,19 @@ internal sealed partial class MirrorChain : IUpstreamClient
     /// <param name="UnreachableUntil">Until when it isn't asked because it couldn't be reached, or null if it's asked.</param>
     public sealed record MirrorStatus(string Name, Uri PackageSource, UnreachableMirrorBehavior WhenUnreachable, DateTimeOffset? UnreachableUntil);
 
-    public MirrorChain(IOptions<MirroringOptions> options, HttpClient httpClient, TimeProvider time, ILoggerFactory loggerFactory)
+    public MirrorChain(ILoggerFactory loggerFactory, IOptions<MirroringOptions> options, HttpClient httpClient, TimeProvider time)
     {
         ILogger<V3UpstreamClient> clientLogger = loggerFactory.CreateLogger<V3UpstreamClient>();
         MirroringOptions mirroring = options.Value;
 
-        Time = time;
         Logger = loggerFactory.CreateLogger<MirrorChain>();
+        Time = time;
         UnreachableTime = TimeSpan.FromMinutes(mirroring.UnreachableMirrorMinutes);
         Mirrors = !mirroring.IsEnabled ? [] : [.. mirroring.Mirrors
             .Select(mirror => new Mirror(
                 new V3UpstreamClient(
-                    new NuGetClient(new NuGetClientFactory(httpClient, mirror.PackageSource!.ToString())),
                     clientLogger,
+                    new NuGetClient(new NuGetClientFactory(httpClient, mirror.PackageSource!.ToString())),
                     mirror.DisplayName,
                     TimeSpan.FromSeconds(mirror.RequestTimeoutSeconds),
                     TimeSpan.FromSeconds(mirror.DownloadTimeoutSeconds)),
@@ -55,8 +55,8 @@ internal sealed partial class MirrorChain : IUpstreamClient
     // The most packages whose versions are kept at once.
     private const int MaxListedPackages = 1000;
 
+    private ILogger Logger { get; }
     private TimeProvider Time { get; }
-    private ILogger<MirrorChain> Logger { get; }
     private TimeSpan UnreachableTime { get; }
     private IReadOnlyList<Mirror> Mirrors { get; }
     private ConcurrentDictionary<string, (DateTimeOffset ExpiresAt, IReadOnlyList<Package> Packages)> ListedPackages { get; } = new(StringComparer.OrdinalIgnoreCase);

@@ -9,17 +9,17 @@ namespace NuDepot.Feed.Upstream;
 /// <summary>
 /// Reads nuget.org's download counts file.
 /// </summary>
-/// <param name="httpClient">The HTTP client used to download the file.</param>
 /// <param name="logger">The logger.</param>
-public partial class PackageDownloadsJsonSource(HttpClient httpClient, ILogger<PackageDownloadsJsonSource> logger) : IPackageDownloadsSource
+/// <param name="httpClient">The HTTP client used to download the file.</param>
+public partial class PackageDownloadsJsonSource(ILogger<PackageDownloadsJsonSource> logger, HttpClient httpClient) : IPackageDownloadsSource
 {
     /// <summary>
     /// The URL of nuget.org's download counts file.
     /// </summary>
     public const string PackageDownloadsV1Url = "https://nugetprod0.blob.core.windows.net/ng-search-data/downloads.v1.json";
 
+    private ILogger Logger { get; } = logger;
     private HttpClient HttpClient { get; } = httpClient;
-    private ILogger<PackageDownloadsJsonSource> Logger { get; } = logger;
 
     /// <inheritdoc />
     public async Task<Dictionary<string, Dictionary<string, long>>> GetPackageDownloadsAsync()

@@ -4,12 +4,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Sqlite.Infrastructure.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.EventLog;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Search;
 using NuDepot.Feed.Storage;
+using NuDepot.Feed.Tests.Support;
 using Xunit;
 
 namespace NuDepot.Feed.Tests;
@@ -17,6 +20,82 @@ namespace NuDepot.Feed.Tests;
 public class HostIntegrationTests
 {
     private string ConnectionStringKey { get; } = "Feed:Database:ConnectionString";
+
+    [Fact]
+    public void VerboseLoggingToTheEventLogIsAnOption()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        // Like WebApplication on Windows: the Event Log keeps warnings, unless the settings say otherwise.
+        using ServiceProvider before = BuildLogging("Windows", uncomment: false, logging => logging
+            .AddEventLog()
+            .AddFilter<EventLogLoggerProvider>(level => level >= LogLevel.Warning));
+        using ServiceProvider after = BuildLogging("Windows", uncomment: true, logging => logging
+            .AddEventLog()
+            .AddFilter<EventLogLoggerProvider>(level => level >= LogLevel.Warning));
+
+        Assert.False(IsLogged(before, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Information));
+        Assert.True(IsLogged(before, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Warning));
+
+        // NuDepot's own lines, but not ASP.NET Core's for each request, or its authentication handler's.
+        Assert.True(IsLogged(after, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Information));
+        Assert.True(IsLogged(after, "NuDepot.Feed.Users.UserService", LogLevel.Information));
+        Assert.False(IsLogged(after, "Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Information));
+        Assert.False(IsLogged(after, "NuDepot.Feed.Authentication.ApiKeyAuthenticationHandler", LogLevel.Information));
+        Assert.True(IsLogged(after, "NuDepot.Feed.Authentication.ApiKeyAuthenticationHandler", LogLevel.Warning));
+    }
+
+    [Fact]
+    public void LoggingOnlyWarningsToTheJournalIsAnOption()
+    {
+        using ServiceProvider before = BuildLogging("Linux", uncomment: false, logging => logging.AddProvider(new LogRecorder()));
+        using ServiceProvider after = BuildLogging("Linux", uncomment: true, logging => logging.AddProvider(new LogRecorder()));
+
+        Assert.True(IsLogged(before, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Information));
+        Assert.False(IsLogged(before, "Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Information));
+
+        Assert.False(IsLogged(after, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Information));
+        Assert.True(IsLogged(after, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Warning));
+    }
+
+    // The services' logging, with the host's appsettings.json, and its commented-out Logging section uncommented.
+    private static ServiceProvider BuildLogging(string host, bool uncomment, Action<ILoggingBuilder> providers)
+    {
+        string[] lines = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Hosts", host, "appsettings.json"));
+        if (uncomment)
+        {
+            int start = Array.FindIndex(lines, line => line.TrimStart().StartsWith("//\"Logging\"", StringComparison.Ordinal));
+            Assert.True(start >= 0, "The template has a Logging section to uncomment.");
+            for (int i = start; i < lines.Length && lines[i].TrimStart().StartsWith("//", StringComparison.Ordinal); i++)
+                lines[i] = lines[i].Remove(lines[i].IndexOf("//", StringComparison.Ordinal), 2);
+        }
+
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                // The services' defaults, from NuDepotService.
+                ["Logging:LogLevel:Default"] = "Information",
+                ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning",
+                ["Logging:LogLevel:NuDepot.Feed.Authentication"] = "Warning",
+            })
+            .AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(string.Join('\n', lines))))
+            .Build();
+
+        return new ServiceCollection()
+            .AddLogging(logging =>
+            {
+                providers(logging);
+                logging.AddConfiguration(configuration.GetSection("Logging"));
+            })
+            .BuildServiceProvider();
+    }
+
+    private static bool IsLogged(IServiceProvider services, string category, LogLevel level)
+        => services
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger(category)
+            .IsEnabled(level);
 
     [Fact]
     public void PackagesAreStoredInFiles()

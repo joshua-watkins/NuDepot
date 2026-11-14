@@ -70,7 +70,7 @@ public static partial class FeedApplicationBuilderExtensions
         app.Endpoints.MapHealthChecks(FeedServiceCollectionExtensions.HealthPath);
         app.Endpoints.MapHealthChecks(FeedServiceCollectionExtensions.HealthPath + "/live", new HealthCheckOptions { Predicate = _ => false });
         GetPipeline(app).UsesFeed = true;
-        WarnAboutInsecureSettings(app.Services);
+        LogSettings(app.Services);
 
         return app;
     }
@@ -80,24 +80,33 @@ public static partial class FeedApplicationBuilderExtensions
     /// </summary>
     internal const int MinimumApiKeyLength = 16;
 
-    // Settings that work, but let in more than an administrator may expect. A feed that's meant to be open can
-    // ignore the warnings.
-    private static void WarnAboutInsecureSettings(IServiceProvider services)
+    // What the feed allows and which features are on, and warnings about settings that work but let in more than an
+    // administrator may expect. A feed that's meant to be open can ignore the warnings.
+    private static void LogSettings(IServiceProvider services)
     {
         ILogger logger = services
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger(LoggerCategory);
         FeedAccess access = services.GetRequiredService<FeedAccess>();
+        FeedOptions feed = services
+            .GetRequiredService<IOptions<FeedOptions>>()
+            .Value;
+        MirroringOptions mirroring = services
+            .GetRequiredService<IOptions<MirroringOptions>>()
+            .Value;
+
+        Log.Settings(
+            logger,
+            access.AnonymousRole,
+            access.UsersEnabled ? "on" : "off",
+            services.GetRequiredService<IOptions<RepositorySigningOptions>>().Value.IsEnabled ? "on" : "off",
+            mirroring.IsEnabled && mirroring.Mirrors.Count > 0 ? string.Join(", ", mirroring.Mirrors.Select(mirror => mirror.DisplayName)) : "off",
+            feed.IsReadOnlyMode ? "on" : "off");
 
         if (access.AnonymousRole == FeedRole.ReadWrite)
             Log.OpenFeed(logger);
 
-        ApiKeyOptions apiKeys = services
-            .GetRequiredService<IOptions<FeedOptions>>()
-            .Value
-            .Authorization
-            .ApiKeys;
-        foreach ((FeedRole role, string key) in FeedAccess.GetApiKeys(apiKeys).Where(apiKey => apiKey.Key.Length < MinimumApiKeyLength))
+        foreach ((FeedRole role, string key) in FeedAccess.GetApiKeys(feed.Authorization.ApiKeys).Where(apiKey => apiKey.Key.Length < MinimumApiKeyLength))
             Log.ShortApiKey(logger, role, key.Length, MinimumApiKeyLength);
     }
 
@@ -105,6 +114,9 @@ public static partial class FeedApplicationBuilderExtensions
 
     private static partial class Log
     {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Requests without a key or user may do what {AnonymousRole} may. Users: {Users}. Repository signing: {Signing}. Mirrors: {Mirrors}. Read-only mode: {ReadOnlyMode}.")]
+        public static partial void Settings(ILogger logger, FeedRole anonymousRole, string users, string signing, string mirrors, string readOnlyMode);
+
         [LoggerMessage(Level = LogLevel.Warning, Message = "The feed has no ReadWrite API key and no users, so anyone who can reach it may push and unlist packages. Set API keys, or turn on users, unless the feed is meant to be open.")]
         public static partial void OpenFeed(ILogger logger);
 

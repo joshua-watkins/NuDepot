@@ -9,18 +9,18 @@ namespace NuDepot.Core.Catalog;
 /// See: https://docs.microsoft.com/en-us/nuget/api/catalog-resource
 /// Based off: https://github.com/NuGet/NuGet.Services.Metadata/blob/3a468fe534a03dcced897eb5992209fdd3c4b6c9/src/NuGet.Protocol.Catalog/CatalogProcessor.cs
 /// </summary>
+/// <param name="logger">The logger used for telemetry.</param>
 /// <param name="cursor">Cursor to track succesfully processed leafs. Leafs before the cursor are skipped.</param>
 /// <param name="client">The client to interact with the catalog resource.</param>
 /// <param name="leafProcessor">The leaf processor.</param>
 /// <param name="options">The options to configure catalog processing.</param>
-/// <param name="logger">The logger used for telemetry.</param>
-public partial class CatalogProcessor(ICursor cursor, ICatalogClient client, ICatalogLeafProcessor leafProcessor, CatalogProcessorOptions options, ILogger<CatalogProcessor> logger)
+public partial class CatalogProcessor(ILogger<CatalogProcessor> logger, ICursor cursor, ICatalogClient client, ICatalogLeafProcessor leafProcessor, CatalogProcessorOptions options)
 {
+    private ILogger Logger { get; } = logger;
     private ICatalogLeafProcessor LeafProcessor { get; } = leafProcessor;
     private ICatalogClient Client { get; } = client;
     private ICursor Cursor { get; } = cursor;
     private CatalogProcessorOptions Options { get; } = options;
-    private ILogger<CatalogProcessor> Logger { get; } = logger;
 
     /// <summary>
     /// Discovers and downloads all of the catalog leafs after the current cursor value and before the maximum

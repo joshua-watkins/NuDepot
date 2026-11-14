@@ -223,8 +223,8 @@ public class V3UpstreamClientTests
         {
             _client = new Mock<NuGetClient>();
             _target = new V3UpstreamClient(
-                _client.Object,
-                Mock.Of<ILogger<V3UpstreamClient>>());
+                Mock.Of<ILogger<V3UpstreamClient>>(),
+                _client.Object);
         }
     }
 }

@@ -11,7 +11,7 @@ using System.Text.Json;
 namespace NuDepot.Feed.Catalog;
 
 /// <inheritdoc />
-public partial class CatalogService(NuDepotContext context, IUrlGenerator url, IPackageStorageService storage, SystemTime time, ILogger<CatalogService> logger) : ICatalogService
+public partial class CatalogService(ILogger<CatalogService> logger, NuDepotContext context, IUrlGenerator url, IPackageStorageService storage, SystemTime time) : ICatalogService
 {
     /// <summary>
     /// The most catalog items in a page, the same as nuget.org.
@@ -29,11 +29,11 @@ public partial class CatalogService(NuDepotContext context, IUrlGenerator url, I
     // Commits must have strictly increasing timestamps. Serialize them within this process.
     private static readonly SemaphoreSlim CommitLock = new(1, 1);
 
+    private ILogger Logger { get; } = logger;
     private NuDepotContext Context { get; } = context;
     private IUrlGenerator Url { get; } = url;
     private IPackageStorageService Storage { get; } = storage;
     private SystemTime Time { get; } = time;
-    private ILogger<CatalogService> Logger { get; } = logger;
 
     /// <inheritdoc />
     public async Task AddPackageDetailsAsync(IReadOnlyList<Package> packages, CancellationToken cancellationToken)

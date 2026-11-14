@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NuDepot.Feed.Authentication;
 using System.Globalization;
 using System.Security.Claims;
@@ -12,7 +13,7 @@ namespace NuDepot.Feed.Users;
 /// Checks the sign-in cookie's session in the database with each request, and answers with status
 /// codes instead of redirecting to a sign-in page, since NuGet clients use the same endpoints.
 /// </summary>
-internal sealed class UserCookieEvents : CookieAuthenticationEvents
+internal sealed partial class UserCookieEvents : CookieAuthenticationEvents
 {
     // The cookie's session, as "{key}:{token}".
     private const string SessionItem = "NuDepot.Session";
@@ -56,8 +57,17 @@ internal sealed class UserCookieEvents : CookieAuthenticationEvents
     {
         // The browser sends the cookie with requests that other sites on the same domain, like another port or
         // subdomain, make it send. They can't change anything: those requests continue without the user.
-        if (IsFromAnotherOrigin(context.HttpContext.Request))
+        HttpRequest request = context.HttpContext.Request;
+        if (IsFromAnotherOrigin(request))
         {
+            Log.CrossSiteRequest(
+                context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger<UserCookieEvents>(),
+                request.Method,
+                request.Path,
+                FeedActor.Address(context.HttpContext),
+                request.Headers.Origin.ToString() is { Length: > 0 } origin ? origin : "an unknown origin");
             context.RejectPrincipal();
             return;
         }
@@ -108,5 +118,11 @@ internal sealed class UserCookieEvents : CookieAuthenticationEvents
 
         string expected = request.Scheme + "://" + request.Host.ToUriComponent();
         return !string.Equals(origin, expected, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Ignored the sign-in cookie of {Method} {Path} from {Address}, because a page from another site, {Origin}, sent it")]
+        public static partial void CrossSiteRequest(ILogger logger, string method, PathString path, string address, string origin);
     }
 }

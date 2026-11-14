@@ -24,7 +24,7 @@ public class SymbolIndexingServiceTests
             .Setup(s => s.SavePortablePdbContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        Target = new SymbolIndexingService(Packages.Object, Storage.Object, NullLogger<SymbolIndexingService>.Instance);
+        Target = new SymbolIndexingService(NullLogger<SymbolIndexingService>.Instance, Packages.Object, Storage.Object);
     }
 
     [Fact]

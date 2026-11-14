@@ -21,6 +21,7 @@ namespace NuDepot.Feed.Signing;
 /// </list>
 /// The stored package is replaced, and its hash, size and catalog entry are updated. Unsigned packages aren't changed.
 /// </summary>
+/// <param name="logger">The logger.</param>
 /// <param name="signing">Signs the packages.</param>
 /// <param name="context">The package database.</param>
 /// <param name="packages">Finds the packages, with what the catalog needs.</param>
@@ -30,12 +31,12 @@ namespace NuDepot.Feed.Signing;
 /// <param name="url">Generates the service index URL that the signatures record.</param>
 /// <param name="time">The current time, which signatures expire by.</param>
 /// <param name="locks">The feed's package locks, and when mirrored packages were last downloaded again.</param>
-/// <param name="logger">The logger.</param>
-public partial class PackageResigner(IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, TimeProvider time, PackageLocks locks, ILogger<PackageResigner> logger)
+public partial class PackageResigner(ILogger<PackageResigner> logger, IRepositorySigningService signing, NuDepotContext context, IPackageDatabase packages, IPackageStorageService storage, ICatalogService catalog, IUpstreamClient upstream, IUrlGenerator url, TimeProvider time, PackageLocks locks)
 {
     // A mirrored package whose upstream copy is also expired is only downloaded again after this long.
     private static readonly TimeSpan UpstreamRetryInterval = TimeSpan.FromHours(1);
 
+    private ILogger Logger { get; } = logger;
     private IRepositorySigningService Signing { get; } = signing;
     private NuDepotContext Context { get; } = context;
     private IPackageDatabase Packages { get; } = packages;
@@ -45,7 +46,6 @@ public partial class PackageResigner(IRepositorySigningService signing, NuDepotC
     private IUrlGenerator Url { get; } = url;
     private TimeProvider Time { get; } = time;
     private PackageLocks Locks { get; } = locks;
-    private ILogger<PackageResigner> Logger { get; } = logger;
 
     // An upstream client other than the feed's mirror chain is taken to mirror something.
     private bool IsMirroring => Upstream is not MirrorChain chain || chain.HasMirrors;

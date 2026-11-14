@@ -115,10 +115,10 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
 
         // A new instance loads the key from the database, like the feed does when it starts again.
         using SessionSigningKeys keys = new(
+            NullLogger<SessionSigningKeys>.Instance,
             app.Services.GetRequiredService<IServiceScopeFactory>(),
             app.Services.GetRequiredService<IDataProtectionProvider>(),
-            TimeProvider.System,
-            NullLogger<SessionSigningKeys>.Instance);
+            TimeProvider.System);
         CookieAuthenticationOptions options = app.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(NuDepotAuthenticationSchemes.User);
         SessionTokenFormat format = new(keys, options);
 
@@ -146,10 +146,10 @@ public sealed class SessionTokenTests(ITestOutputHelper output) : IDisposable
 
         // The feed starts again.
         using SessionSigningKeys keys = new(
+            NullLogger<SessionSigningKeys>.Instance,
             app.Services.GetRequiredService<IServiceScopeFactory>(),
             app.Services.GetRequiredService<IDataProtectionProvider>(),
-            TimeProvider.System,
-            NullLogger<SessionSigningKeys>.Instance);
+            TimeProvider.System);
         await keys.LoadAsync(CancellationToken.None);
         CookieAuthenticationOptions options = app.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(NuDepotAuthenticationSchemes.User);
 

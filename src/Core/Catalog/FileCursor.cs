@@ -8,12 +8,12 @@ namespace NuDepot.Core.Catalog;
 /// a JSON object.
 /// Based off: https://github.com/NuGet/NuGet.Services.Metadata/blob/3a468fe534a03dcced897eb5992209fdd3c4b6c9/src/NuGet.Protocol.Catalog/FileCursor.cs
 /// </summary>
-public partial class FileCursor(string path, ILogger<FileCursor> logger) : ICursor
+public partial class FileCursor(ILogger<FileCursor> logger, string path) : ICursor
 {
     private const string ValueProperty = "value";
 
+    private ILogger Logger { get; } = logger;
     private string Path { get; } = path;
-    private ILogger<FileCursor> Logger { get; } = logger;
 
     /// <inheritdoc />
     public async Task<DateTimeOffset?> GetAsync(CancellationToken cancellationToken)

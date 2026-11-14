@@ -3,6 +3,7 @@ using Fido2NetLib.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NuDepot.Core;
 using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Entities;
@@ -16,9 +17,10 @@ namespace NuDepot.Feed.Endpoints;
 /// Accounts for people who sign in with passkeys, used by the website. These aren't part of the
 /// NuGet protocol. They use the sign-in cookie, never API keys.
 /// </summary>
-internal static class AccountEndpoints
+internal static partial class AccountEndpoints
 {
     private const string DefaultPasskeyName = "Passkey";
+    private const string LoggerCategory = "NuDepot.Feed.Endpoints.Account";
 
     // GET api/account
     public static async Task<IResult> GetAsync(HttpContext httpContext, UserService users, FeedAccess access, CancellationToken cancellationToken)
@@ -175,7 +177,7 @@ internal static class AccountEndpoints
     }
 
     // POST api/account/signin
-    public static async Task<IResult> SignInAsync(HttpContext httpContext, UserService users, PasskeyService passkeys, CancellationToken cancellationToken)
+    public static async Task<IResult> SignInAsync(HttpContext httpContext, UserService users, PasskeyService passkeys, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
         AuthenticatorAssertionRawResponse? response = await EndpointHelpers.ReadJsonOrNullAsync(
             httpContext.Request,
@@ -186,7 +188,10 @@ internal static class AccountEndpoints
 
         PasskeyResult result = await passkeys.CompleteSignInAsync(httpContext, response, cancellationToken);
         if (result.User == null)
+        {
+            Log.SignInFailed(loggerFactory.CreateLogger(LoggerCategory), FeedActor.Address(httpContext), result.Error!);
             return EndpointHelpers.Text(StatusCodes.Status400BadRequest, result.Error!);
+        }
 
         await SignInAsync(httpContext, users, result.User, cancellationToken);
         return Results.NoContent();
@@ -307,7 +312,7 @@ internal static class AccountEndpoints
         AuthenticationProperties properties = new()
         { IsPersistent = true };
 
-        (UserSession? session, string? token) = await users.CreateSessionAsync(user.Key, cancellationToken);
+        (UserSession? session, string? token) = await users.CreateSessionAsync(user, cancellationToken);
         UserCookieEvents.SetSession(properties, session.Key, token);
 
         await httpContext.SignInAsync(NuDepotAuthenticationSchemes.User, principal, properties);
@@ -331,4 +336,10 @@ internal static class AccountEndpoints
         LastUsedAt = apiKey.LastUsedAt,
         Key = key,
     };
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Warning, Message = "A passkey sign-in from {Address} failed: {Reason}")]
+        public static partial void SignInFailed(ILogger logger, string address, string reason);
+    }
 }

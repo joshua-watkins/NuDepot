@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -34,12 +35,13 @@ public class PackageDeletionServiceTests
             .Returns(Options);
 
         Target = new PackageDeletionService(
+            Mock.Of<ILogger<PackageDeletionService>>(),
             Packages.Object,
             Storage.Object,
             Mock.Of<ICatalogService>(),
             Locks,
             optionsSnapshot.Object,
-            Mock.Of<ILogger<PackageDeletionService>>());
+            new HttpContextAccessor());
     }
 
     [Theory]

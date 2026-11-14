@@ -13,20 +13,20 @@ public static class NuGetClientFactoryExtensions
     /// Leafs are processed by the <see cref="ICatalogLeafProcessor"/>.
     /// </summary>
     /// <param name="clientFactory">The factory used to create NuGet clients.</param>
+    /// <param name="logger">The logger used for telemetry.</param>
     /// <param name="cursor">Cursor to track succesfully processed leafs. Leafs before the cursor are skipped.</param>
     /// <param name="leafProcessor">The leaf processor.</param>
     /// <param name="options">The options to configure catalog processing.</param>
-    /// <param name="logger">The logger used for telemetry.</param>
     /// <returns>The catalog processor.</returns>
-    public static CatalogProcessor CreateCatalogProcessor(this NuGetClientFactory clientFactory, ICursor cursor, ICatalogLeafProcessor leafProcessor, CatalogProcessorOptions options, ILogger<CatalogProcessor> logger)
+    public static CatalogProcessor CreateCatalogProcessor(this NuGetClientFactory clientFactory, ILogger<CatalogProcessor> logger, ICursor cursor, ICatalogLeafProcessor leafProcessor, CatalogProcessorOptions options)
     {
         ICatalogClient catalogClient = clientFactory.CreateCatalogClient();
 
         return new CatalogProcessor(
+            logger,
             cursor,
             catalogClient,
             leafProcessor,
-            options,
-            logger);
+            options);
     }
 }

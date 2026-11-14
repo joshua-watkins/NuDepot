@@ -93,10 +93,10 @@ public class HostingShortcutTests
     [Fact]
     public async Task AnOpenFeedIsWarnedAbout()
     {
-        WarningLoggerProvider logs = new("NuDepot.Feed");
+        LogRecorder logs = new();
         await using WebApplication app = await StartAsync(new Dictionary<string, string?>(), logs: logs);
 
-        Assert.Contains(logs.Warnings, warning => warning.Contains("anyone who can reach it may push", StringComparison.Ordinal));
+        Assert.Contains(logs.Warnings("NuDepot.Feed"), warning => warning.Contains("anyone who can reach it may push", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -105,19 +105,19 @@ public class HostingShortcutTests
     [InlineData(null, true)]
     public async Task AFeedOthersMayNotPushToIsNotWarnedAbout(string? key, bool users)
     {
-        WarningLoggerProvider logs = new("NuDepot.Feed");
+        LogRecorder logs = new();
         Dictionary<string, string?> configuration = key == null
             ? []
             : new() { [key] = "a8c1d9e2f0b74c3e9a51d6e7f8b2c4a0" };
         await using WebApplication app = await StartAsync(configuration, users: users, logs: logs);
 
-        Assert.Empty(logs.Warnings);
+        Assert.Empty(logs.Warnings("NuDepot.Feed"));
     }
 
     [Fact]
     public async Task ShortApiKeysAreWarnedAbout()
     {
-        WarningLoggerProvider logs = new("NuDepot.Feed");
+        LogRecorder logs = new();
         await using WebApplication app = await StartAsync(
             new Dictionary<string, string?>
             {
@@ -128,10 +128,10 @@ public class HostingShortcutTests
 
         Assert.Equal(
             "The ReadWrite API key has only 6 characters, so it could be guessed. Use a random key of at least 16.",
-            Assert.Single(logs.Warnings));
+            Assert.Single(logs.Warnings("NuDepot.Feed")));
     }
 
-    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> configuration, Action<FeedOptions>? configure = null, bool users = false, WarningLoggerProvider? logs = null)
+    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> configuration, Action<FeedOptions>? configure = null, bool users = false, LogRecorder? logs = null)
     {
         string testId = Guid
             .NewGuid()

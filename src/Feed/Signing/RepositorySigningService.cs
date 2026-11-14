@@ -12,14 +12,14 @@ namespace NuDepot.Feed.Signing;
 /// <summary>
 /// Signs packages with the certificate that <paramref name="certificates"/> says signs packages now.
 /// </summary>
+/// <param name="logger">The logger.</param>
 /// <param name="options">The signing options.</param>
 /// <param name="certificates">The configured certificate, or the generated ones.</param>
-/// <param name="logger">The logger.</param>
-public sealed partial class RepositorySigningService(IOptions<RepositorySigningOptions> options, ISigningCertificateSource certificates, ILogger<RepositorySigningService> logger) : IRepositorySigningService, IDisposable
+public sealed partial class RepositorySigningService(ILogger<RepositorySigningService> logger, IOptions<RepositorySigningOptions> options, ISigningCertificateSource certificates) : IRepositorySigningService, IDisposable
 {
+    private ILogger Logger { get; } = logger;
     private RepositorySigningOptions Options { get; } = options.Value;
     private ISigningCertificateSource Certificates { get; } = certificates;
-    private ILogger<RepositorySigningService> Logger { get; } = logger;
 
     // NuGet checks a request's certificate chain the first time it signs with it, which takes seconds, so
     // requests are kept for each certificate and service index URL. A request signs one package at a time.

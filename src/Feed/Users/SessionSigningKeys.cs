@@ -16,18 +16,18 @@ namespace NuDepot.Feed.Users;
 /// validates, so cookies signed before a new key was made keep working. If no key can be decrypted, because data
 /// protection's keys were lost, a new one is made, and users sign in again.
 /// </summary>
+/// <param name="logger">The logger.</param>
 /// <param name="scopes">Creates the scopes the database is used in.</param>
 /// <param name="dataProtection">Encrypts the keys' private keys.</param>
 /// <param name="time">The current time.</param>
-/// <param name="logger">The logger.</param>
-internal sealed partial class SessionSigningKeys(IServiceScopeFactory scopes, IDataProtectionProvider dataProtection, TimeProvider time, ILogger<SessionSigningKeys> logger) : IDisposable
+internal sealed partial class SessionSigningKeys(ILogger<SessionSigningKeys> logger, IServiceScopeFactory scopes, IDataProtectionProvider dataProtection, TimeProvider time) : IDisposable
 {
     private const string ProtectorPurpose = "NuDepot.Feed.Users.SessionSigningKeys";
 
+    private ILogger Logger { get; } = logger;
     private IServiceScopeFactory Scopes { get; } = scopes;
     private IDataProtector Protector { get; } = dataProtection.CreateProtector(ProtectorPurpose);
     private TimeProvider Time { get; } = time;
-    private ILogger<SessionSigningKeys> Logger { get; } = logger;
     private SemaphoreSlim Lock { get; } = new(1, 1);
     private LoadedKeys? Loaded { get; set; }
 

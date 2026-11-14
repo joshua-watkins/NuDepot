@@ -340,7 +340,7 @@ public class PackageStorageServiceTests
         public FactsBase()
         {
             _storage = new Mock<IStorageService>();
-            _target = new PackageStorageService(_storage.Object, Mock.Of<ILogger<PackageStorageService>>());
+            _target = new PackageStorageService(Mock.Of<ILogger<PackageStorageService>>(), _storage.Object);
 
             _puts = [];
         }

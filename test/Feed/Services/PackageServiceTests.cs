@@ -444,10 +444,10 @@ public class PackageServiceTests
             _indexer = new Mock<IPackageIndexingService>();
 
             _target = new PackageService(
+                Mock.Of<ILogger<PackageService>>(),
                 _db.Object,
                 _upstream.Object,
-                _indexer.Object,
-                Mock.Of<ILogger<PackageService>>());
+                _indexer.Object);
         }
     }
 }

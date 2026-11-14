@@ -51,11 +51,11 @@ public class OperationCancelledMiddlewareTests
     public async Task RequestsThatSucceedAreUnchanged()
     {
         DefaultHttpContext context = new();
-        OperationCancelledMiddleware middleware = new(c =>
+        OperationCancelledMiddleware middleware = new(NullLogger<OperationCancelledMiddleware>.Instance, c =>
         {
             c.Response.StatusCode = StatusCodes.Status201Created;
             return Task.CompletedTask;
-        }, NullLogger<OperationCancelledMiddleware>.Instance);
+        });
 
         await middleware.Invoke(context);
 
@@ -63,7 +63,7 @@ public class OperationCancelledMiddlewareTests
     }
 
     private static OperationCancelledMiddleware Create(Exception exception)
-        => new(_ => Task.FromException(exception), NullLogger<OperationCancelledMiddleware>.Instance);
+        => new(NullLogger<OperationCancelledMiddleware>.Instance, _ => Task.FromException(exception));
 
     private sealed class StartedResponseFeature : HttpResponseFeature
     {

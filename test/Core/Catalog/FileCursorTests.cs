@@ -11,7 +11,7 @@ public sealed class FileCursorTests : IDisposable
 
     public FileCursorTests()
     {
-        Target = new FileCursor(Path, NullLogger<FileCursor>.Instance);
+        Target = new FileCursor(NullLogger<FileCursor>.Instance, Path);
     }
 
     public void Dispose() => File.Delete(Path);

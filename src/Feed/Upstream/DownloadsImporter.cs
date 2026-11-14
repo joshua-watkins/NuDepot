@@ -7,16 +7,16 @@ namespace NuDepot.Feed.Upstream;
 /// <summary>
 /// Imports packages' download counts from nuget.org, for the "import downloads" command.
 /// </summary>
+/// <param name="logger">The logger.</param>
 /// <param name="context">The package database.</param>
 /// <param name="downloadsSource">Where the download counts come from.</param>
-/// <param name="logger">The logger.</param>
-public partial class DownloadsImporter(NuDepotContext context, IPackageDownloadsSource downloadsSource, ILogger<DownloadsImporter> logger)
+public partial class DownloadsImporter(ILogger<DownloadsImporter> logger, NuDepotContext context, IPackageDownloadsSource downloadsSource)
 {
     private const int BatchSize = 200;
 
+    private ILogger Logger { get; } = logger;
     private NuDepotContext Context { get; } = context;
     private IPackageDownloadsSource DownloadsSource { get; } = downloadsSource;
-    private ILogger<DownloadsImporter> Logger { get; } = logger;
 
     /// <summary>
     /// Sets the download counts of the feed's packages.

@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NuDepot.Feed.Authentication;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
@@ -15,6 +17,7 @@ namespace NuDepot.Feed.Indexing;
 /// <summary>
 /// Adds pushed packages to the feed: stores them, signs them, and records them in the database, the search index and the catalog.
 /// </summary>
+/// <param name="logger">The logger.</param>
 /// <param name="packages">The package database.</param>
 /// <param name="storage">Where packages are stored.</param>
 /// <param name="search">The search index.</param>
@@ -24,9 +27,10 @@ namespace NuDepot.Feed.Indexing;
 /// <param name="time">The current time.</param>
 /// <param name="locks">The packages' locks, so a version is pushed once at a time.</param>
 /// <param name="options">The feed's options.</param>
-/// <param name="logger">The logger.</param>
-public partial class PackageIndexingService(IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, ILogger<PackageIndexingService> logger) : IPackageIndexingService
+/// <param name="httpContextAccessor">The request, whose client is logged with what it changes.</param>
+public partial class PackageIndexingService(ILogger<PackageIndexingService> logger, IPackageDatabase packages, IPackageStorageService storage, ISearchIndexer search, ICatalogService catalog, IRepositorySigningService signing, IUrlGenerator url, SystemTime time, PackageLocks locks, IOptionsSnapshot<FeedOptions> options, IHttpContextAccessor httpContextAccessor) : IPackageIndexingService
 {
+    private ILogger Logger { get; } = logger;
     private IPackageDatabase Packages { get; } = packages;
     private IPackageStorageService Storage { get; } = storage;
     private ISearchIndexer Search { get; } = search;
@@ -36,7 +40,10 @@ public partial class PackageIndexingService(IPackageDatabase packages, IPackageS
     private SystemTime Time { get; } = time;
     private PackageLocks Locks { get; } = locks;
     private IOptionsSnapshot<FeedOptions> Options { get; } = options;
-    private ILogger<PackageIndexingService> Logger { get; } = logger;
+    private IHttpContextAccessor HttpContextAccessor { get; } = httpContextAccessor;
+
+    // Who's changing the feed, for the logs.
+    private string Actor => FeedActor.Describe(HttpContextAccessor.HttpContext);
 
     /// <inheritdoc />
     public Task<PackageIndexingResult> IndexAsync(Stream packageStream, CancellationToken cancellationToken)
@@ -49,7 +56,11 @@ public partial class PackageIndexingService(IPackageDatabase packages, IPackageS
         if (contents == null)
             return PackageIndexingResult.InvalidPackage;
 
-        return await IndexWithLockAsync(packageStream, contents, allowOverwrite, cancellationToken);
+        PackageIndexingResult result = await IndexWithLockAsync(packageStream, contents, allowOverwrite, cancellationToken);
+        if (result == PackageIndexingResult.Success)
+            Log.Pushed(Logger, Actor, contents.Package.Id, contents.Package.NormalizedVersionString);
+
+        return result;
     }
 
     /// <inheritdoc />
@@ -96,6 +107,7 @@ public partial class PackageIndexingService(IPackageDatabase packages, IPackageS
             if (!Options.Value.AllowPackageOverwrites || !allowOverwrite)
                 return PackageIndexingResult.PackageAlreadyExists;
 
+            Log.Replacing(Logger, Actor, package.Id, package.NormalizedVersionString);
             await Packages.HardDeletePackageAsync(package.Id, package.Version, cancellationToken);
             await Storage.DeleteAsync(package.Id, package.Version, cancellationToken);
             await Catalog.AddPackageDeleteAsync(package.Id, package.Version, cancellationToken);
@@ -300,6 +312,12 @@ public partial class PackageIndexingService(IPackageDatabase packages, IPackageS
 
         [LoggerMessage(Level = LogLevel.Error, Message = "Uploaded package is invalid")]
         public static partial void InvalidPackage(ILogger logger, Exception exception);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} pushed package {PackageId} {PackageVersion}")]
+        public static partial void Pushed(ILogger logger, string actor, string packageId, string packageVersion);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "{Actor} is replacing package {PackageId} {PackageVersion}, which is deleted permanently")]
+        public static partial void Replacing(ILogger logger, string actor, string packageId, string packageVersion);
 
         [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to delete the stored content of package {PackageId} {PackageVersion} after its push failed")]
         public static partial void OrphanedContentNotDeleted(ILogger logger, Exception exception, string packageId, string packageVersion);

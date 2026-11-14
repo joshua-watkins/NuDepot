@@ -15,9 +15,9 @@ namespace NuDepot.Feed.Entities;
 /// for the machine, so a copy of the database can't decrypt them. New keys encrypt with AES-256-CBC and
 /// authenticate with HMAC-SHA512, which protects generated certificates' private keys and sign-in cookies.
 /// </summary>
-/// <param name="services">The application's services, which the key storage creates database scopes from.</param>
 /// <param name="loggerFactory">Creates the key storage's loggers.</param>
-internal sealed class ConfigureDataProtectionKeys(IServiceProvider services, ILoggerFactory loggerFactory) : IConfigureOptions<KeyManagementOptions>
+/// <param name="services">The application's services, which the key storage creates database scopes from.</param>
+internal sealed class ConfigureDataProtectionKeys(ILoggerFactory loggerFactory, IServiceProvider services) : IConfigureOptions<KeyManagementOptions>
 {
     public void Configure(KeyManagementOptions options)
     {
