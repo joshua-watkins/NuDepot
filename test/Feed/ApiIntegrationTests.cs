@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using NuDepot.Feed.Tests.Support;
 using System.Net;
 using Xunit;
@@ -15,7 +16,8 @@ public sealed class ApiIntegrationTests : IDisposable
 
     public ApiIntegrationTests(ITestOutputHelper output)
     {
-        App = new NuDepotTestApplication(output);
+        // A fixed clock, so the packages' published times are always the same.
+        App = new NuDepotTestApplication(output, configureServices: services => services.AddSingleton<TimeProvider>(new TestTimeProvider(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero))));
         Client = App.CreateClient();
 
         PackageStream = TestResources.GetResourceStream(TestResources.Package);

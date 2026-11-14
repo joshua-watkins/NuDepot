@@ -369,7 +369,6 @@ public static class FeedServiceCollectionExtensions
         services.TryAddSingleton<NullSearchIndexer>();
         services.TryAddSingleton<NullSearchService>();
         services.TryAddSingleton<RegistrationBuilder>();
-        services.TryAddSingleton<SystemTime>();
 
         services.TryAddSingleton(HttpClientFactory);
 

@@ -41,7 +41,7 @@ public sealed class CatalogServiceTests : IDisposable
             Context,
             Mock.Of<IUrlGenerator>(),
             Mock.Of<IPackageStorageService>(),
-            new SystemTime());
+            TimeProvider.System);
     }
 
     public void Dispose()

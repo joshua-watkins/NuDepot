@@ -19,7 +19,7 @@ namespace NuDepot.Feed.Users;
 /// <summary>
 /// The feed's users, their passkeys and their API keys.
 /// </summary>
-internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext context, SystemTime time, IOptionsMonitor<UserOptions> options, IHttpContextAccessor httpContextAccessor)
+internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext context, TimeProvider time, IOptionsMonitor<UserOptions> options, IHttpContextAccessor httpContextAccessor)
 {
     /// <summary>
     /// The start of every user API key, which tells them apart from configured keys.
@@ -48,7 +48,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
 
     private ILogger Logger { get; } = logger;
     private NuDepotDbContext Context { get; } = context;
-    private SystemTime Time { get; } = time;
+    private TimeProvider Time { get; } = time;
     private IOptionsMonitor<UserOptions> Options { get; } = options;
     private IHttpContextAccessor HttpContextAccessor { get; } = httpContextAccessor;
 
@@ -99,7 +99,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
     /// <returns>The sign-up, or null if the user name is taken.</returns>
     public async Task<User?> StartSignUpAsync(string userName, byte[] handle, string options, string passkeyName, CancellationToken cancellationToken)
     {
-        DateTime now = Time.UtcNow;
+        DateTime now = Time.GetUtcNow().UtcDateTime;
 
         // Sign-ups that were never finished don't keep their user names. Taking a ceremony leaves its
         // expiry, so a sign-up being finished right now is kept.
@@ -155,7 +155,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
 
         bool isFirst = !await AnyAsync(cancellationToken);
         FeedRole role = isFirst ? FeedRole.Admin : Options.CurrentValue.DefaultRole;
-        DateTime now = Time.UtcNow;
+        DateTime now = Time.GetUtcNow().UtcDateTime;
 
         int key = user.Key;
         await Context.Users
@@ -196,7 +196,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
     public async Task<bool> TakeCeremonyAsync(User user, PasskeyCeremony ceremony, CancellationToken cancellationToken)
     {
         string? options = user.CeremonyOptions;
-        if (user.Ceremony != ceremony || options == null || !(user.CeremonyExpiresAt > Time.UtcNow))
+        if (user.Ceremony != ceremony || options == null || !(user.CeremonyExpiresAt > Time.GetUtcNow().UtcDateTime))
             return false;
 
         // Only one request takes it, even if two answer the same challenge at once.
@@ -217,7 +217,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
         user.Ceremony = ceremony;
         user.CeremonyOptions = options;
         user.CeremonyPasskeyName = passkeyName;
-        user.CeremonyExpiresAt = Time.UtcNow + CeremonyLifetime;
+        user.CeremonyExpiresAt = Time.GetUtcNow().UtcDateTime + CeremonyLifetime;
     }
 
     // Saves the ceremony that SetCeremony set on the user.
@@ -293,7 +293,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
     /// </summary>
     public async Task RecordSignInAsync(UserPasskey passkey, uint signCount, bool isBackedUp, CancellationToken cancellationToken)
     {
-        DateTime now = Time.UtcNow;
+        DateTime now = Time.GetUtcNow().UtcDateTime;
         int key = passkey.Key;
         await Context.UserPasskeys
             .Where(p => p.Key == key)
@@ -362,7 +362,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
             Name = name,
             Prefix = key[..ShownApiKeyLength],
             Hash = Hash(key),
-            CreatedAt = Time.UtcNow,
+            CreatedAt = Time.GetUtcNow().UtcDateTime,
         };
 
         await Context.UserApiKeys.ExecuteInsertAsync(apiKey, cancellationToken);
@@ -407,7 +407,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
         if (apiKey == null)
             return null;
 
-        DateTime now = Time.UtcNow;
+        DateTime now = Time.GetUtcNow().UtcDateTime;
         if (apiKey.LastUsedAt == null || now - apiKey.LastUsedAt > LastUsedPrecision)
         {
             int apiKeyKey = apiKey.Key;
@@ -429,7 +429,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
     public async Task<(UserSession Session, string Token)> CreateSessionAsync(User user, CancellationToken cancellationToken)
     {
         int userKey = user.Key;
-        DateTime now = Time.UtcNow;
+        DateTime now = Time.GetUtcNow().UtcDateTime;
         string token = CreateSessionToken();
         UserSession session = new()
         {
@@ -452,7 +452,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
     /// </summary>
     public async Task<SessionValidation> ValidateSessionAsync(int sessionKey, string token, CancellationToken cancellationToken)
     {
-        DateTime now = Time.UtcNow;
+        DateTime now = Time.GetUtcNow().UtcDateTime;
         UserSession? session = await Context.UserSessions
             .Include(s => s.User)
             .SingleOrDefaultAsync(s => s.Key == sessionKey, cancellationToken);
@@ -518,7 +518,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
     /// </summary>
     public async Task<List<UserSession>> GetSessionsAsync(int userKey, CancellationToken cancellationToken)
     {
-        DateTime now = Time.UtcNow;
+        DateTime now = Time.GetUtcNow().UtcDateTime;
         return await Context.UserSessions
             .Where(s => s.UserKey == userKey && s.ExpiresAt > now)
             .OrderByDescending(s => s.RotatedAt)
@@ -573,7 +573,7 @@ internal partial class UserService(ILogger<UserService> logger, NuDepotDbContext
     /// </summary>
     public async Task<List<UserSummary>> GetUsersAsync(CancellationToken cancellationToken)
     {
-        DateTime now = Time.UtcNow;
+        DateTime now = Time.GetUtcNow().UtcDateTime;
         return await Accounts
             .OrderBy(u => u.UserName)
             .Select(u => new UserSummary(

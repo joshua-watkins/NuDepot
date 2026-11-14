@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using NuDepot.Feed.Tests.Support;
 using System.Net;
 using Xunit;
@@ -14,8 +15,9 @@ public sealed class MirrorIntegrationTests : IDisposable
 
     public MirrorIntegrationTests(ITestOutputHelper output)
     {
-        Upstream = new NuDepotTestApplication(output);
-        Downstream = new NuDepotTestApplication(output, Upstream.CreateClient());
+        // Fixed clocks, so the packages' published times are always the same.
+        Upstream = new NuDepotTestApplication(output, configureServices: FixClock);
+        Downstream = new NuDepotTestApplication(output, Upstream.CreateClient(), configureServices: FixClock);
 
         DownstreamClient = Downstream.CreateClient();
         PackageStream = TestResources.GetResourceStream(TestResources.Package);
@@ -169,4 +171,7 @@ public sealed class MirrorIntegrationTests : IDisposable
         Upstream.Dispose();
         Downstream.Dispose();
     }
+
+    private static void FixClock(IServiceCollection services)
+        => services.AddSingleton<TimeProvider>(new TestTimeProvider(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero)));
 }

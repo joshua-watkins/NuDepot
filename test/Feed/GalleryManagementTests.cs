@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NuDepot.Core;
-using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Signing;
 using NuDepot.Feed.Tests.Support;
@@ -373,11 +372,6 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
         public bool SignedIn { get; set; }
     }
 
-    private sealed class ClockTime(TestClock clock) : SystemTime
-    {
-        public override DateTime UtcNow => clock.GetUtcNow().UtcDateTime;
-    }
-
     private async Task<(WebApplication App, Uri Address)> StartAsync(Dictionary<string, string?>? settings = null, bool users = true, TestClock? clock = null, bool signing = false)
     {
         string testId = Guid.NewGuid().ToString("N");
@@ -415,7 +409,7 @@ public sealed partial class GalleryManagementTests(ITestOutputHelper output) : I
         // A clock the test moves forward, for the sessions and their cookies.
         if (clock != null)
         {
-            builder.Services.AddSingleton<SystemTime>(new ClockTime(clock));
+            builder.Services.AddSingleton<TimeProvider>(clock);
             builder.Services.Configure<CookieAuthenticationOptions>(NuDepotAuthenticationSchemes.User, options => options.TimeProvider = clock);
         }
 

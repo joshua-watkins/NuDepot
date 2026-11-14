@@ -5,11 +5,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Moq;
 using NuDepot.Core;
 using NuDepot.Core.Hosting;
 using NuDepot.Feed.Configuration;
-using NuDepot.Feed.Extensions;
 using System.Net;
 using Xunit.Abstractions;
 
@@ -150,8 +148,8 @@ internal sealed class NuDepotTestApplication : IDisposable
         if (AddUsers)
             nuDepotServices.AddUsers();
 
-        // Make time deterministic for testing purposes. Tests can move it forward with the clock.
-        builder.Services.AddSingleton<SystemTime>(new FixedTime(Clock));
+        // One clock for the feed and its cookies, which tests can move forward.
+        builder.Services.AddSingleton<TimeProvider>(Clock);
         builder.Services.Configure<CookieAuthenticationOptions>(
             NuDepotAuthenticationSchemes.User,
             options => options.TimeProvider = Clock);

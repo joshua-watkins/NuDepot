@@ -132,7 +132,6 @@ internal static class PackageArchiveReaderExtensions
             ReleaseNotes = nuspec.GetReleaseNotes() ?? string.Empty,
             Listed = true,
             MinClientVersion = nuspec.GetMinClientVersion()?.ToNormalizedString() ?? string.Empty,
-            PublishedAt = DateTime.UtcNow,
             RequireLicenseAcceptance = nuspec.GetRequireLicenseAcceptance(),
             SemVerLevel = GetSemVerLevel(nuspec),
             Summary = nuspec.GetSummary(),

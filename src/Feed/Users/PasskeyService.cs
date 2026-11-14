@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
-using NuDepot.Feed.Extensions;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -15,13 +14,13 @@ namespace NuDepot.Feed.Users;
 /// gets options with a challenge, then sends back what the authenticator signed. Between the steps,
 /// the options are kept on the user's row, so each user has one ceremony in progress at a time.
 /// </summary>
-internal class PasskeyService(UserService users, SystemTime time, IOptionsMonitor<UserOptions> options)
+internal class PasskeyService(UserService users, TimeProvider time, IOptionsMonitor<UserOptions> options)
 {
     private const string ServerName = "NuDepot";
     private const string ExpiredError = "The passkey request expired. Try again.";
 
     private UserService Users { get; } = users;
-    private SystemTime Time { get; } = time;
+    private TimeProvider Time { get; } = time;
     private IOptionsMonitor<UserOptions> Options { get; } = options;
 
     /// <summary>
@@ -174,7 +173,7 @@ internal class PasskeyService(UserService users, SystemTime time, IOptionsMonito
             AaGuid = credential.AaGuid,
             IsBackedUp = credential.IsBackedUp,
             Name = user.CeremonyPasskeyName ?? "Passkey",
-            CreatedAt = Time.UtcNow,
+            CreatedAt = Time.GetUtcNow().UtcDateTime,
         }, null);
     }
 

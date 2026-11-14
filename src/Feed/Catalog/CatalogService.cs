@@ -11,7 +11,7 @@ using System.Text.Json;
 namespace NuDepot.Feed.Catalog;
 
 /// <inheritdoc />
-internal partial class CatalogService(ILogger<CatalogService> logger, NuDepotDbContext context, IUrlGenerator url, IPackageStorageService storage, SystemTime time) : ICatalogService
+internal partial class CatalogService(ILogger<CatalogService> logger, NuDepotDbContext context, IUrlGenerator url, IPackageStorageService storage, TimeProvider time) : ICatalogService
 {
     /// <summary>
     /// The most catalog items in a page, the same as nuget.org.
@@ -33,7 +33,7 @@ internal partial class CatalogService(ILogger<CatalogService> logger, NuDepotDbC
     private NuDepotDbContext Context { get; } = context;
     private IUrlGenerator Url { get; } = url;
     private IPackageStorageService Storage { get; } = storage;
-    private SystemTime Time { get; } = time;
+    private TimeProvider Time { get; } = time;
 
     /// <inheritdoc />
     public async Task AddPackageDetailsAsync(IReadOnlyList<Package> packages, CancellationToken cancellationToken)
@@ -282,7 +282,7 @@ internal partial class CatalogService(ILogger<CatalogService> logger, NuDepotDbC
                 .Select(e => (DateTime?)e.CommittedAt)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            DateTime timestamp = Time.UtcNow;
+            DateTime timestamp = Time.GetUtcNow().UtcDateTime;
             if (latest.HasValue && timestamp <= latest.Value)
                 timestamp = latest.Value.AddTicks(1);
 

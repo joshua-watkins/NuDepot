@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using NuDepot.Feed.Catalog;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Entities;
-using NuDepot.Feed.Extensions;
 using NuDepot.Feed.Indexing;
 using NuDepot.Feed.Search;
 using NuDepot.Feed.Signing;
@@ -315,7 +313,7 @@ public sealed class PackageIndexingServiceTests : IDisposable
             Catalog.Object,
             Signing.Object,
             Mock.Of<IUrlGenerator>(),
-            new SystemTime(),
+            TimeProvider.System,
             Locks,
             options,
             new HttpContextAccessor());
