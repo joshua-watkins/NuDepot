@@ -49,8 +49,6 @@ public static partial class FeedApplicationBuilderExtensions
     /// </summary>
     public static NuDepotApplicationBuilder UseFeed(this NuDepotApplicationBuilder app)
     {
-        app.Application.UseMiddleware<OperationCancelledMiddleware>();
-
         // The protocol's registrations are gzipped. They're public metadata, so compressing them over HTTPS gives
         // nothing away. The application's own compression settings are left alone.
         ResponseCompressionProvider registrationCompression = new(app.Services, Options.Create(new ResponseCompressionOptions
