@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Security.Cryptography;
 
 namespace NuDepot.Feed.Extensions;
@@ -7,7 +8,7 @@ namespace NuDepot.Feed.Extensions;
 /// </summary>
 internal static class StreamExtensions
 {
-    // See: https://github.com/dotnet/corefx/blob/master/src/Common/src/CoreLib/System/IO/Stream.cs#L35
+    // Stream.CopyTo's default buffer size, which stays below the large object heap's threshold.
     private const int DefaultCopyBufferSize = 81920;
 
     /// <summary>
@@ -46,20 +47,24 @@ internal static class StreamExtensions
     /// </summary>
     public static async Task<(string Hash, long Size)> ComputeSha512Async(this Stream content, CancellationToken cancellationToken = default)
     {
-        using SHA512 sha512 = SHA512.Create();
-
-        byte[] buffer = new byte[DefaultCopyBufferSize];
-        long size = 0;
-        int read;
-        while ((read = await content.ReadAsync(buffer, cancellationToken)) > 0)
+        using IncrementalHash sha512 = IncrementalHash.CreateHash(HashAlgorithmName.SHA512);
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(DefaultCopyBufferSize);
+        try
         {
-            sha512.TransformBlock(buffer, 0, read, null, 0);
-            size += read;
+            long size = 0;
+            int read;
+            while ((read = await content.ReadAsync(buffer, cancellationToken)) > 0)
+            {
+                sha512.AppendData(buffer, 0, read);
+                size += read;
+            }
+
+            return (Convert.ToBase64String(sha512.GetHashAndReset()), size);
         }
-
-        sha512.TransformFinalBlock([], 0, 0);
-
-        return (Convert.ToBase64String(sha512.Hash!), size);
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     /// <summary>
@@ -70,10 +75,6 @@ internal static class StreamExtensions
     /// <returns>True if the content is the same.</returns>
     public static bool Matches(this Stream content, Stream target)
     {
-        using SHA256 sha256 = SHA256.Create();
-        byte[] contentHash = sha256.ComputeHash(content);
-        byte[] targetHash = sha256.ComputeHash(target);
-
-        return contentHash.SequenceEqual(targetHash);
+        return SHA256.HashData(content).AsSpan().SequenceEqual(SHA256.HashData(target));
     }
 }
