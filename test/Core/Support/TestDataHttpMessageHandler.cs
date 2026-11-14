@@ -13,7 +13,6 @@ public class TestDataHttpMessageHandler : HttpMessageHandler
         { TestData.CatalogPageUrl, () => TestData.CatalogPage },
         { TestData.PackageDeleteCatalogLeafUrl, () => TestData.PackageDeleteCatalogLeaf },
         { TestData.PackageDetailsCatalogLeafUrl, () => TestData.PackageDetailsCatalogLeaf },
-        //{ TestData.CatalogLeafInvalidDependencyVersionRangeUrl, () => TestData.CatalogLeafInvalidDependencyVersionRange },
 
         { TestData.RegistrationIndexInlinedItemsUrl, () => TestData.RegistrationIndexInlinedItems },
         { TestData.RegistrationIndexPagedItemsUrl, () => TestData.RegistrationIndexPagedItems },

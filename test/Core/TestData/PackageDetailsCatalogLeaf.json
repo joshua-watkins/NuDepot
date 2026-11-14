@@ -1,0 +1,100 @@
+{
+  "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json",
+  "@type": [
+    "PackageDetails",
+    "catalog:Permalink"
+  ],
+  "authors": "Package Author",
+  "catalog:commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+  "catalog:commitTimeStamp": "2010-01-05T00:00:00.000Z",
+  "created": "2010-01-05T00:00:00.000Z",
+  "description": "Package description",
+  "iconUrl": "http://test.example/icon.png",
+  "id": "Test.Package",
+  "isPrerelease": false,
+  "lastEdited": "2010-01-05T00:00:00.000Z",
+  "licenseFile": "License.txt",
+  "licenseUrl": "https://test.example/license",
+  "listed": true,
+  "packageHash": "abc",
+  "packageHashAlgorithm": "SHA512",
+  "packageSize": 100,
+  "projectUrl": "https://test.example/project",
+  "published": "2010-01-05T00:00:00.000Z",
+  "requireLicenseAcceptance": true,
+  "verbatimVersion": "1.0.0",
+  "version": "1.0.0",
+  "dependencyGroups": [
+    {
+      "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#dependencygroup/.netstandard2.0",
+      "@type": "PackageDependencyGroup",
+      "dependencies": [
+        {
+          "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#dependencygroup/.netstandard2.0/test.dependency",
+          "@type": "PackageDependency",
+          "id": "Test.Dependency",
+          "range": "[2.0.0, )"
+        }
+      ],
+      "targetFramework": ".NETStandard2.0"
+    }
+  ],
+  "packageEntries": [
+    {
+      "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#Test.Package.nuspec",
+      "@type": "PackageEntry",
+      "compressedLength": 100,
+      "fullName": "Test.Package.nuspec",
+      "length": 100,
+      "name": "Test.Package.nuspec"
+    },
+    {
+      "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#lib/netstandard2.0/Test.Package.dll",
+      "@type": "PackageEntry",
+      "compressedLength": 100,
+      "fullName": "lib/netstandard2.0/Test.Package.dll",
+      "length": 100,
+      "name": "Test.Package.dll"
+    }
+  ],
+  "@context": {
+    "@vocab": "http://schema.nuget.org/schema#",
+    "catalog": "http://schema.nuget.org/catalog#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "dependencies": {
+      "@id": "dependency",
+      "@container": "@set"
+    },
+    "dependencyGroups": {
+      "@id": "dependencyGroup",
+      "@container": "@set"
+    },
+    "packageEntries": {
+      "@id": "packageEntry",
+      "@container": "@set"
+    },
+    "supportedFrameworks": {
+      "@id": "supportedFramework",
+      "@container": "@set"
+    },
+    "tags": {
+      "@id": "tag",
+      "@container": "@set"
+    },
+    "published": {
+      "@type": "xsd:dateTime"
+    },
+    "created": {
+      "@type": "xsd:dateTime"
+    },
+    "lastEdited": {
+      "@type": "xsd:dateTime"
+    },
+    "catalog:commitTimeStamp": {
+      "@type": "xsd:dateTime"
+    },
+    "reasons": {
+      "@container": "@set"
+    }
+  }
+}

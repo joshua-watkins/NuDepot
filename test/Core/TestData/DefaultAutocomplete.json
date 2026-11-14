@@ -1,0 +1,9 @@
+{
+  "@context": {
+    "@vocab": "http://schema.nuget.org/schema#"
+  },
+  "totalHits": 1,
+  "data": [
+    "Test.Package"
+  ]
+}

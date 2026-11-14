@@ -1,0 +1,34 @@
+{
+  "version": "3.0.0",
+  "resources": [
+    {
+      "@id": "https://test.example/v3/catalog/index.json",
+      "@type": "Catalog/3.0.0",
+      "comment": ""
+    },
+    {
+      "@id": "https://test.example/v3/metadata/",
+      "@type": "RegistrationsBaseUrl/3.6.0",
+      "comment": ""
+    },
+    {
+      "@id": "https://test.example/v3/content/",
+      "@type": "PackageBaseAddress/3.0.0",
+      "comment": ""
+    },
+    {
+      "@id": "https://test.example/v3/search",
+      "@type": "SearchQueryService/3.4.0",
+      "comment": ""
+    },
+    {
+      "@id": "https://test.example/v3/autocomplete",
+      "@type": "SearchAutocompleteService/3.0.0-beta",
+      "comment": ""
+    }
+  ],
+  "@context": {
+    "@vocab": "http://schema.nuget.org/services#",
+    "comment": "http://www.w3.org/2000/01/rdf-schema#comment"
+  }
+}

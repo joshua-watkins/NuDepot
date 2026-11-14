@@ -1,0 +1,167 @@
+{
+  "@id": "https://test.example/v3/metadata/paged.package/page/2.0.0/3.0.0.json",
+  "@type": "catalog:CatalogPage",
+  "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+  "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+  "count": 2,
+  "lower": "2.0.0",
+  "parent": "https://test.example/v3/metadata/paged.package/index.json",
+  "upper": "3.0.0",
+  "items": [
+    {
+      "@id": "https://test.example/v3/metadata/paged.package/2.0.0.json",
+      "@type": "Package",
+      "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+      "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+      "catalogEntry": {
+        "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/paged.package.2.0.0.json",
+        "@type": "PackageDetails",
+        "authors": "Package Authors",
+        "dependencyGroups": [
+          {
+            "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#dependencygroup/.netstandard2.0",
+            "@type": "PackageDependencyGroup",
+            "dependencies": [
+              {
+                "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#dependencygroup/.netstandard2.0/test.dependency",
+                "@type": "PackageDependency",
+                "id": "Test.Dependency",
+                "range": "[2.0.0, )"
+              }
+            ],
+            "targetFramework": ".NETStandard2.0"
+          },
+          {
+            "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#dependencygroup/.netstandard2.0",
+            "@type": "PackageDependencyGroup",
+            "targetFramework": ".NETFramework4.8"
+          }
+        ],
+        "description": "Package Description",
+        "iconUrl": "https://test.example/icon.png",
+        "id": "Paged.Package",
+        "language": "Package language",
+        "licenseExpression": "Package license",
+        "licenseUrl": "https://test.example/license",
+        "listed": false,
+        "minClientVersion": "",
+        "packageContent": "https://test.example/v3/content/paged.package/2.0.0/paged.package.2.0.0.nupkg",
+        "projectUrl": "https://test.example/project",
+        "published": "2010-01-05T00:00:00.000Z",
+        "requireLicenseAcceptance": false,
+        "summary": "Package summary",
+        "tags": [
+          "Paged",
+          "Package"
+        ],
+        "title": "Packaged.Package",
+        "version": "2.0.0+build"
+      },
+      "packageContent": "https://test.example/v3/content/paged.package/2.0.0/paged.package.2.0.0.nupkg",
+      "registration": "https://test.example/v3/metadata/paged.package/index.json"
+    },
+    {
+      "@id": "https://test.example/v3/metadata/paged.package/3.0.0.json",
+      "@type": "Package",
+      "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+      "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+      "catalogEntry": {
+        "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/paged.package.3.0.0.json",
+        "@type": "PackageDetails",
+        "authors": "Package Authors",
+        "dependencyGroups": [
+          {
+            "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#dependencygroup/.netstandard2.0",
+            "@type": "PackageDependencyGroup",
+            "dependencies": [
+              {
+                "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#dependencygroup/.netstandard2.0/test.dependency",
+                "@type": "PackageDependency",
+                "id": "Test.Dependency",
+                "range": "[2.0.0, )"
+              }
+            ],
+            "targetFramework": ".NETStandard2.0"
+          },
+          {
+            "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json#dependencygroup/.netstandard2.0",
+            "@type": "PackageDependencyGroup",
+            "targetFramework": ".NETFramework4.8"
+          }
+        ],
+        "description": "Package Description",
+        "iconUrl": "https://test.example/icon.png",
+        "id": "Paged.Package",
+        "language": "Package language",
+        "licenseExpression": "Package license",
+        "licenseUrl": "https://test.example/license",
+        "listed": true,
+        "minClientVersion": "",
+        "packageContent": "https://test.example/v3/content/paged.package/3.0.0/paged.package.3.0.0.nupkg",
+        "projectUrl": "https://test.example/project",
+        "published": "2010-01-05T00:00:00.000Z",
+        "requireLicenseAcceptance": false,
+        "summary": "Package summary",
+        "tags": [
+          "Paged",
+          "Package"
+        ],
+        "title": "Packaged.Package",
+        "version": "3.0.0"
+      },
+      "packageContent": "https://test.example/v3/content/paged.package/3.0.0/paged.package.3.0.0.nupkg",
+      "registration": "https://test.example/v3/metadata/paged.package/index.json"
+    }
+  ],
+  "@context": {
+    "@vocab": "http://schema.nuget.org/schema#",
+    "catalog": "http://schema.nuget.org/catalog#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "items": {
+      "@id": "catalog:item",
+      "@container": "@set"
+    },
+    "commitTimeStamp": {
+      "@id": "catalog:commitTimeStamp",
+      "@type": "xsd:dateTime"
+    },
+    "commitId": {
+      "@id": "catalog:commitId"
+    },
+    "count": {
+      "@id": "catalog:count"
+    },
+    "parent": {
+      "@id": "catalog:parent",
+      "@type": "@id"
+    },
+    "tags": {
+      "@container": "@set",
+      "@id": "tag"
+    },
+    "reasons": {
+      "@container": "@set"
+    },
+    "packageTargetFrameworks": {
+      "@container": "@set",
+      "@id": "packageTargetFramework"
+    },
+    "dependencyGroups": {
+      "@container": "@set",
+      "@id": "dependencyGroup"
+    },
+    "dependencies": {
+      "@container": "@set",
+      "@id": "dependency"
+    },
+    "packageContent": {
+      "@type": "@id"
+    },
+    "published": {
+      "@type": "xsd:dateTime"
+    },
+    "registration": {
+      "@type": "@id"
+    }
+  }
+}

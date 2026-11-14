@@ -1,0 +1,49 @@
+{
+  "@id": "https://test.example/v3/catalog/page0.json",
+  "@type": "CatalogPage",
+  "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+  "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+  "count": 2,
+  "parent": "https://test.example/v3/catalog/index.json",
+  "items": [
+    {
+      "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json",
+      "@type": "nuget:PackageDetails",
+      "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+      "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+      "nuget:id": "Test.Package",
+      "nuget:version": "1.0.0"
+    },
+    {
+      "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/deleted.package.1.0.0.json",
+      "@type": "nuget:PackageDelete",
+      "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+      "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+      "nuget:id": "Deleted.Package",
+      "nuget:version": "1.0.0"
+    }
+  ],
+  "@context": {
+    "@vocab": "http://schema.nuget.org/catalog#",
+    "nuget": "http://schema.nuget.org/schema#",
+    "items": {
+      "@id": "item",
+      "@container": "@set"
+    },
+    "parent": {
+      "@type": "@id"
+    },
+    "commitTimeStamp": {
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "nuget:lastCreated": {
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "nuget:lastEdited": {
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "nuget:lastDeleted": {
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "@id": "https://test.example/v3/metadata/deprecated.package/page/1.0.0/2.0.0.json",
+  "@type": "catalog:CatalogPage",
+  "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+  "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+  "count": 2,
+  "lower": "1.0.0",
+  "parent": "https://test.example/v3/metadata/deprecated.package/index.json",
+  "upper": "2.0.0",
+  "items": [
+    {
+      "@id": "https://test.example/v3/metadata/deprecated.package/1.0.0.json",
+      "@type": "Package",
+      "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+      "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+      "catalogEntry": {
+        "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/deprecated.package.1.0.0.json",
+        "@type": "PackageDetails",
+        "authors": "Package Authors",
+        "deprecation": {
+          "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/deprecated.package.1.0.0.json#deprecation",
+          "reasons": [
+            "Legacy",
+            "CriticalBugs"
+          ],
+          "message": "Use Replacement.Package instead.",
+          "alternatePackage": {
+            "@id": "https://test.example/v3/metadata/replacement.package/index.json",
+            "@type": "AlternatePackage",
+            "id": "Replacement.Package",
+            "range": "[2.0.0, )"
+          }
+        },
+        "description": "Package Description",
+        "id": "Deprecated.Package",
+        "listed": true,
+        "packageContent": "https://test.example/v3/content/deprecated.package/1.0.0/deprecated.package.1.0.0.nupkg",
+        "published": "2010-01-05T00:00:00.000Z",
+        "version": "1.0.0",
+        "vulnerabilities": [
+          {
+            "advisoryUrl": "https://test.example/advisories/1",
+            "severity": "2"
+          }
+        ]
+      },
+      "packageContent": "https://test.example/v3/content/deprecated.package/1.0.0/deprecated.package.1.0.0.nupkg",
+      "registration": "https://test.example/v3/metadata/deprecated.package/index.json"
+    },
+    {
+      "@id": "https://test.example/v3/metadata/deprecated.package/2.0.0.json",
+      "@type": "Package",
+      "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+      "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+      "catalogEntry": {
+        "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/deprecated.package.2.0.0.json",
+        "@type": "PackageDetails",
+        "authors": "Package Authors",
+        "deprecation": {
+          "reasons": [
+            "Other"
+          ]
+        },
+        "description": "Package Description",
+        "id": "Deprecated.Package",
+        "listed": true,
+        "packageContent": "https://test.example/v3/content/deprecated.package/2.0.0/deprecated.package.2.0.0.nupkg",
+        "published": "2010-01-05T00:00:00.000Z",
+        "version": "2.0.0"
+      },
+      "packageContent": "https://test.example/v3/content/deprecated.package/2.0.0/deprecated.package.2.0.0.nupkg",
+      "registration": "https://test.example/v3/metadata/deprecated.package/index.json"
+    }
+  ]
+}

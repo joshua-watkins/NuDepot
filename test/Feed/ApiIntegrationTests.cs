@@ -30,7 +30,7 @@ public sealed class ApiIntegrationTests : IDisposable
         string content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(TestData.ServiceIndex, content);
+        Assert.Equal(TestResources.GetResourceText(TestResources.ServiceIndex), content);
     }
 
     [Fact]

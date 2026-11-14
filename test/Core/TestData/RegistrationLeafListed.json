@@ -1,0 +1,28 @@
+{
+  "@id": "https://test.example/v3/metadata/test.package/1.0.0.json",
+  "@type": [
+    "Package",
+    "http://schema.nuget.org/catalog#Permalink"
+  ],
+  "catalogEntry": "https://test.example/v3/catalog/2010.01.05.00.00.00/test.package.1.0.0.json",
+  "listed": true,
+  "packageContent": "https://test.example/v3/content/test.package/1.0.0/test.package.1.0.0.nupkg",
+  "published": "2010-01-05T00:00:00.000Z",
+  "registration": "https://test.example/v3/metadata/test.package/index.json",
+  "@context": {
+    "@vocab": "http://schema.nuget.org/schema#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "catalogEntry": {
+      "@type": "@id"
+    },
+    "registration": {
+      "@type": "@id"
+    },
+    "packageContent": {
+      "@type": "@id"
+    },
+    "published": {
+      "@type": "xsd:dateTime"
+    }
+  }
+}

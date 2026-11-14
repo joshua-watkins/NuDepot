@@ -1,0 +1,53 @@
+{
+  "@context": {
+    "@vocab": "http://schema.nuget.org/schema#",
+    "@base": "https://test.example/v3/metadata/"
+  },
+  "totalHits": 1,
+  "data": [
+    {
+      "@id": "https://test.example/v3/metadata/test.package/index.json",
+      "@type": "Package",
+      "registration": "https://test.example/v3/metadata/test.package/index.json",
+      "id": "Test.Package",
+      "version": "3.0.0",
+      "description": "Package description",
+      "summary": "Package summary",
+      "title": "Test.Package",
+      "iconUrl": "http://test.example/icon.png",
+      "licenseUrl": "https://test.example/license",
+      "projectUrl": "https://test.example/project",
+      "tags": [
+        "Test",
+        "Package"
+      ],
+      "authors": [
+        "Package Authors"
+      ],
+      "totalDownloads": 100,
+      "verified": false,
+      "packageTypes": [
+        {
+          "name": "Dependency"
+        }
+      ],
+      "versions": [
+        {
+          "version": "3.0.0",
+          "downloads": 50,
+          "@id": "https://test.example/v3/metadata/test.package/3.0.0.json"
+        },
+        {
+          "version": "2.0.0+build",
+          "downloads": 25,
+          "@id": "https://test.example/v3/metadata/test.package/2.0.0.json"
+        },
+        {
+          "version": "1.0.0",
+          "downloads": 25,
+          "@id": "https://test.example/v3/metadata/test.package/1.0.0.json"
+        }
+      ]
+    }
+  ]
+}

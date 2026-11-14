@@ -1,0 +1,40 @@
+{
+  "@id": "https://test.example/v3/catalog/2010.01.05.00.00.00/deleted.package.1.0.0.json",
+  "@type": [
+    "PackageDelete",
+    "catalog:Permalink"
+  ],
+  "catalog:commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+  "catalog:commitTimeStamp": "2010-01-05T00:00:00.000Z",
+  "id": "Deleted.Package",
+  "originalId": "Deleted.Package",
+  "published": "2010-01-05T00:00:00.000Z",
+  "version": "1.0.0",
+  "@context": {
+    "@vocab": "http://schema.nuget.org/schema#",
+    "catalog": "http://schema.nuget.org/catalog#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "details": "catalog:details",
+    "catalog:commitTimeStamp": {
+      "@type": "xsd:dateTime"
+    },
+    "published": {
+      "@type": "xsd:dateTime"
+    },
+    "categories": {
+      "@container": "@set"
+    },
+    "entries": {
+      "@container": "@set"
+    },
+    "links": {
+      "@container": "@set"
+    },
+    "tags": {
+      "@container": "@set"
+    },
+    "packageContent": {
+      "@type": "@id"
+    }
+  }
+}

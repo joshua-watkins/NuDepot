@@ -1,0 +1,82 @@
+{
+  "@id": "https://test.example/v3/metadata/paged.package/index.json",
+  "@type": [
+    "catalog:CatalogRoot",
+    "PackageRegistration",
+    "catalog:Permalink"
+  ],
+  "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+  "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+  "count": 2,
+  "items": [
+    {
+      "@id": "https://test.example/v3/metadata/paged.package/page/1.0.0/1.0.0.json",
+      "@type": "catalog:CatalogPage",
+      "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+      "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+      "count": 1,
+      "lower": "1.0.0",
+      "upper": "1.0.0"
+    },
+    {
+      "@id": "https://test.example/v3/metadata/paged.package/page/2.0.0/3.0.0.json",
+      "@type": "catalog:CatalogPage",
+      "commitId": "c088ef83-7dd6-4d24-86e8-85e3089d2c3b",
+      "commitTimeStamp": "2010-01-05T00:00:00.000Z",
+      "count": 2,
+      "lower": "2.0.0",
+      "upper": "3.0.0"
+    }
+  ],
+  "@context": {
+    "@vocab": "http://schema.nuget.org/schema#",
+    "catalog": "http://schema.nuget.org/catalog#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "items": {
+      "@id": "catalog:item",
+      "@container": "@set"
+    },
+    "commitTimeStamp": {
+      "@id": "catalog:commitTimeStamp",
+      "@type": "xsd:dateTime"
+    },
+    "commitId": {
+      "@id": "catalog:commitId"
+    },
+    "count": {
+      "@id": "catalog:count"
+    },
+    "parent": {
+      "@id": "catalog:parent",
+      "@type": "@id"
+    },
+    "tags": {
+      "@container": "@set",
+      "@id": "tag"
+    },
+    "reasons": {
+      "@container": "@set"
+    },
+    "packageTargetFrameworks": {
+      "@container": "@set",
+      "@id": "packageTargetFramework"
+    },
+    "dependencyGroups": {
+      "@container": "@set",
+      "@id": "dependencyGroup"
+    },
+    "dependencies": {
+      "@container": "@set",
+      "@id": "dependency"
+    },
+    "packageContent": {
+      "@type": "@id"
+    },
+    "published": {
+      "@type": "xsd:dateTime"
+    },
+    "registration": {
+      "@type": "@id"
+    }
+  }
+}

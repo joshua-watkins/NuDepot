@@ -27,19 +27,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Compile Update="TestData\TestData.Designer.cs">
-			<DesignTime>True</DesignTime>
-			<AutoGen>True</AutoGen>
-			<DependentUpon>TestData.resx</DependentUpon>
-		</Compile>
-	</ItemGroup>
-
-	<ItemGroup>
-		<EmbeddedResource Update="TestData\TestData.resx">
-			<LastGenOutput>TestData.Designer.cs</LastGenOutput>
-			<Generator>ResXFileCodeGenerator</Generator>
-			<CustomToolNamespace>$(RootNamespace)</CustomToolNamespace>
-		</EmbeddedResource>
+		<EmbeddedResource Include="TestData\ServiceIndex.json" />
 		<EmbeddedResource Include="TestData\TestData.1.2.3.nupkg">
 			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
 		</EmbeddedResource>
