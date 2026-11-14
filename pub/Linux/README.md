@@ -21,11 +21,12 @@ and packages default to `/var/lib/nudepot`, which systemd creates for the servic
 ## Building a release
 
 Publish for x64 (`linux-x64`) or ARM64 (`linux-arm64`, like a Raspberry Pi with a 64-bit OS or an AWS Graviton
-server):
+server), with the release's version, the same as the Windows installer's. Without `-p:Version`, it's the
+`VersionPrefix` in the repository's `Directory.Build.props`. Build releases from clean `obj` and `bin` folders.
 
 ```sh
-dotnet publish pub/Linux/Linux.csproj -c Release -r linux-x64 --self-contained -o out
-dotnet publish pub/Linux/Linux.csproj -c Release -r linux-arm64 --self-contained -o out-arm64
+dotnet publish pub/Linux/Linux.csproj -c Release -r linux-x64 --self-contained -o out -p:Version=1.2.3
+dotnet publish pub/Linux/Linux.csproj -c Release -r linux-arm64 --self-contained -o out-arm64 -p:Version=1.2.3
 ```
 
 Publishing also makes the release archive, `pub/Linux/bin/Release/NuDepot-linux-x64.tar.gz`, with the published

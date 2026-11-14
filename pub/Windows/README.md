@@ -26,11 +26,18 @@ too, and relative paths in the settings are relative to it. The settings are rea
 
 ## Building the installer
 
+Give each release a higher version than the last, with `-p:Version`. The installer only replaces an installed NuDepot
+with a lower version, and Windows Installer only compares the first three parts, so `1.2.3` and `1.2.3.4` count as the
+same. Without `-p:Version`, it's the `VersionPrefix` in the repository's `Directory.Build.props`.
+
+Build releases from clean `obj` and `bin` folders, especially after updating packages: the per-platform builds can keep
+old assemblies otherwise.
+
 ```powershell
-dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=x64
+dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=x64 -p:Version=1.2.3
 # Output: pub/Windows.Setup/bin/x64/Release/en-US/NuDepot-x64.msi
 
-dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=ARM64
+dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=ARM64 -p:Version=1.2.3
 # Output: pub/Windows.Setup/bin/ARM64/Release/en-US/NuDepot-arm64.msi
 ```
 

@@ -155,11 +155,25 @@ internal sealed partial class FeedRateLimiter : IDisposable
     /// <param name="limited">Who or what is limited.</param>
     internal bool ShouldWarn(string limited)
     {
+        // Of requests limited at once, only the one that records the warning logs it.
         long now = Time.GetUtcNow().UtcTicks;
-        if (WarnedAt.TryGetValue(limited, out long warnedAt) && now - warnedAt < WarningInterval.Ticks)
-            return false;
+        while (true)
+        {
+            if (!WarnedAt.TryGetValue(limited, out long warnedAt))
+            {
+                if (WarnedAt.TryAdd(limited, now))
+                    break;
+            }
+            else if (now - warnedAt < WarningInterval.Ticks)
+            {
+                return false;
+            }
+            else if (WarnedAt.TryUpdate(limited, now, warnedAt))
+            {
+                break;
+            }
+        }
 
-        WarnedAt[limited] = now;
         if (WarnedAt.Count > MaxWarned)
         {
             foreach (KeyValuePair<string, long> warning in WarnedAt)

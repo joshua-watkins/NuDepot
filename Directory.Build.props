@@ -9,4 +9,13 @@
 		<SolutionName Condition="'$(SolutionName)' == '' Or '$(SolutionName)' == '*Undefined*'">NuDepot</SolutionName>
 	</PropertyGroup>
 
+	<!--
+		One version for the services, their installer and archive, and the NuGet packages. Each release gets a higher
+		one: set it here, or with -p:Version=1.2.3 when building the release. The installer only upgrades an installed
+		NuDepot that has a lower version, and Windows Installer compares only the first three parts.
+	-->
+	<PropertyGroup>
+		<VersionPrefix>0.1.0</VersionPrefix>
+	</PropertyGroup>
+
 </Project>

@@ -59,6 +59,25 @@ public sealed class RateLimitingTests(ITestOutputHelper output) : IDisposable
         Assert.Single(Logs.Messages(LogLevel.Warning), m => m == $"An anonymous client ({Client}) sent more than 2 requests at once, or more than 1 a second, so some are refused with 429 Too Many Requests");
     }
 
+    [Fact]
+    public void AClientLimitedByManyRequestsAtOnceIsLoggedOnce()
+    {
+        FeedRateLimiter limiter = new(
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<FeedRateLimiter>.Instance,
+            Options.Create(new Configuration.FeedOptions()),
+            new TestTimeProvider(DateTimeOffset.UtcNow));
+
+        int warnings = 0;
+        Parallel.For(0, 1000, _ =>
+        {
+            if (limiter.ShouldWarn(Client))
+                Interlocked.Increment(ref warnings);
+        });
+
+        Assert.Equal(1, warnings);
+        limiter.Dispose();
+    }
+
     [Theory]
     [InlineData("203.0.113.7", "203.0.113.7")]
     [InlineData("::ffff:203.0.113.7", "203.0.113.7")]
