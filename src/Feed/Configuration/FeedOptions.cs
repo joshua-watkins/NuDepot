@@ -42,8 +42,9 @@ public class FeedOptions
     public RateLimitingOptions RateLimiting { get; set; } = new();
 
     /// <summary>
-    /// If enabled, the database will be updated at app startup by running
-    /// Entity Framework migrations. This is not recommended in production.
+    /// Whether <c>RunMigrationsAsync()</c> updates the database's schema when the application starts, which the
+    /// Windows and Linux services rely on, so upgrades update it. Turn it off only if something else applies the
+    /// migrations, like an application that hosts the feed and updates its database itself.
     /// </summary>
     public bool RunMigrationsAtStartup { get; set; } = true;
 

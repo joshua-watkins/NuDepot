@@ -386,13 +386,11 @@ internal class NuDepotDbContext(DbContextOptions<NuDepotDbContext> options) : Db
         package.Ignore(p => p.ProjectUrlString);
         package.Ignore(p => p.RepositoryUrlString);
 
-        // TODO: This is needed to make the dependency to package relationship required.
-        // Unfortunately, this would generate a migration that drops a foreign key, which
-        // isn't supported by SQLite. The migrations will be need to be recreated for this.
-        // Consumers will need to recreate their database and reindex all their packages.
-        //package.HasMany(p => p.Dependencies)
-        //    .WithOne(d => d.Package)
-        //    .IsRequired();
+        // Each dependency belongs to a package, and is deleted with it.
+        package
+            .HasMany(p => p.Dependencies)
+            .WithOne(d => d.Package)
+            .IsRequired();
 
         package
             .HasMany(p => p.PackageTypes)

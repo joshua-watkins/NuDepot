@@ -27,7 +27,7 @@ public class PackageDependency
     public string? TargetFramework { get; set; }
 
     /// <summary>
-    /// The package version with the dependency.
+    /// The package version with the dependency, which it's deleted with.
     /// </summary>
-    public Package? Package { get; set; }
+    public Package Package { get; set; } = null!;
 }

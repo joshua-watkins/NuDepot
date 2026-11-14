@@ -29,14 +29,11 @@ public class RawSearchClientTests(ProtocolFixture fixture) : IClassFixture<Proto
     [Fact]
     public async Task AddsParameters()
     {
-        await Task.Yield();
+        RecordingHttpMessageHandler handler = new(TestData.DefaultSearch);
+        RawSearchClient client = new(new HttpClient(handler), TestData.SearchUrl);
 
-        // TODO: Assert request URL query parameters.
-        // var response = await _target.SearchAsync(
-        //     "query",
-        //     skip: 2,
-        //     take: 5,
-        //     includePrerelease: false,
-        //     includeSemVer2: false);
+        await client.SearchAsync("query", skip: 2, take: 5, includePrerelease: false, includeSemVer2: false, packageType: "Dependency", framework: "net10.0", TestContext.Current.CancellationToken);
+
+        Assert.Equal($"{TestData.SearchUrl}?skip=2&take=5&packageType=Dependency&framework=net10.0&q=query", Assert.Single(handler.RequestedUrls));
     }
 }

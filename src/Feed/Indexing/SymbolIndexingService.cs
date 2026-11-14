@@ -90,9 +90,9 @@ internal partial class SymbolIndexingService(ILogger<SymbolIndexingService> logg
         return [.. files.Where(p => Path.GetExtension(p) == ".pdb")];
     }
 
+    // Whether the package only has files symbol packages may have. Each PDB is checked to be portable when it's read.
     private static bool AreSymbolFilesValid(IReadOnlyList<string> entries)
     {
-        // TODO: Validate that all PDBs are portable. See: https://github.com/NuGet/NuGetGallery/blob/master/src/NuGetGallery/Services/SymbolPackageService.cs#L174
         static bool IsValidSymbolFileInfo(FileInfo file)
         {
             if (string.IsNullOrEmpty(file.Name))
@@ -110,11 +110,11 @@ internal partial class SymbolIndexingService(ILogger<SymbolIndexingService> logg
             .All(IsValidSymbolFileInfo);
     }
 
-    // Throws if the PDB isn't a portable PDB that can be stored.
+    // Throws if the PDB isn't a portable PDB that can be stored. Unlike nuget.org, the feed doesn't check that each PDB
+    // belongs to one of the package's DLLs: only people who may push upload symbols, and debuggers check a PDB's ID
+    // against the DLL they load anyway.
     private static async Task<PortablePdb> ExtractPortablePdbAsync(PackageArchiveReader symbolPackage, string pdbPath, CancellationToken cancellationToken)
     {
-        // TODO: Validate that the PDB has a corresponding DLL
-        // See: https://github.com/NuGet/NuGet.Jobs/blob/master/src/Validation.Symbols/SymbolsValidatorService.cs#L170
         Stream? pdbStream = null;
         PortablePdb? result = null;
 

@@ -42,11 +42,11 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
 
         Log.StoringPackage(Logger, lowercasedId, lowercasedNormalizedVersion, packagePath);
 
-        // Store the package.
+        // Store the package. Indexing deletes files left from a push that failed, while it holds the package's lock, so
+        // different content already stored here means something else changed the storage meanwhile, and it fails.
         StoragePutResult result = await Storage.PutAsync(packagePath, packageStream, PackageContentType, cancellationToken);
         if (result == StoragePutResult.Conflict)
         {
-            // TODO: This should be returned gracefully with an enum.
             Log.PackageConflict(Logger, lowercasedId, lowercasedNormalizedVersion, packagePath);
 
             throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} due to conflict");
@@ -58,7 +58,6 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
         result = await Storage.PutAsync(nuspecPath, nuspecStream, NuspecContentType, cancellationToken);
         if (result == StoragePutResult.Conflict)
         {
-            // TODO: This should be returned gracefully with an enum.
             Log.NuspecConflict(Logger, lowercasedId, lowercasedNormalizedVersion, nuspecPath);
 
             throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} nuspec due to conflict");
@@ -72,7 +71,6 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
             result = await Storage.PutAsync(readmePath, readmeStream, ReadmeContentType, cancellationToken);
             if (result == StoragePutResult.Conflict)
             {
-                // TODO: This should be returned gracefully with an enum.
                 Log.ReadmeConflict(Logger, lowercasedId, lowercasedNormalizedVersion, readmePath);
 
                 throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} readme due to conflict");
@@ -87,7 +85,6 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
             result = await Storage.PutAsync(iconPath, iconStream, IconContentType, cancellationToken);
             if (result == StoragePutResult.Conflict)
             {
-                // TODO: This should be returned gracefully with an enum.
                 Log.IconConflict(Logger, lowercasedId, lowercasedNormalizedVersion, iconPath);
 
                 throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} icon");
@@ -105,7 +102,6 @@ internal partial class PackageStorageService(ILogger<PackageStorageService> logg
                 result = await Storage.PutAsync(licensePath, licenseStream, LicenseTextContentType, cancellationToken);
             if (result == StoragePutResult.Conflict)
             {
-                // TODO: This should be returned gracefully with an enum.
                 Log.LicenseConflict(Logger, lowercasedId, lowercasedNormalizedVersion, licensePath);
 
                 throw new InvalidOperationException($"Failed to store package {lowercasedId} {lowercasedNormalizedVersion} license");

@@ -7,10 +7,9 @@ namespace NuDepot.Core.Models;
 /// Extends <see cref="RegistrationIndexResponse"/>.
 /// </summary>
 /// <remarks>
-/// TODO: After this project is updated to .NET 5, make <see cref="NuDepotRegistrationIndexResponse"/>
-/// extend <see cref="RegistrationIndexResponse"/> and remove identical properties.
-/// Properties that are modified should be marked with the "new" modified.
-/// See: https://github.com/dotnet/runtime/pull/32107
+/// It doesn't inherit <see cref="RegistrationIndexResponse"/>, because its <c>Pages</c> property has the same JSON
+/// name with a NuDepot type. Hiding the base class's property with <c>new</c> would leave that one always null for
+/// code that uses the base class.
 /// </remarks>
 public class NuDepotRegistrationIndexResponse
 {

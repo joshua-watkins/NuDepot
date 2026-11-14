@@ -140,7 +140,7 @@ public class NuGetClient
     /// <returns>The package's listed versions, if any.</returns>
     public virtual async Task<IReadOnlyList<NuGetVersion>> ListPackageVersionsAsync(string packageId, CancellationToken cancellationToken = default)
     {
-        // TODO: Use the Autocomplete's enumerate versions endpoint if this is not Sleet.
+        // The registrations say which versions are listed, and every feed has them, unlike autocomplete.
         IReadOnlyList<Models.PackageMetadata> packages = await GetPackageMetadataAsync(packageId, cancellationToken);
 
         return [.. packages

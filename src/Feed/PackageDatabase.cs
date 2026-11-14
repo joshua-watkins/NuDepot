@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.EntityFrameworkCore.Storage;
 using NuDepot.Feed.Entities;
 using NuDepot.Feed.Extensions;
 using NuGet.Versioning;
@@ -119,17 +118,11 @@ internal class PackageDatabase(NuDepotDbContext context) : IPackageDatabase
         if (key == null)
             return false;
 
-        // The database deletes package types and target frameworks with their package, but not dependencies.
-        await using IDbContextTransaction transaction = await Context.Database.BeginTransactionAsync(cancellationToken);
-
-        await Context.PackageDependencies
-            .Where(d => EF.Property<int?>(d, "PackageKey") == key)
-            .ExecuteDeleteAsync(cancellationToken);
+        // The database deletes the package's dependencies, types and target frameworks with it.
         await Context.Packages
             .Where(p => p.Key == key)
             .ExecuteDeleteAsync(cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
         return true;
     }
 

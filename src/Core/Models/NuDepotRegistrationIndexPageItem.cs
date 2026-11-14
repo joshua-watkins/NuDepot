@@ -3,14 +3,13 @@ using System.Text.Json.Serialization;
 namespace NuDepot.Core.Models;
 
 /// <summary>
-/// NuDepot's extensions to a registration index page.
+/// NuDepot's extensions to a registration index page item.
 /// Extends <see cref="RegistrationIndexPageItem"/>.
 /// </summary>
 /// <remarks>
-/// TODO: After this project is updated to .NET 5, make <see cref="NuDepotRegistrationIndexPageItem"/>
-/// extend <see cref="RegistrationIndexPageItem"/> and remove identical properties.
-/// Properties that are modified should be marked with the "new" modified.
-/// See: https://github.com/dotnet/runtime/pull/32107
+/// It doesn't inherit <see cref="RegistrationIndexPageItem"/>, because its <c>PackageMetadata</c> property has the same JSON
+/// name with a NuDepot type. Hiding the base class's property with <c>new</c> would leave that one always null for
+/// code that uses the base class.
 /// </remarks>
 public class NuDepotRegistrationIndexPageItem
 {

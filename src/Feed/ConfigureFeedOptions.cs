@@ -29,7 +29,9 @@ internal sealed class ConfigureFeedOptions(IOptions<FeedOptions> feedOptions)
 
     public void Configure(CorsOptions options)
     {
-        // TODO: Consider disabling this on production builds.
+        // Any site's scripts may read the feed, like nuget.org's API allows, but never with the visitor's cookies, since
+        // credentials aren't allowed. Changes from other sites can't use the sign-in cookie either (UserCookieEvents),
+        // and API keys are only sent by clients that have them.
         options.AddDefaultPolicy(builder => builder
             .AllowAnyOrigin()
             .AllowAnyMethod()

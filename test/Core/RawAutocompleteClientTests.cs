@@ -22,38 +22,35 @@ public class RawAutocompleteClientTests(ProtocolFixture fixture) : IClassFixture
     [Fact]
     public async Task AddsAutocompleteParameters()
     {
-        await Task.Yield();
+        RecordingHttpMessageHandler handler = new(TestData.DefaultAutocomplete);
+        RawAutocompleteClient client = new(new HttpClient(handler), TestData.AutocompleteUrl);
 
-        // TODO: Assert request URL query parameters.
-        // var response = await _target.AutocompleteAsync(
-        //     "query",
-        //     skip: 2,
-        //     take: 5,
-        //     includePrerelease: false,
-        //     includeSemVer2: false);
+        await client.AutocompleteAsync("query", skip: 2, take: 5, includePrerelease: false, includeSemVer2: false, TestContext.Current.CancellationToken);
+
+        Assert.Equal($"{TestData.AutocompleteUrl}?skip=2&take=5&q=query", Assert.Single(handler.RequestedUrls));
     }
 
     [Fact]
     public async Task ListsPackageVersions()
     {
-        await Task.Yield();
+        RecordingHttpMessageHandler handler = new("{ \"totalHits\": 1, \"data\": [ \"1.0.0\" ] }");
+        RawAutocompleteClient client = new(new HttpClient(handler), TestData.AutocompleteUrl);
 
-        // var response = await _target.ListPackageVersionsAsync("PackageId");
+        AutocompleteResponse response = await client.ListPackageVersionsAsync("Test.Package", cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert.NotNull(response);
-        // Assert.Equal(1, response.TotalHits);
-        // Assert.Equal("1.0.0", response.Data[0]);
+        Assert.Equal($"{TestData.AutocompleteUrl}?prerelease=True&semVerLevel=2.0.0&id=Test.Package", Assert.Single(handler.RequestedUrls));
+        Assert.Equal(1, response.TotalHits);
+        Assert.Equal("1.0.0", Assert.Single(response.Data));
     }
 
     [Fact]
     public async Task AddsListPackageVersionsParameters()
     {
-        await Task.Yield();
+        RecordingHttpMessageHandler handler = new("{ \"totalHits\": 0, \"data\": [] }");
+        RawAutocompleteClient client = new(new HttpClient(handler), TestData.AutocompleteUrl);
 
-        // TODO: Assert request URL query parameters.
-        // var response = await _target.ListPackageVersionsAsync(
-        //     "query",
-        //     includePrerelease: false,
-        //     includeSemVer2: false);
+        await client.ListPackageVersionsAsync("Test.Package", includePrerelease: false, includeSemVer2: false, TestContext.Current.CancellationToken);
+
+        Assert.Equal($"{TestData.AutocompleteUrl}?id=Test.Package", Assert.Single(handler.RequestedUrls));
     }
 }

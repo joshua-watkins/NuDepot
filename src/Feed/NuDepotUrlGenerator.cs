@@ -6,9 +6,9 @@ using NuGet.Versioning;
 
 namespace NuDepot.Feed;
 
-// TODO: This should validate the "Host" header against known valid values
 /// <summary>
-/// Generates the feed's URLs from its routes, for the address the request used.
+/// Generates the feed's URLs from its routes, for the address the request used. ASP.NET Core's AllowedHosts setting
+/// refuses requests for host names the feed doesn't use, so they can't put other hosts in its links.
 /// </summary>
 /// <param name="httpContextAccessor">The current request.</param>
 /// <param name="linkGenerator">Generates URLs from routes.</param>

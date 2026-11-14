@@ -231,7 +231,8 @@ public partial class NuGetClientFactory
             }
         }
 
-        // TODO: This should periodically refresh the service index response.
+        // The service index is read once, and its resources are used until the factory is replaced, like when the
+        // application restarts. A service index that couldn't be read is read again next time.
         return clientFactory(Clients!);
     }
 

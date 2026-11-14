@@ -11,7 +11,7 @@ public partial class NuGetClientFactory
 
         public async Task<SearchResponse> SearchAsync(string? query = null, int skip = 0, int take = 20, bool includePrerelease = true, bool includeSemVer2 = true, string? packageType = null, string? framework = null, CancellationToken cancellationToken = default)
         {
-            // TODO: Support search failover.
+            // The first search resource the service index lists.
             ISearchClient client = await Clientfactory.GetSearchClientAsync(cancellationToken);
 
             return await client.SearchAsync(query, skip, take, includePrerelease, includeSemVer2, packageType, framework, cancellationToken);
