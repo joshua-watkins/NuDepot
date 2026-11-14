@@ -97,6 +97,36 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
         Assert.Contains("\"2.0.0\"", registration);
     }
 
+    [Fact]
+    public async Task RequestsForAPackageAtTheSameTimeAskTheMirrorsOnce()
+    {
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        HttpClient client = CreateMirror().CreateClient();
+        Routing!.Gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Like several restores at once, one of which gives up while the mirror is slow.
+        using CancellationTokenSource givesUp = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        Task<HttpResponseMessage> cancelled = client.GetAsync("v3/registration/public.package/index.json", givesUp.Token);
+        Task<string>[] waiting = [.. Enumerable
+            .Range(0, 4)
+            .Select(_ => client.GetStringAsync("v3/registration/public.package/index.json", TestContext.Current.CancellationToken))];
+        // The private mirror is asked first. Meanwhile, the other requests arrive.
+        using CancellationTokenSource limit = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        limit.CancelAfter(TimeSpan.FromSeconds(30));
+        while (MetadataRequests("private.test") == 0)
+            await Task.Delay(10, limit.Token);
+
+        await Task.Delay(200, limit.Token);
+        await givesUp.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cancelled);
+        Routing.Gate.SetResult();
+
+        foreach (string registration in await Task.WhenAll(waiting).WaitAsync(limit.Token))
+            Assert.Contains("\"1.0.0\"", registration);
+        Assert.Equal(1, MetadataRequests("private.test"));
+        Assert.Equal(1, MetadataRequests("public.test"));
+    }
+
     // How many times a mirror was asked for a registration index.
     private int MetadataRequests(string host)
         => Routing!.Requests.Count(r => r.Host == host && r.AbsolutePath.EndsWith("/index.json", StringComparison.Ordinal) && r.AbsolutePath.Contains("/registration", StringComparison.Ordinal));
@@ -311,9 +341,16 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
         /// </summary>
         public ConcurrentQueue<Uri> Requests { get; } = new();
 
+        /// <summary>
+        /// If set, requests for registrations wait for it before they're answered.
+        /// </summary>
+        public TaskCompletionSource? Gate { get; set; }
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Enqueue(request.RequestUri!);
+            if (Gate != null && request.RequestUri!.AbsolutePath.Contains("/registration", StringComparison.Ordinal))
+                await Gate.Task;
 
             // A server that accepts the request, and never answers.
             if (string.Equals(request.RequestUri!.Host, "stall.test", StringComparison.OrdinalIgnoreCase))

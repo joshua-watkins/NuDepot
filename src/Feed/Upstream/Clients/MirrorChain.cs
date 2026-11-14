@@ -59,7 +59,7 @@ internal sealed partial class MirrorChain : IUpstreamClient
     private TimeProvider Time { get; }
     private TimeSpan UnreachableTime { get; }
     private IReadOnlyList<Mirror> Mirrors { get; }
-    private ConcurrentDictionary<string, (DateTimeOffset ExpiresAt, IReadOnlyList<Package> Packages)> ListedPackages { get; } = new(StringComparer.OrdinalIgnoreCase);
+    private ConcurrentDictionary<string, Listing> ListedPackages { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Whether mirroring is on.
@@ -86,35 +86,46 @@ internal sealed partial class MirrorChain : IUpstreamClient
     /// <inheritdoc />
     public async Task<IReadOnlyList<Package>> ListPackagesAsync(string id, CancellationToken cancellationToken)
     {
-        // A registration and its pages are read one after another, so each request doesn't ask the mirrors again,
-        // and the pages split the same versions as the index.
-        DateTimeOffset now = Time.GetUtcNow();
-        if (ListedPackages.TryGetValue(id, out (DateTimeOffset ExpiresAt, IReadOnlyList<Package> Packages) listed) && listed.ExpiresAt > now)
-            return listed.Packages;
-
-        IReadOnlyList<Package> packages = await FindAsync(mirror => mirror.Client.TryListPackagesAsync(id, cancellationToken), packages => packages.Count > 0) ?? [];
-        Remember(id, packages, now);
-
-        return packages;
+        // A registration and its pages are read one after another, and restores often ask for a package at the same
+        // time, so they share one lookup in the mirrors, and the pages split the same versions as the index. Each
+        // request stops waiting when it's cancelled, but the lookup goes on for the others.
+        Listing listing = GetListing(id, Time.GetUtcNow());
+        try
+        {
+            return await listing.Packages.Value.WaitAsync(cancellationToken);
+        }
+        catch when (listing.Packages.Value.IsFaulted)
+        {
+            // The next request tries again.
+            ListedPackages.TryRemove(new KeyValuePair<string, Listing>(id, listing));
+            throw;
+        }
     }
 
-    // Keeps a package's versions for ListedPackagesTime, and forgets expired ones so the cache doesn't grow.
-    private void Remember(string id, IReadOnlyList<Package> packages, DateTimeOffset now)
+    // The package's lookup, kept for ListedPackagesTime from when it started. Expired ones are forgotten, so the cache
+    // doesn't grow, and when it's full of current ones, the lookup isn't kept.
+    private Listing GetListing(string id, DateTimeOffset now)
     {
-        if (ListedPackages.Count >= MaxListedPackages)
+        Listing started = new(now + ListedPackagesTime, new(() => ListFromMirrorsAsync(id)));
+        if (ListedPackages.Count >= MaxListedPackages && !ListedPackages.ContainsKey(id))
         {
-            foreach (KeyValuePair<string, (DateTimeOffset ExpiresAt, IReadOnlyList<Package> Packages)> entry in ListedPackages)
+            foreach (KeyValuePair<string, Listing> entry in ListedPackages)
             {
                 if (entry.Value.ExpiresAt <= now)
                     ListedPackages.TryRemove(entry);
             }
 
             if (ListedPackages.Count >= MaxListedPackages)
-                return;
+                return started;
         }
 
-        ListedPackages[id] = (now + ListedPackagesTime, packages);
+        return ListedPackages.AddOrUpdate(id, started, (_, existing) => existing.ExpiresAt > now ? existing : started);
     }
+
+    // Not cancelled with the request that started it, since others may be waiting for it. The mirrors' request
+    // timeouts end it.
+    private async Task<IReadOnlyList<Package>> ListFromMirrorsAsync(string id)
+        => await FindAsync(mirror => mirror.Client.TryListPackagesAsync(id, CancellationToken.None), packages => packages.Count > 0) ?? [];
 
     /// <inheritdoc />
     public async Task<Stream?> DownloadPackageOrNullAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
@@ -199,6 +210,13 @@ internal sealed partial class MirrorChain : IUpstreamClient
             Log.UnreachableSkipped(Logger, mirror.Name, UnreachableTime.TotalMinutes);
         }
     }
+
+    /// <summary>
+    /// A package's versions from the mirrors, looked up once for the requests that ask for them meanwhile.
+    /// </summary>
+    /// <param name="ExpiresAt">When the versions are looked up again.</param>
+    /// <param name="Packages">The lookup, which starts when it's first awaited.</param>
+    private sealed record Listing(DateTimeOffset ExpiresAt, Lazy<Task<IReadOnlyList<Package>>> Packages);
 
     /// <summary>
     /// A mirror, and until when it's not asked because it couldn't be reached.
