@@ -18,8 +18,8 @@
 	<ItemGroup>
 		<PackageReference Include="NuGet.Packaging" Version="7.9.0" />
 		<!-- NuGet.Packaging references a vulnerable 8.0.1. -->
-		<PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
-		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.403">
+		<PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.404">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>

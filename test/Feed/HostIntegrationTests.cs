@@ -48,6 +48,7 @@ public class HostIntegrationTests
 
         Assert.True(IsLogged(before, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Information));
         Assert.False(IsLogged(before, "Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Information));
+        Assert.False(IsLogged(before, "Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Information));
 
         Assert.False(IsLogged(after, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Information));
         Assert.True(IsLogged(after, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Warning));
@@ -71,6 +72,7 @@ public class HostIntegrationTests
                 // The services' defaults, from NuDepotService.
                 ["Logging:LogLevel:Default"] = "Information",
                 ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning",
+                ["Logging:LogLevel:Microsoft.EntityFrameworkCore"] = "Warning",
                 ["Logging:LogLevel:NuDepot.Feed.Authentication"] = "Warning",
             })
             .AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(string.Join('\n', lines))))

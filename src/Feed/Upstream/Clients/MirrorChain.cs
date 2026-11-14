@@ -52,8 +52,10 @@ internal sealed partial class MirrorChain : IUpstreamClient
     /// </summary>
     internal static readonly TimeSpan ListedPackagesTime = TimeSpan.FromMinutes(1);
 
-    // The most packages whose versions are kept at once.
-    private const int MaxListedPackages = 1000;
+    /// <summary>
+    /// The most packages whose versions are kept at once.
+    /// </summary>
+    internal const int MaxListedPackages = 1000;
 
     private ILogger Logger { get; }
     private TimeProvider Time { get; }

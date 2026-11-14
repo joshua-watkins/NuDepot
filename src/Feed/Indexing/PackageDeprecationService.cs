@@ -38,7 +38,7 @@ internal partial class PackageDeprecationService(ILogger<PackageDeprecationServi
             cancellationToken);
 
         if (updated)
-            Log.Deprecated(Logger, Actor, id, version, string.Join(", ", reasonArray));
+            Log.Deprecated(Logger, Actor, id, version, reasonArray);
 
         return updated;
     }
@@ -82,7 +82,17 @@ internal partial class PackageDeprecationService(ILogger<PackageDeprecationServi
         public static partial void Deprecating(ILogger logger, string packageId, NuGetVersion packageVersion);
 
         [LoggerMessage(Level = LogLevel.Information, Message = "{Actor} deprecated package {PackageId} {PackageVersion} as {Reasons}")]
-        public static partial void Deprecated(ILogger logger, string actor, string packageId, NuGetVersion packageVersion, string reasons);
+        private static partial void Deprecated(ILogger logger, string actor, string packageId, NuGetVersion packageVersion, string reasons);
+
+        // The reasons, like "Legacy, CriticalBugs", are only joined if the line is logged.
+        public static void Deprecated(ILogger logger, string actor, string packageId, NuGetVersion packageVersion, IReadOnlyList<string> reasons)
+        {
+            if (!logger.IsEnabled(LogLevel.Information))
+                return;
+
+            string joined = string.Join(", ", reasons);
+            Deprecated(logger, actor, packageId, packageVersion, joined);
+        }
 
         [LoggerMessage(Level = LogLevel.Information, Message = "Undeprecating package {PackageId} {PackageVersion}...")]
         public static partial void Undeprecating(ILogger logger, string packageId, NuGetVersion packageVersion);

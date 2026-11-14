@@ -71,6 +71,9 @@ internal static partial class NuDepotService
             ["Logging:LogLevel:Default"] = "Information",
             ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning",
 
+            // EF Core logs each database command at Information, which would bury the service's own lines.
+            ["Logging:LogLevel:Microsoft.EntityFrameworkCore"] = "Warning",
+
             // ASP.NET Core's authentication logs each request without a valid key at Information, in the category of the
             // feed's handler. The feed's own warnings about keys and refused requests stay.
             ["Logging:LogLevel:NuDepot.Feed.Authentication"] = "Warning",
