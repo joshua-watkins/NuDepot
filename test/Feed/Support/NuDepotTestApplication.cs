@@ -154,8 +154,9 @@ internal sealed class NuDepotTestApplication : IDisposable
             NuDepotAuthenticationSchemes.User,
             options => options.TimeProvider = Clock);
 
+        // The feed's own client, with its retries, sends its requests to the mirrors through the test's.
         if (UpstreamClient != null)
-            builder.Services.AddSingleton(UpstreamClient);
+            builder.Services.AddKeyedSingleton<HttpMessageHandler>(FeedServiceCollectionExtensions.MirrorsHandlerKey, new ClientForwardingHandler(UpstreamClient));
 
         ConfigureServices?.Invoke(builder.Services);
 

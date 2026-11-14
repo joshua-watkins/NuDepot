@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using NuDepot.Core;
@@ -33,6 +34,7 @@ using NuDepot.Feed.Upstream.Clients;
 using NuDepot.Feed.Users;
 using NuDepot.Feed.Validation;
 using NuDepot.Feed.Vulnerabilities;
+using Polly;
 using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -422,20 +424,39 @@ public static class FeedServiceCollectionExtensions
         };
     }
 
-    // The client for upstream feeds and nuget.org's download counts. Each mirror has its own timeout.
+    /// <summary>
+    /// The key of the handler that sends the mirrors' requests, if it isn't the usual one, like in tests.
+    /// </summary>
+    internal const string MirrorsHandlerKey = "NuDepot.Mirrors";
+
+    // The client for upstream feeds and nuget.org's download counts. Each mirror has its own timeout, which includes
+    // the retries.
     private static HttpClient HttpClientFactory(IServiceProvider provider)
     {
         Assembly assembly = Assembly.GetEntryAssembly() ?? typeof(FeedServiceCollectionExtensions).Assembly;
         string? assemblyName = assembly.GetName().Name;
         string assemblyVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 
+        // A request that fails for a moment, like with a 503, a 429 or a dropped connection, is tried twice more, so a
+        // mirror only counts as unreachable, and is skipped for a few minutes, if it keeps failing.
+        ResiliencePipeline<HttpResponseMessage> retry = new ResiliencePipelineBuilder<HttpResponseMessage> { TimeProvider = provider.GetRequiredService<TimeProvider>() }
+            .AddRetry(new HttpRetryStrategyOptions
+            {
+                MaxRetryAttempts = 2,
+                Delay = TimeSpan.FromSeconds(1),
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+            })
+            .Build();
+
         // The client lasts as long as the application, so its connections are replaced every few minutes, to follow
-        // changes to the mirrors' DNS records.
-        HttpClient client = new(new SocketsHttpHandler
+        // changes to the mirrors' DNS records. Tests send the requests to their own servers instead.
+        HttpMessageHandler handler = provider.GetKeyedService<HttpMessageHandler>(MirrorsHandlerKey) ?? new SocketsHttpHandler
         {
             AutomaticDecompression = DecompressionMethods.All,
             PooledConnectionLifetime = TimeSpan.FromMinutes(2),
-        });
+        };
+        HttpClient client = new(new ResilienceHandler(retry) { InnerHandler = handler });
 
         client.DefaultRequestHeaders.Add("User-Agent", $"{assemblyName}/{assemblyVersion}");
         client.Timeout = Timeout.InfiniteTimeSpan;

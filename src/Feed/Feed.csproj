@@ -22,6 +22,7 @@
 		</PackageReference>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
+		<PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
 		<!-- The users' sign-in cookies are JWTs. Fido2 already depends on an older version. -->
 		<PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.22.0" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.403">

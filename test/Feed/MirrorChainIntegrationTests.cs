@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Configuration;
 using NuDepot.Feed.Tests.Support;
+using NuDepot.Feed.Upstream;
+using NuDepot.Feed.Upstream.Clients;
 using System.Collections.Concurrent;
 using System.Net;
 using Xunit;
@@ -95,6 +97,43 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
 
         Assert.Equal(2, MetadataRequests("public.test"));
         Assert.Contains("\"2.0.0\"", registration);
+    }
+
+    [Fact]
+    public async Task AMirrorThatFailsForAMomentIsAskedAgain()
+    {
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        NuDepotTestApplication mirror = CreateMirror();
+        HttpClient client = mirror.CreateClient();
+
+        // Like nuget.org answering one request with 503.
+        Routing!.FailingHost = "public.test";
+        Routing.FailuresLeft = 1;
+
+        Assert.Equal(@"{""versions"":[""1.0.0""]}", await client.GetStringAsync("v3/package/public.package/index.json", TestContext.Current.CancellationToken));
+        Assert.Equal(0, Routing.FailuresLeft);
+
+        // It isn't counted as unreachable, so it's asked for other packages.
+        MirrorChain.MirrorStatus publicMirror = Assert.Single(((MirrorChain)mirror.Services.GetRequiredService<IUpstreamClient>()).GetStatus(), status => status.Name == "Public");
+        Assert.Null(publicMirror.UnreachableUntil);
+    }
+
+    [Fact]
+    public async Task AMirrorThatKeepsFailingIsSkipped()
+    {
+        await Public.AddPackageAsync(TestPackages.Create("Public.Package", "1.0.0"), cancellationToken: TestContext.Current.CancellationToken);
+        NuDepotTestApplication mirror = CreateMirror();
+        HttpClient client = mirror.CreateClient();
+        Routing!.FailingHost = "public.test";
+        Routing.FailuresLeft = 100;
+
+        using HttpResponseMessage response = await client.GetAsync("v3/package/public.package/index.json", TestContext.Current.CancellationToken);
+
+        // Tried three times, then skipped for a few minutes.
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(97, Routing.FailuresLeft);
+        MirrorChain.MirrorStatus publicMirror = Assert.Single(((MirrorChain)mirror.Services.GetRequiredService<IUpstreamClient>()).GetStatus(), status => status.Name == "Public");
+        Assert.NotNull(publicMirror.UnreachableUntil);
     }
 
     [Fact]
@@ -346,11 +385,45 @@ public sealed class MirrorChainIntegrationTests(ITestOutputHelper output) : IDis
         /// </summary>
         public TaskCompletionSource? Gate { get; set; }
 
+        /// <summary>
+        /// The host whose next requests fail with 503 Service Unavailable, as many as <see cref="FailuresLeft"/>.
+        /// </summary>
+        public string? FailingHost { get; set; }
+
+        private int failuresLeft;
+
+        /// <summary>
+        /// How many more requests to <see cref="FailingHost"/> fail.
+        /// </summary>
+        public int FailuresLeft
+        {
+            get => Volatile.Read(ref failuresLeft);
+            set => Volatile.Write(ref failuresLeft, value);
+        }
+
+        // Uses up one of the failures, if any are left.
+        private bool TakeFailure()
+        {
+            int left;
+            do
+            {
+                left = FailuresLeft;
+                if (left <= 0)
+                    return false;
+            }
+            while (Interlocked.CompareExchange(ref failuresLeft, left - 1, left) != left);
+
+            return true;
+        }
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Enqueue(request.RequestUri!);
             if (Gate != null && request.RequestUri!.AbsolutePath.Contains("/registration", StringComparison.Ordinal))
                 await Gate.Task;
+
+            if (string.Equals(request.RequestUri!.Host, FailingHost, StringComparison.OrdinalIgnoreCase) && TakeFailure())
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
 
             // A server that accepts the request, and never answers.
             if (string.Equals(request.RequestUri!.Host, "stall.test", StringComparison.OrdinalIgnoreCase))
