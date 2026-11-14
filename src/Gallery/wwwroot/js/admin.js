@@ -146,7 +146,7 @@
     const loadStatus = async () => {
         const status = await request('GET', `${api}/status`);
         showHealth(status.health);
-        page.querySelector('#settings-folder').textContent = status.settingsFolder;
+        page.querySelector('#settings-file').textContent = status.settingsFile;
 
         const rows = [
             ['Read-only mode', status.isReadOnlyMode ? 'On: nobody may change the packages' : 'Off'],

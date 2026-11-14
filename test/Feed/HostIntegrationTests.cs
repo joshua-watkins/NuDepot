@@ -53,10 +53,10 @@ public class HostIntegrationTests
         Assert.True(IsLogged(after, "NuDepot.Feed.Indexing.PackageIndexingService", LogLevel.Warning));
     }
 
-    // The services' logging, with the host's appsettings.json, and its commented-out Logging section uncommented.
+    // The services' logging, with the host's settings template, and its commented-out Logging section uncommented.
     private static ServiceProvider BuildLogging(string host, bool uncomment, Action<ILoggingBuilder> providers)
     {
-        string[] lines = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Hosts", host, "appsettings.json"));
+        string[] lines = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Hosts", host, SettingsFile(host)));
         if (uncomment)
         {
             int start = Array.FindIndex(lines, line => line.TrimStart().StartsWith("//\"Logging\"", StringComparison.Ordinal));
@@ -93,6 +93,9 @@ public class HostIntegrationTests
             .AddEventLog()
             .AddFilter<EventLogLoggerProvider>(level => level >= LogLevel.Warning);
     }
+
+    // The settings template of the Windows or Linux service, named like Windows and Linux names files.
+    private static string SettingsFile(string host) => host == "Windows" ? "NuDepot.json" : "nudepot.json";
 
     private static bool IsLogged(IServiceProvider services, string category, LogLevel level)
         => services
@@ -219,10 +222,10 @@ public class HostIntegrationTests
     [InlineData("Linux")]
     public void HostsUseInMemoryDatabaseAndTemporaryStorageInDevelopment(string host)
     {
-        // The hosts' appsettings files are copied to the test output's Hosts folder.
+        // The hosts' settings templates and development settings are copied to the test output's Hosts folder.
         IConfigurationRoot configuration = new ConfigurationBuilder()
             .SetBasePath(Path.Combine(AppContext.BaseDirectory, "Hosts", host))
-            .AddJsonFile("appsettings.json")
+            .AddJsonFile(SettingsFile(host))
             .AddJsonFile("appsettings.Development.json")
             .Build();
 
@@ -237,7 +240,7 @@ public class HostIntegrationTests
     [InlineData("Linux", true)]
     public void HostSettingsSetUpTheFeaturesButLeaveThemToTheInstaller(string host, bool installerTurnedThemOn)
     {
-        // The installer's choices are in setup.ini, which the services read before appsettings.json.
+        // The installer's choices are in setup.ini, which the services read before their settings file.
         Dictionary<string, string?> setup = installerTurnedThemOn
             ? new()
             {
@@ -249,7 +252,7 @@ public class HostIntegrationTests
         IConfigurationRoot configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(setup)
             .SetBasePath(Path.Combine(AppContext.BaseDirectory, "Hosts", host))
-            .AddJsonFile("appsettings.json")
+            .AddJsonFile(SettingsFile(host))
             .Build();
 
         ServiceCollection services = new();

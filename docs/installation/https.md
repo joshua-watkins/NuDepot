@@ -52,8 +52,8 @@ nuget.example.com {
 ### Package size
 
 NuDepot accepts pushes of packages and symbol packages up to 250 MB, like nuget.org, and refuses larger ones with
-`413 Payload Too Large`. Change the limit with `MaxPackageSize`, in bytes, in the `Feed` section of
-`appsettings.json`, or set it to `0` for no limit:
+`413 Payload Too Large`. Change the limit with `MaxPackageSize`, in bytes, in the `Feed` section of the
+settings file (`NuDepot.json` or `nudepot.json`), or set it to `0` for no limit:
 
 ```json
 "Feed": {
@@ -107,8 +107,8 @@ and claim to use HTTPS. If that matters, list only the proxy's address, or turn 
 
 ## Without a reverse proxy
 
-NuDepot can serve HTTPS itself, with a certificate for your feed's address. Add an HTTPS endpoint to
-`appsettings.json`, with the certificate's file and password, and turn forwarded headers off, since there's no
+NuDepot can serve HTTPS itself, with a certificate for your feed's address. Add an HTTPS endpoint to the
+settings file, `NuDepot.json` or `nudepot.json`, with the certificate's file and password, and turn forwarded headers off, since there's no
 proxy to set them:
 
 ```json
@@ -141,5 +141,5 @@ gallery. See
 [Kestrel's endpoint settings](https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/endpoints#configure-endpoints-in-appsettingsjson)
 for everything they can do.
 
-To keep the password out of `appsettings.json`, set it in the service's environment instead, as
+To keep the password out of the settings file, set it in the service's environment instead, as
 `Kestrel__Endpoints__Https__Certificate__Password`.

@@ -24,7 +24,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- The installer puts appsettings.json in C:\ProgramData\NuDepot. The development settings aren't published. -->
+		<!-- The installer puts NuDepot.json, the settings template, in C:\ProgramData\NuDepot; F5 reads it from the build output. The development settings aren't published. -->
+		<Content Update="NuDepot.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
 		<Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
 	</ItemGroup>
 </Project>

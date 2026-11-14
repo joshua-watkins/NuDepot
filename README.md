@@ -15,7 +15,8 @@ browsing packages. Releases are self-contained, so you don't need to install .NE
    `dotnet nuget push -s http://localhost:3333/v3/index.json --allow-insecure-connections package.1.0.0.nupkg`
 
 NuDepot listens on `http://localhost:3333`, ready for a reverse proxy that serves HTTPS. It starts without API keys,
-so anyone who can reach it may push: set your own random keys in `appsettings.json` before you share it. See
+so anyone who can reach it may push: set your own random keys in its settings file,
+`NuDepot.json` or `nudepot.json`, before you share it. See
 [Serve NuDepot over HTTPS](docs/installation/https.md) and [Require an API key](docs/configuration.md#require-an-api-key).
 
 ## Features

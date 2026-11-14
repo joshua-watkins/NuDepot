@@ -22,8 +22,8 @@
 
 	<ItemGroup>
 		<!-- The hosts' settings, which the tests check. -->
-		<None Include="..\..\pub\Windows\appsettings*.json" Link="Hosts\Windows\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-		<None Include="..\..\pub\Linux\appsettings*.json" Link="Hosts\Linux\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="..\..\pub\Windows\NuDepot.json;..\..\pub\Windows\appsettings.Development.json" Link="Hosts\Windows\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="..\..\pub\Linux\nudepot.json;..\..\pub\Linux\appsettings.Development.json" Link="Hosts\Linux\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<ItemGroup>

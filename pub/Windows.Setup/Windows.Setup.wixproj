@@ -32,6 +32,14 @@
 						  AdditionalProperties="SelfContained=true;OutputPath=bin\$(Platform)\$(Configuration)\self-contained\;IntermediateOutputPath=obj\$(Platform)\$(Configuration)\self-contained\" />
 	</ItemGroup>
 
+	<!--
+		The installer takes every file in the service's publish folder, which publishing doesn't empty, so a file the
+		service no longer has, like a renamed settings template, would still be installed. Publish into an empty one.
+	-->
+	<Target Name="CleanServicePublish" BeforeTargets="ResolveProjectReferences">
+		<RemoveDir Directories="$(IntermediateOutputPath)publish\" />
+	</Target>
+
 	<!-- The installer isn't a NuGet package. This lets "dotnet pack NuDepot.slnx" pack the libraries. -->
 	<Target Name="Pack" />
 

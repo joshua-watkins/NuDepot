@@ -213,6 +213,9 @@ public sealed class AdminIntegrationTests(ITestOutputHelper output) : IDisposabl
         Assert.Equal("Healthy", health.GetProperty("status").GetString());
         Assert.Equal(["database", "storage", "signing", "mirrors"], health.GetProperty("checks").EnumerateArray().Select(c => c.GetProperty("name").GetString()));
         Assert.Equal("HardDelete", status.GetProperty("packageDeletionBehavior").GetString());
+
+        // An application that hosts the feed has ASP.NET Core's settings file. The services have their own.
+        Assert.Equal(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), status.GetProperty("settingsFile").GetString());
         Assert.Equal(["Admin"], Strings(status.GetProperty("apiKeyRoles")));
         Assert.Equal("ReadOnly", status.GetProperty("anonymousRole").GetString());
         Assert.True(status.GetProperty("isMirroring").GetBoolean());

@@ -43,8 +43,8 @@ The script creates the `nudepot` user the service runs as, installs the applicat
 | --- | --- |
 | `/usr/share/nudepot` | The application. Upgrades replace it. |
 | `/etc/nudepot` | The settings. It's the service's working directory, so relative paths in the settings, like a certificate's, are relative to it. |
-| `/etc/nudepot/appsettings.json` | Your settings. At first, they set up users, signing and mirroring, which are off. Upgrades keep it. |
-| `/etc/nudepot/setup.ini` | The install script's options. `appsettings.json` overrides it. |
+| `/etc/nudepot/nudepot.json` | Your settings. At first, they set up users, signing and mirroring, which are off. Upgrades keep it. |
+| `/etc/nudepot/setup.ini` | The install script's options. `nudepot.json` overrides it. |
 | `/var/lib/nudepot` | The database (`nudepot.db`) and packages (`packages`), owned by the `nudepot` user. Other users of the machine may not read it. |
 | `journalctl -u nudepot -f` | The service's logs. |
 
@@ -52,11 +52,11 @@ The settings belong to root, and the `nudepot` group may read them, so the servi
 
 ## Turn on features
 
-Edit `/etc/nudepot/appsettings.json`: uncomment `"IsEnabled": true` in the feature you want, like users or signing,
+Edit `/etc/nudepot/nudepot.json`: uncomment `"IsEnabled": true` in the feature you want, like users or signing,
 then restart the service:
 
 ```sh
-sudo nano /etc/nudepot/appsettings.json
+sudo nano /etc/nudepot/nudepot.json
 sudo systemctl restart nudepot
 ```
 
@@ -74,7 +74,7 @@ See the [configuration](../configuration.md) guide for every setting.
   feed's address. Passkeys and signing need HTTPS, and API keys travel with every request. See
   [Serve NuDepot over HTTPS](https.md).
 - **Set API keys.** The feed starts without keys, so anyone who can reach it may push. Set random `ReadWrite` and
-  `Admin` keys in `appsettings.json`, like from `openssl rand -hex 24`, in place of its commented-out examples, which
+  `Admin` keys in `nudepot.json`, like from `openssl rand -hex 24`, in place of its commented-out examples, which
   everyone who installs NuDepot has. A `ReadOnly` key makes the feed private, as do users with `AnonymousReads` off.
   See [Require an API key](../configuration.md#require-an-api-key).
 - **Create your account first.** With users on, the first person to sign up becomes an Admin, so sign up before you

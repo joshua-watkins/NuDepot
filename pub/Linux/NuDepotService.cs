@@ -10,7 +10,7 @@ namespace NuDepot;
 /// upgrades can replace it. The settings are in a folder of their own, which is also the working directory and
 /// the content root, so relative paths in the settings, like a signing certificate's or Kestrel's HTTPS
 /// certificate's, are relative to it. Settings are optional:
-/// the options have defaults, which setup.ini (the installer's choices) and then appsettings.json override.
+/// the options have defaults, which setup.ini (the installer's choices) and then nudepot.json override.
 /// </summary>
 internal static partial class NuDepotService
 {
@@ -20,7 +20,12 @@ internal static partial class NuDepotService
     public const string SettingsFolderVariable = "NUDEPOT_CONFIG_ROOT";
 
     /// <summary>
-    /// The installer's choices, like the port, which appsettings.json overrides.
+    /// The administrator's settings, in place of ASP.NET Core's appsettings.json, named for NuDepot.
+    /// </summary>
+    public const string SettingsFile = "nudepot.json";
+
+    /// <summary>
+    /// The installer's choices, like the port, which nudepot.json overrides.
     /// </summary>
     public const string SetupFile = "setup.ini";
 
@@ -33,7 +38,7 @@ internal static partial class NuDepotService
     /// Creates the application's builder, with the settings in <paramref name="settingsFolder"/>.
     /// </summary>
     /// <param name="args">The command line arguments.</param>
-    /// <param name="settingsFolder">The folder that holds appsettings.json and setup.ini, and is the working directory.</param>
+    /// <param name="settingsFolder">The folder that holds nudepot.json and setup.ini, and is the working directory.</param>
     /// <param name="defaults">This platform's defaults, which any setting overrides.</param>
     /// <returns>The builder.</returns>
     public static WebApplicationBuilder CreateBuilder(string[] args, string settingsFolder, IReadOnlyDictionary<string, string?>? defaults = null)
@@ -54,8 +59,9 @@ internal static partial class NuDepotService
             Directory.SetCurrentDirectory(folder);
 
             builder = Create(args, folder);
-            ReadSetupFrom(builder.Configuration, folder);
         }
+
+        ReadSettingsFrom(builder.Configuration, builder.Environment.ContentRootPath, setup: !builder.Environment.IsDevelopment());
 
         // Below everything else, so any setting overrides them.
         Dictionary<string, string?> settings = new(defaults ?? new Dictionary<string, string?>())
@@ -89,8 +95,8 @@ internal static partial class NuDepotService
         });
 
     /// <summary>
-    /// The example API keys, commented out, in the appsettings.json the installers start with, which everyone who
-    /// installs NuDepot has.
+    /// The example API keys, commented out, in the nudepot.json the installers start with, which everyone who installs
+    /// NuDepot has.
     /// </summary>
     internal static IReadOnlyList<string> ExampleApiKeys { get; } =
     [
@@ -140,26 +146,34 @@ internal static partial class NuDepotService
             .UseGallery();
     }
 
-    // Reads setup.ini under appsettings.json, which the content root's folder holds.
-    private static void ReadSetupFrom(IConfigurationBuilder configuration, string folder)
+    // Reads the settings file in place of ASP.NET Core's appsettings.json, from the content root, and in the service,
+    // setup.ini under it. The environment's appsettings file, like the project's appsettings.Development.json, stays
+    // above them.
+    private static void ReadSettingsFrom(IConfigurationBuilder configuration, string folder, bool setup)
     {
         IList<IConfigurationSource> sources = configuration.Sources;
+        int appSettings = sources.IndexOf(sources.First(source => source is JsonConfigurationSource { Path: "appsettings.json" }));
+        sources.RemoveAt(appSettings);
 
-        int appSettings = sources.Count;
-        for (int i = sources.Count - 1; i >= 0; i--)
+        PhysicalFileProvider files = new(folder);
+        sources.Insert(appSettings, new JsonConfigurationSource
         {
-            if (sources[i] is JsonConfigurationSource { Path: not null } json &&
-                json.Path.StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
-                appSettings = i;
-        }
-
-        sources.Insert(appSettings, new IniConfigurationSource
-        {
-            Path = SetupFile,
+            Path = SettingsFile,
             Optional = true,
             ReloadOnChange = true,
-            FileProvider = new PhysicalFileProvider(folder),
+            FileProvider = files,
         });
+
+        if (setup)
+        {
+            sources.Insert(appSettings, new IniConfigurationSource
+            {
+                Path = SetupFile,
+                Optional = true,
+                ReloadOnChange = true,
+                FileProvider = files,
+            });
+        }
     }
 
     // Whether the settings say where to listen, as URLs, ports or Kestrel endpoints.
@@ -174,7 +188,7 @@ internal static partial class NuDepotService
 
     private static partial class Log
     {
-        [LoggerMessage(Level = LogLevel.Warning, Message = "The {Role} API key is still the example from appsettings.json, which everyone who installs NuDepot has. Replace it with a random key of your own.")]
+        [LoggerMessage(Level = LogLevel.Warning, Message = $"The {{Role}} API key is still the example from {SettingsFile}, which everyone who installs NuDepot has. Replace it with a random key of your own.")]
         public static partial void ExampleApiKey(ILogger logger, string role);
     }
 }

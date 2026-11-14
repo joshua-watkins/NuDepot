@@ -3,7 +3,7 @@
 #
 #   sudo sh install.sh [options]
 #
-# Options, which are saved in /etc/nudepot/setup.ini (appsettings.json overrides them):
+# Options, which are saved in /etc/nudepot/setup.ini (nudepot.json overrides them):
 #   --port <port>        The port to listen on. Default: 3333.
 #   --listen <address>   The address to listen on, like localhost (the default), * for every address, or an IP address.
 #   --users              Let people sign in to the gallery with passkeys. The first account is an Admin.
@@ -67,7 +67,7 @@ mkdir -p "$app"
 for file in "$here"/* "$here"/.[!.]*; do
     [ -e "$file" ] || continue
     case "$(basename "$file")" in
-        appsettings.json|install.sh|nudepot.service|*.tar.gz) ;;
+        nudepot.json|install.sh|nudepot.service|*.tar.gz) ;;
         *) cp -R "$file" "$app/" ;;
     esac
 done
@@ -75,13 +75,13 @@ chmod 0755 "$app/NuDepot"
 
 # The settings belong to root, and the service can read them. An upgrade doesn't replace them.
 install -d -m 0755 "$settings"
-if [ ! -e "$settings/appsettings.json" ]; then
-    install -m 0640 -o root -g nudepot "$here/appsettings.json" "$settings/appsettings.json"
+if [ ! -e "$settings/nudepot.json" ]; then
+    install -m 0640 -o root -g nudepot "$here/nudepot.json" "$settings/nudepot.json"
 fi
 
 if [ -n "$setup" ] || [ ! -e "$settings/setup.ini" ]; then
     {
-        echo "; What was chosen when NuDepot was installed. appsettings.json overrides these."
+        echo "; What was chosen when NuDepot was installed. nudepot.json overrides these."
         echo "; Running install.sh again with options replaces this file."
         echo
         echo "[Kestrel:Endpoints:Http]"
@@ -114,4 +114,4 @@ systemctl restart nudepot
 
 url=$(sed -n 's/^Url=//p' "$settings/setup.ini" | head -n 1)
 echo "NuDepot is running at ${url:-http://localhost:$port}."
-echo "Settings: $settings/appsettings.json and $settings/setup.ini. Logs: journalctl -u nudepot -f"
+echo "Settings: $settings/nudepot.json and $settings/setup.ini. Logs: journalctl -u nudepot -f"

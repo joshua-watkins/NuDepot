@@ -33,13 +33,13 @@ account's password isn't saved, so give it again when you upgrade.
 | --- | --- |
 | `C:\Program Files\NuDepot` | The application. Upgrades replace it. |
 | `C:\ProgramData\NuDepot` | The settings, database (`nudepot.db`) and packages (`packages`). It's the service's working directory, so relative paths in the settings are relative to it. Only SYSTEM, Administrators and the service account may use it. |
-| `C:\ProgramData\NuDepot\appsettings.json` | Your settings. At first, they set up users, signing and mirroring, which are off. Upgrades and uninstalling keep it. |
-| `C:\ProgramData\NuDepot\setup.ini` | The installer's options. `appsettings.json` overrides it. |
+| `C:\ProgramData\NuDepot\NuDepot.json` | Your settings. At first, they set up users, signing and mirroring, which are off. Upgrades and uninstalling keep it. |
+| `C:\ProgramData\NuDepot\setup.ini` | The installer's options. `NuDepot.json` overrides it. |
 | Event Viewer, Windows Logs, Application | The service's logs, with the source `NuDepot`. |
 
 ## Turn on features
 
-Edit `C:\ProgramData\NuDepot\appsettings.json` as an administrator: uncomment `"IsEnabled": true` in the feature
+Edit `C:\ProgramData\NuDepot\NuDepot.json` as an administrator: uncomment `"IsEnabled": true` in the feature
 you want, like users or signing, then restart the service:
 
 ```powershell
@@ -54,7 +54,7 @@ See the [configuration](../configuration.md) guide for every setting.
   feed's address. Passkeys and signing need HTTPS, and API keys travel with every request. See
   [Serve NuDepot over HTTPS](https.md).
 - **Set API keys.** The feed starts without keys, so anyone who can reach it may push. Set random `ReadWrite` and
-  `Admin` keys in `appsettings.json`, in place of its commented-out examples, which everyone who installs NuDepot
+  `Admin` keys in `NuDepot.json`, in place of its commented-out examples, which everyone who installs NuDepot
   has. Make them in PowerShell:
 
   ```powershell

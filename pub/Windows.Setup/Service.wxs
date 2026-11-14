@@ -51,7 +51,7 @@
       <!-- The settings are in C:\ProgramData\NuDepot, so the application's folder only holds the application. -->
       <Files Include="!(bindpath.Windows)**">
         <Exclude Files="!(bindpath.Windows)NuDepot.exe" />
-        <Exclude Files="!(bindpath.Windows)appsettings.json" />
+        <Exclude Files="!(bindpath.Windows)NuDepot.json" />
         <Exclude Files="!(bindpath.Windows)appsettings.Development.json" />
         <Exclude Files="!(bindpath.Windows)**\*.pdb" />
       </Files>
@@ -78,10 +78,10 @@
 
       <!-- The settings template, with every setting commented out. Upgrades and uninstall keep the administrator's settings. -->
       <Component NeverOverwrite="yes" Permanent="yes">
-        <File Id="AppSettings" Name="appsettings.json" Source="!(bindpath.Windows)appsettings.json" KeyPath="yes" />
+        <File Id="Settings" Name="NuDepot.json" Source="!(bindpath.Windows)NuDepot.json" KeyPath="yes" />
       </Component>
 
-      <!-- The installer's options, which appsettings.json overrides. -->
+      <!-- The installer's options, which NuDepot.json overrides. -->
       <Component Id="SetupAddress" Guid="{5EBE1303-9BFE-46FC-B829-1B64156650C1}">
         <IniFile Id="SetupUrl" Action="addLine" Directory="DATAFOLDER" Name="setup.ini" Section="Kestrel:Endpoints:Http" Key="Url" Value="http://[LISTEN]:[PORT]" />
       </Component>

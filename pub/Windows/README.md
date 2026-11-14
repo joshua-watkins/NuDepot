@@ -5,9 +5,9 @@ console application. To install a release, see [Install NuDepot on Windows](../.
 
 ## Development
 
-Start this project (F5 in Visual Studio, or `dotnet run --project pub/Windows -p:SolutionName=NuDepot`) to run the
+Start this project (F5 in Visual Studio, or `dotnet run --project pub/Windows`) to run the
 server and the gallery together, at <https://localhost:3334> and <http://localhost:3333>. In Development it reads the
-project's `appsettings.json` and `appsettings.Development.json`, and uses an in-memory database and a temporary
+project's `NuDepot.json` and `appsettings.Development.json`, and uses an in-memory database and a temporary
 package folder, so it starts empty each time.
 
 ## How it runs
@@ -18,7 +18,7 @@ too, and relative paths in the settings are relative to it. The settings are rea
 
 1. The options' defaults, and the service's (port 3333 on localhost, and the gallery's package pages).
 2. `setup.ini`, the installer's options.
-3. `appsettings.json`, the administrator's settings. The project's copy is the template the installer puts there,
+3. `NuDepot.json`, the administrator's settings. The project's copy is the template the installer puts there,
    with every setting commented out.
 4. Environment variables, then command line arguments.
 
@@ -27,10 +27,10 @@ too, and relative paths in the settings are relative to it. The settings are rea
 ## Building the installer
 
 ```powershell
-dotnet build pub/Windows.Setup/Windows.Setup.wixproj -p:SolutionName=NuDepot -c Release -p:Platform=x64
+dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=x64
 # Output: pub/Windows.Setup/bin/x64/Release/en-US/NuDepot-x64.msi
 
-dotnet build pub/Windows.Setup/Windows.Setup.wixproj -p:SolutionName=NuDepot -c Release -p:Platform=ARM64
+dotnet build pub/Windows.Setup/Windows.Setup.wixproj -c Release -p:Platform=ARM64
 # Output: pub/Windows.Setup/bin/ARM64/Release/en-US/NuDepot-arm64.msi
 ```
 
@@ -42,5 +42,5 @@ and starts the `NuDepot` service. Its options are described in `pub/Windows.Setu
 To publish without the installer:
 
 ```powershell
-dotnet publish pub/Windows/Windows.csproj -p:SolutionName=NuDepot -c Release -r win-x64 --self-contained -o out
+dotnet publish pub/Windows/Windows.csproj -c Release -r win-x64 --self-contained -o out
 ```

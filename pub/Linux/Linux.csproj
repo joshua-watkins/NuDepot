@@ -26,7 +26,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- install.sh puts appsettings.json in /etc/nudepot. The development settings aren't published. -->
+		<!-- install.sh puts nudepot.json, the settings template, in /etc/nudepot; F5 reads it from the build output. The development settings aren't published. -->
+		<Content Update="nudepot.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
 		<Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
 		<None Update="nudepot.service;install.sh" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
 	</ItemGroup>

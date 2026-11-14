@@ -11,9 +11,9 @@ internal class FeedStatusResponse
     public HealthResponse Health { get; set; } = null!;
 
     /// <summary>
-    /// The folder the settings files are in, which is the feed's working directory.
+    /// The application's settings file, like the service's NuDepot.json, or an application's appsettings.json.
     /// </summary>
-    public string SettingsFolder { get; set; } = null!;
+    public string SettingsFile { get; set; } = null!;
 
     /// <summary>
     /// Whether nobody may change the feed's packages.

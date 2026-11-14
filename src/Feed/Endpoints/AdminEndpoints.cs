@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NuDepot.Feed.Authentication;
@@ -110,7 +113,7 @@ internal static class AdminEndpoints
                     DurationMilliseconds = Math.Round(entry.Value.Duration.TotalMilliseconds, 1),
                 })],
             },
-            SettingsFolder = services.GetRequiredService<IHostEnvironment>().ContentRootPath,
+            SettingsFile = GetSettingsFile(services),
             IsReadOnlyMode = feed.IsReadOnlyMode,
             PackageDeletionBehavior = feed.PackageDeletionBehavior.ToString(),
             AllowPackageOverwrites = feed.AllowPackageOverwrites,
@@ -193,4 +196,22 @@ internal static class AdminEndpoints
         UserChangeResult.LastAdmin => EndpointHelpers.Text(StatusCodes.Status409Conflict, lastAdminMessage),
         _ => Results.NotFound(),
     };
+
+    // The application's settings file, like the service's NuDepot.json or an application's appsettings.json: its
+    // first JSON settings that aren't for one environment, like appsettings.Development.json.
+    private static string GetSettingsFile(IServiceProvider services)
+    {
+        IHostEnvironment environment = services.GetRequiredService<IHostEnvironment>();
+        string environmentFile = $"appsettings.{environment.EnvironmentName}.json";
+        FileConfigurationSource? settings = (services.GetRequiredService<IConfiguration>() as IConfigurationRoot)?
+            .Providers
+            .OfType<JsonConfigurationProvider>()
+            .Select(provider => provider.Source)
+            .FirstOrDefault(source => source.Path != null && !string.Equals(source.Path, environmentFile, StringComparison.OrdinalIgnoreCase));
+        if (settings == null)
+            return environment.ContentRootPath;
+
+        string folder = settings.FileProvider is PhysicalFileProvider files ? files.Root : environment.ContentRootPath;
+        return Path.Combine(folder, settings.Path!);
+    }
 }

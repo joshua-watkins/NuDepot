@@ -1,23 +1,26 @@
 # Configuration
 
 Every setting is optional: each has a default, and everything beyond a plain feed is off until you turn it on.
-NuDepot's settings are in `appsettings.json`, in its settings folder:
+NuDepot's settings are in its settings file, in its settings folder:
 
-| | Settings folder | Database and packages |
-| --- | --- | --- |
-| Windows | `C:\ProgramData\NuDepot` | `C:\ProgramData\NuDepot` |
-| Linux | `/etc/nudepot` | `/var/lib/nudepot` |
+| | Settings file | Settings folder | Database and packages |
+| --- | --- | --- | --- |
+| Windows | `NuDepot.json` | `C:\ProgramData\NuDepot` | `C:\ProgramData\NuDepot` |
+| Linux | `nudepot.json` | `/etc/nudepot` | `/var/lib/nudepot` |
+
+The settings file is JSON, like ASP.NET Core's `appsettings.json`, which it takes the place of. Comments and trailing
+commas are allowed. An application that hosts the feed and gallery libraries itself keeps its `appsettings.json`.
 
 The settings folder is NuDepot's working directory, so relative paths in the settings, like a certificate's, are
 relative to it. The `NUDEPOT_CONFIG_ROOT` environment variable chooses another settings folder.
 
-The installer starts you off with an `appsettings.json` that sets up users, signing and mirroring of nuget.org, but
-leaves them off. It has no API keys, so the feed starts open; its example keys are commented out. See
-[Require an API key](#require-an-api-key). Edit `appsettings.json`, then restart the service. Upgrades never change
+The installer starts you off with a settings file that sets up users, signing and mirroring of nuget.org, but leaves
+them off. It has no API keys, so the feed starts open; its example keys are commented out. See
+[Require an API key](#require-an-api-key). Edit the settings file, then restart the service. Upgrades never change
 it.
 
-The installer's own options, like the port and `MIRROR=1`, are in `setup.ini` in the same folder, and
-`appsettings.json` overrides them. That's why `appsettings.json` leaves each feature's `IsEnabled` commented out:
+The installer's own options, like the port and `MIRROR=1`, are in `setup.ini` in the same folder, and the settings
+file overrides them. That's why the settings file leaves each feature's `IsEnabled` commented out:
 set it to `true` to turn the feature on, or to `false` to turn off what the installer turned on.
 
 The feed's settings are in the `Feed` section, and the gallery's in the `Gallery` section. ASP.NET Core's own
@@ -37,8 +40,8 @@ settings, like `Logging` and `Kestrel`, stay at the top level:
 ```
 
 Environment variables and command line arguments set the same settings with the section in front,
-like `Feed__RepositorySigning__CertificatePassword` or `--Feed:Mirroring:IsEnabled=true`. They override
-`appsettings.json`. The examples below show the `Feed` section's contents.
+like `Feed__RepositorySigning__CertificatePassword` or `--Feed:Mirroring:IsEnabled=true`. They override the
+settings file. The examples below show the `Feed` section's contents.
 
 ## Addresses
 
@@ -68,7 +71,7 @@ relist packages. Nobody may do what only an `Admin` may, like permanently deleti
 set an `Admin` key or a user has the `Admin` role. An open feed is a valid choice, but the feed logs a warning when
 it starts, as it does for an API key shorter than 16 characters. A feed that's meant to be open can ignore it.
 
-The Windows and Linux services start that way. Their `appsettings.json` has example `ReadWrite` and `Admin` keys,
+The Windows and Linux services start that way. Their settings file has example `ReadWrite` and `Admin` keys,
 commented out. Everyone who installs NuDepot has those examples, and the service logs a warning while one is in use,
 so don't just uncomment them: set random keys of your own, like from `openssl rand -hex 24`, or in PowerShell:
 
@@ -307,9 +310,9 @@ The **Admin** page, linked in the navigation bar for admins:
   keeps at least one `Admin`, who can't be deleted or given another role.
 - **Repository signing:** the certificates, including revoked and expired ones, and a button that replaces a
   generated certificate; see [Replace a generated certificate](#replace-a-generated-certificate).
-- **Settings:** a summary of the settings, the settings folder they're in, and each mirror's state, like a mirror
-  that's not asked for 5 minutes because it couldn't be reached. The settings themselves are changed in
-  `appsettings.json`.
+- **Settings:** a summary of the settings, the settings file they're in, and each mirror's state, like a mirror
+  that's not asked for 5 minutes because it couldn't be reached. The settings themselves are changed in the settings
+  file.
 
 In read-only mode, nobody may change the packages, so only the **Admin** page is left.
 
@@ -368,7 +371,7 @@ it to:
 1. Speed up your builds if restores from [nuget.org](https://nuget.org) are slow
 1. Restore packages when nuget.org can't be reached
 
-Mirroring is off by default. The Windows and Linux services' `appsettings.json` already lists nuget.org, so turn
+Mirroring is off by default. The Windows and Linux services' settings file already lists nuget.org, so turn
 it on to mirror it:
 
 ```json
@@ -542,7 +545,7 @@ warn about them. Give the feed the certificate as a PFX file, with its private k
 - The service's account must be able to read the file. A file in `C:\ProgramData\NuDepot` already is, for the
   installer's `LocalSystem` account or the account you chose. On Linux, give it to the `nudepot` group:
   `sudo install -m 0640 -o root -g nudepot signing.pfx /etc/nudepot/signing.pfx`.
-- Leave `CertificatePassword` out if the file has no password. To keep the password out of `appsettings.json`, set it
+- Leave `CertificatePassword` out if the file has no password. To keep the password out of the settings file, set it
   in the service's environment as `Feed__RepositorySigning__CertificatePassword` instead. On Linux, add
   `Environment="Feed__RepositorySigning__CertificatePassword=..."` to the service with `sudo systemctl edit nudepot`.
   On Windows, add it to the service's `Environment` value, under
@@ -685,7 +688,7 @@ found when requests needed them. Admins see each check's details on the gallery'
 
 On Linux, the service logs verbosely to systemd's journal: NuDepot's `Information` lines, and ASP.NET Core's warnings
 and errors. On Windows, it logs only warnings and errors to the Event Log (Application log, source `NuDepot`). Both
-`appsettings.json` templates have a `Logging` section to uncomment, which switches: verbose logging to the Event Log
+services' settings files have a `Logging` section to uncomment, which switches: verbose logging to the Event Log
 on Windows,
 
 ```json

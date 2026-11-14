@@ -12,7 +12,7 @@
 
     <!--
       Installer options, like "msiexec /i NuDepot-x64.msi PORT=8080 USERS=1". They're saved in setup.ini, which
-      appsettings.json overrides. An upgrade keeps the installed version's options, unless they're given again.
+      NuDepot.json overrides. An upgrade keeps the installed version's options, unless they're given again.
         PORT             The port to listen on. Default: 3333.
         LISTEN           The address to listen on: localhost (the default), * for every address, or an IP address.
         USERS            1 lets people sign in to the gallery with passkeys. The first account is an Admin.

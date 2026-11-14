@@ -191,7 +191,7 @@ public sealed class ProtocolResourceIntegrationTests(ITestOutputHelper output) :
     [Fact]
     public async Task CatalogRecordsPushUnlistAndRelist()
     {
-        // The server's appsettings.json hard deletes by default.
+        // The test server hard deletes by default.
         HttpClient client = CreateClient(out _, new Dictionary<string, string> { { "PackageDeletionBehavior", "Unlist" } });
         await PushAsync(client, TestPackages.Create("Catalog.Package", "1.0.0"));
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("api/v2/package/Catalog.Package/1.0.0", TestContext.Current.CancellationToken)).StatusCode);
