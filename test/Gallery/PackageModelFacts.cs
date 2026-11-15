@@ -17,7 +17,7 @@ public class PackageModelFacts
     public PackageModelFacts()
     {
         Packages = new Mock<IPackageDetailsClient>();
-        Target = new PackageModel(Packages.Object, FeedConnectionFacts.CreateRemoteFeed());
+        Target = new PackageModel(Packages.Object, FeedConnectionFacts.CreateRemoteFeed(), TimeProvider.System);
 
         Packages
             .Setup(p => p.GetPackageDependentsAsync("testpackage", Cancellation))

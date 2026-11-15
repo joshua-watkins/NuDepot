@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using NuDepot.Core.Hosting;
 using NuDepot.Core.PackageDetails;
@@ -29,6 +30,7 @@ public static class GalleryServiceCollectionExtensions
         if (configure != null)
             options.Configure(configure);
 
+        services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<FeedConnection>();
         services.AddScoped<Visitor>();
         services.AddSingleton<ISearchClient>(provider => provider.GetRequiredService<FeedConnection>().ClientFactory.CreateSearchClient());

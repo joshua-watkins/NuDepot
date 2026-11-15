@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Html;
 using NuDepot.Core.Extensions;
 using NuDepot.Core.Models;
 using NuDepot.Core.PackageDetails;
+using NuDepot.Gallery.Extensions;
 using NuGet.Frameworks;
 using NuGet.Versioning;
 
@@ -14,7 +15,7 @@ namespace NuDepot.Gallery.Slices;
 /// <summary>
 /// The model of <see cref="Package"/>, a package's details page.
 /// </summary>
-internal class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
+internal class PackageModel(IPackageDetailsClient packages, FeedConnection feed, TimeProvider time)
 {
     // A readme is written by the package's author, so its raw HTML isn't rendered: it could run script in the
     // gallery, as whoever reads it.
@@ -25,6 +26,7 @@ internal class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
 
     private IPackageDetailsClient Packages { get; } = packages;
     private FeedConnection Feed { get; } = feed;
+    private TimeProvider Time { get; } = time;
 
     /// <summary>
     /// The application's path base, which links start with.
@@ -65,6 +67,11 @@ internal class PackageModel(IPackageDetailsClient packages, FeedConnection feed)
     /// When the package last had a version published.
     /// </summary>
     public DateTime LastUpdated { get; private set; }
+
+    /// <summary>
+    /// How long ago <see cref="LastUpdated"/> was, like "3 days ago".
+    /// </summary>
+    public string LastUpdatedAgo => LastUpdated.ToTimeAgo(Time.GetUtcNow());
 
     /// <summary>
     /// The downloads of every version of the package.
